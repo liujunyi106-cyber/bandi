@@ -3,7 +3,7 @@
 <p align="center"><i>Run your AI employees like a company: roles, SOPs, skills, models — assigned by project.</i></p>
 
 <p align="center">
-  <img src="assets/screenshots/team-group-chat.png" alt="Bandi team group chat: several AI employees collaborating in one conversation" width="100%" />
+  <img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/team-group-chat.png" alt="Bandi team group chat: several AI employees collaborating in one conversation" width="100%" />
 </p>
 
 <p align="center">
@@ -54,31 +54,31 @@ Everything lives in `~/.bandi/` on your machine. Both ports bind to `127.0.0.1` 
 <table>
 <tr>
 <td width="50%" valign="top">
-<img src="assets/screenshots/team.png" alt="Team page: members, roles and work" /><br/>
+<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/team.png" alt="Team page: members, roles and work" /><br/>
 <sub><b>Team</b> — see who works here, who reports to whom, and what everyone is doing.</sub>
 </td>
 <td width="50%" valign="top">
-<img src="assets/screenshots/chat.png" alt="Direct chat with one AI employee" /><br/>
+<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/chat.png" alt="Direct chat with one AI employee" /><br/>
 <sub><b>Direct chat</b> — hand work to one employee; model, skills and SOP follow that role's config.</sub>
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
-<img src="assets/screenshots/employee-editor.png" alt="Employee editor: duties, SOP, skills and model" /><br/>
+<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/employee-editor.png" alt="Employee editor: duties, SOP, skills and model" /><br/>
 <sub><b>Employee editor</b> — duties, tool surface, SOP, skill bindings and model tier in one panel.</sub>
 </td>
 <td width="50%" valign="top">
-<img src="assets/screenshots/org-canvas.png" alt="Org canvas: drag-and-drop org chart" /><br/>
+<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/org-canvas.png" alt="Org canvas: drag-and-drop org chart" /><br/>
 <sub><b>Org canvas</b> — build the org chart on a canvas: reporting lines and delegation, by dragging.</sub>
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
-<img src="assets/screenshots/memory-approval.png" alt="Memory approval before writing to long-term memory" /><br/>
+<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/memory-approval.png" alt="Memory approval before writing to long-term memory" /><br/>
 <sub><b>Memory approval</b> — you see the distilled conclusion first; nothing enters long-term memory without a nod.</sub>
 </td>
 <td width="50%" valign="top">
-<img src="assets/screenshots/ontology.png" alt="Ontology: the knowledge organization layer" /><br/>
+<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/ontology.png" alt="Ontology: the knowledge organization layer" /><br/>
 <sub><b>Knowledge layer</b> — entities, relations and assertions become a queryable ontology, not loose transcripts.</sub>
 </td>
 </tr>
@@ -88,14 +88,36 @@ Everything lives in `~/.bandi/` on your machine. Both ports bind to `127.0.0.1` 
 
 ## Highlights
 
-- 🏢 **Roles as configuration** — an employee = duties + tool allowlist + skill bindings + SOP + model tier. Change the config, not the code.
-- 🧩 **Team templates** — two ready-made teams (product development, e-commerce selection) plus five org-architecture blueprints; instantiate, then edit.
-- 🧠 **Layered memory** — episodic, long-term, team and Markdown memory with decay, dedupe, low-value gating and human approval.
-- 🔐 **Permissions & approvals** — layered rules (deny / ask / bypass), path sandbox, command blacklist, risk-level interception.
+- 🏢 **An org runtime, not another chat box** — one turn kernel drives direct chat, group chat, background jobs and sub-agents; every employee has its own duties, tool allowlist, skills, SOP and model tier.
+- 🧩 **Project-based scheduling** — create projects, split work items, dispatch along dependency chains; concurrency gates, leases, retries and close-out live in the scheduler, you approve at checkpoints.
+- 🧠 **Layered memory** — episodic / long-term / team / Markdown, with time decay and usage-based revival; low-value noise is gated out and anything important enters memory only after your approval.
+- 🔐 **Permissions & sandbox** — layered rules (deny / ask / bypass), path allowlists, command blacklist, risk-level interception; writes and shell commands can require a second confirmation.
+- 🔍 **Observability** — every tool call, reasoning step and token is accounted for; trajectory replay plus usage and cost stats.
+- 🧱 **Skills & SOPs** — reusable skill cards plus a visual SOP editor (add/remove nodes, wire edges, save bumps a patch version).
+- 📚 **Knowledge layer** — documents are sectioned and chunked on ingest; concepts and citation chains are searchable and can be cited at the end of a reply.
 - ⏱️ **Background scheduling** — scheduled and session-backed background runs keep work moving while you are away.
-- 🔍 **Observability** — every tool call, reasoning step and token is accounted for; trajectory replay and usage stats included.
-- 🌏 **Bilingual UI** — Chinese and English are both wired through i18n, front and back.
-- 🖥️ **Local-first** — one machine, local storage, your own keys, no data leaving the box.
+- 🌏 **Bilingual and local-first** — i18n across UI and API; data lives in `~/.bandi/`, models use your own keys.
+
+## Tool catalog
+
+91 built-in tools, grouped under `tools.feature_flags.tool_groups` (each group can be switched off).
+Every call goes through one executor: permission check → sandbox → audit log.
+
+| Group | Tools |
+|---|---|
+| Files & code | `read` `write` `edit` `apply_patch` `glob` `grep` `list_dir` `bash` `python_exec` `git_status` `git_diff` `git_commit` |
+| Web & search | `web_search` `web_fetch` `web_scraper` `web_login` `web_image_search` `web_image_download` `browser` `tool_search` |
+| Documents | `read_document` `word_reader` `pdf_reader` `excel_reader` `image_ocr` `doc_classifier` `archive_manager` `markdown_processor` `html_processor` `text_processor` `csv_processor` `config_file` |
+| Papers & citations | `pdf_structure` `citation_extractor` `section_summarizer` `pdf_translate` |
+| Generation | `document_generate` `excel_generate` `slides_generate` `checklist_generate` `template_filler` `document_template` `theme_designer` |
+| Charts & media | `chart_generator` `image_generate` `video_generate` `audio_generate` |
+| Canvas / GenUI | `emit_ui_tree` `list_ui_components` `canvas_publish` `get_genui_guide` `get_html_canvas_guide` |
+| Knowledge base | `knowledge_ingest` `knowledge_search` |
+| Memory & ontology | `memory_search` `memory_read` `memory_forget` `memory_assert` |
+| Org collaboration | `inbox` `send_dm` `reply_message` `ask_peer_and_wait` `broadcast_issue` `start_meeting` `respond_meeting` `route_work` `close_human_review` `team_list` `team_create` `spawn_thread_task` |
+| Board management | `manager_board_read` `modify_work_item` `delete_work_item` |
+| Skills & flows | `skill_invoke` `skill_discover` `workflow_list` `workflow_run` `workflow_status` `workflow_pause` `workflow_resume` `workflow_cancel` `workflow_save` `workflow_embed_emit` `chat_workflow` |
+| Interaction & state | `request_user_input` `todo_read` `todo_write` `exit_plan_mode` `resource_configure` `ctx_inspect` |
 
 ---
 
@@ -295,6 +317,3 @@ cd frontend && pnpm run lint && pnpm test
 ## License
 
 [MIT](LICENSE) — free to use, modify, distribute and commercialize, as long as the copyright notice is kept.
-
-Portions of the tooling and design are adapted from LeAgent (Apache-2.0), OpenOPC and opencode (MIT);
-copyright and license notices are listed in [NOTICE.md](NOTICE.md).

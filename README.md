@@ -3,7 +3,7 @@
 <p align="center"><i>像运营一家公司一样组织你的 AI 员工：角色、SOP、技能、模型，按项目派活。</i></p>
 
 <p align="center">
-  <img src="assets/screenshots/team-group-chat.png" alt="Bandi 团队群聊：多个 AI 员工在同一条会话里协作" width="100%" />
+  <img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/team-group-chat.png" alt="Bandi 团队群聊：多个 AI 员工在同一条会话里协作" width="100%" />
 </p>
 
 <p align="center">
@@ -54,31 +54,31 @@ Bandi 是一个**组织向的个人 AI 员工框架**。它不把 AI 当成一�
 <table>
 <tr>
 <td width="50%" valign="top">
-<img src="assets/screenshots/team.png" alt="团队页：成员、角色与任务" /><br/>
+<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/team.png" alt="团队页：成员、角色与任务" /><br/>
 <sub><b>团队</b> —— 一眼看清这家「公司」有哪些员工、谁向谁汇报、各自在忙什么。</sub>
 </td>
 <td width="50%" valign="top">
-<img src="assets/screenshots/chat.png" alt="单聊：与单个 AI 员工对话" /><br/>
+<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/chat.png" alt="单聊：与单个 AI 员工对话" /><br/>
 <sub><b>单聊</b> —— 直接找某个员工干活，模型、技能、SOP 都按这个角色的配置来。</sub>
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
-<img src="assets/screenshots/employee-editor.png" alt="员工编辑：职责、SOP、技能与模型" /><br/>
+<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/employee-editor.png" alt="员工编辑：职责、SOP、技能与模型" /><br/>
 <sub><b>员工编辑</b> —— 职责、工具面、SOP、技能绑定、模型档位，一个面板里配完。</sub>
 </td>
 <td width="50%" valign="top">
-<img src="assets/screenshots/org-canvas.png" alt="组织编排：拖拽式组织架构" /><br/>
+<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/org-canvas.png" alt="组织编排：拖拽式组织架构" /><br/>
 <sub><b>组织编排</b> —— 用画布搭组织架构，谁汇报给谁、谁能派生谁，拖动即可。</sub>
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
-<img src="assets/screenshots/memory-approval.png" alt="记忆审批：写入长期记忆前的确认" /><br/>
+<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/memory-approval.png" alt="记忆审批：写入长期记忆前的确认" /><br/>
 <sub><b>记忆审批</b> —— 员工想记什么，先给你看提炼后的结论，你点头才落长期记忆。</sub>
 </td>
 <td width="50%" valign="top">
-<img src="assets/screenshots/ontology.png" alt="本体：知识组织层" /><br/>
+<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/ontology.png" alt="本体：知识组织层" /><br/>
 <sub><b>知识组织层</b> —— 实体、关系、断言沉淀成可查询的本体，而不是散落的聊天记录。</sub>
 </td>
 </tr>
@@ -88,14 +88,36 @@ Bandi 是一个**组织向的个人 AI 员工框架**。它不把 AI 当成一�
 
 ## 核心能力
 
-- 🏢 **角色即配置** —— 每个员工 = 职责 + 工具白名单 + 技能绑定 + SOP + 模型档位。改配置就换人，不用改代码。
-- 🧩 **团队模板** —— 内置「产品开发团队」「选品团队」和 5 套组织架构蓝图，一键实例化后自己再改。
-- 🧠 **多层记忆** —— 情景记忆、长期记忆、团队记忆、Markdown 记忆，带衰减、去重、低价值门控与人工审批。
-- 🔐 **权限与审批** —— 分层权限规则（deny / ask / bypass）、路径沙箱、命令黑名单、风险等级拦截。
+- 🏢 **组织运行时而非常驻聊天框** —— 一个回合内核统摄单聊、群聊、后台任务与子代理；每个员工有自己的职责、工具白名单、技能绑定、SOP 与模型档位。
+- 🧩 **项目制调度** —— 建项目、拆工作项、按上下游派发；并发闸门、租约、重试与收尾都在调度器里，你只在关键节点审批。
+- 🧠 **多层记忆** —— 情景 / 长期 / 团队 / Markdown 四层，带时间衰减与「用进废退」回升；低价值内容被门控挡住，重要内容经你审批才落库。
+- 🔐 **权限与沙箱** —— 分层规则（deny / ask / bypass）、路径白名单、命令黑名单、风险等级拦截；写文件与跑命令可要求二次确认。
+- 🔍 **全程可观测** —— 每次工具调用、每步推理、每个 token 都有账可查；支持轨迹回放与用量、成本统计。
+- 🧱 **技能与 SOP** —— 可复用技能卡 + 可视化 SOP 编排（节点增删、连线、保存升 patch）。
+- 📚 **知识组织层** —— 文档入库切节分块，概念与引用链可检索、可直接引用到回复尾部。
 - ⏱️ **后台调度** —— 定时任务与会话化后台执行，员工能在你离开时继续推进工作项。
-- 🔍 **可观测** —— 每次工具调用、每步推理、每个 token 都有账可查；支持轨迹回放与用量统计。
-- 🌏 **中英双语界面** —— 前后端都做了 i18n，切换即用。
-- 🖥️ **本机优先** —— 单机跑、单机存，模型走你自己的 Key，数据不出本机。
+- 🌏 **中英双语 + 本机优先** —— 前后端 i18n；数据在 `~/.bandi/`，模型走你自己的 Key。
+
+## 工具目录
+
+内置 91 个工具，按 `tools.feature_flags.tool_groups` 分组，可整组关闭。所有调用都过统一执行器：
+权限判定 → 沙箱 → 审计落盘。
+
+| 类别 | 工具 |
+|---|---|
+| 文件与代码 | `read` `write` `edit` `apply_patch` `glob` `grep` `list_dir` `bash` `python_exec` `git_status` `git_diff` `git_commit` |
+| 网页与检索 | `web_search` `web_fetch` `web_scraper` `web_login` `web_image_search` `web_image_download` `browser` `tool_search` |
+| 文档处理 | `read_document` `word_reader` `pdf_reader` `excel_reader` `image_ocr` `doc_classifier` `archive_manager` `markdown_processor` `html_processor` `text_processor` `csv_processor` `config_file` |
+| 论文与引用 | `pdf_structure` `citation_extractor` `section_summarizer` `pdf_translate` |
+| 内容生成 | `document_generate` `excel_generate` `slides_generate` `checklist_generate` `template_filler` `document_template` `theme_designer` |
+| 图表与媒体 | `chart_generator` `image_generate` `video_generate` `audio_generate` |
+| Canvas / GenUI | `emit_ui_tree` `list_ui_components` `canvas_publish` `get_genui_guide` `get_html_canvas_guide` |
+| 知识库 | `knowledge_ingest` `knowledge_search` |
+| 记忆与本体 | `memory_search` `memory_read` `memory_forget` `memory_assert` |
+| 组织协作 | `inbox` `send_dm` `reply_message` `ask_peer_and_wait` `broadcast_issue` `start_meeting` `respond_meeting` `route_work` `close_human_review` `team_list` `team_create` `spawn_thread_task` |
+| 看板管理 | `manager_board_read` `modify_work_item` `delete_work_item` |
+| 技能与流程 | `skill_invoke` `skill_discover` `workflow_list` `workflow_run` `workflow_status` `workflow_pause` `workflow_resume` `workflow_cancel` `workflow_save` `workflow_embed_emit` `chat_workflow` |
+| 交互与状态 | `request_user_input` `todo_read` `todo_write` `exit_plan_mode` `resource_configure` `ctx_inspect` |
 
 ---
 
@@ -291,6 +313,3 @@ cd frontend && pnpm run lint && pnpm test
 ## 许可证
 
 [MIT](LICENSE) —— 可自由使用、修改、分发与商用，保留版权声明即可。
-
-部分工具与设计改编自 LeAgent（Apache-2.0）、OpenOPC 与 opencode（MIT），
-版权与许可声明见 [NOTICE.md](NOTICE.md)。
