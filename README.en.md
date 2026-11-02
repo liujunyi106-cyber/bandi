@@ -3,7 +3,7 @@
 <p align="center"><i>Run your AI employees like a company: roles, SOPs, skills, models — assigned by project.</i></p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/team-group-chat.png" alt="Bandi team group chat: several AI employees collaborating in one conversation" width="100%" />
+  <img src="https://cdn.jsdelivr.net/gh/liujunyi106-cyber/bandi@main/assets/screenshots/team-group-chat.png" alt="Bandi team group chat: several AI employees collaborating in one conversation" width="100%" />
 </p>
 
 <p align="center">
@@ -54,31 +54,31 @@ Everything lives in `~/.bandi/` on your machine. Both ports bind to `127.0.0.1` 
 <table>
 <tr>
 <td width="50%" valign="top">
-<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/team.png" alt="Team page: members, roles and work" /><br/>
+<img src="https://cdn.jsdelivr.net/gh/liujunyi106-cyber/bandi@main/assets/screenshots/team.png" alt="Team page: members, roles and work" /><br/>
 <sub><b>Team</b> — see who works here, who reports to whom, and what everyone is doing.</sub>
 </td>
 <td width="50%" valign="top">
-<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/chat.png" alt="Direct chat with one AI employee" /><br/>
+<img src="https://cdn.jsdelivr.net/gh/liujunyi106-cyber/bandi@main/assets/screenshots/chat.png" alt="Direct chat with one AI employee" /><br/>
 <sub><b>Direct chat</b> — hand work to one employee; model, skills and SOP follow that role's config.</sub>
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
-<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/employee-editor.png" alt="Employee editor: duties, SOP, skills and model" /><br/>
+<img src="https://cdn.jsdelivr.net/gh/liujunyi106-cyber/bandi@main/assets/screenshots/employee-editor.png" alt="Employee editor: duties, SOP, skills and model" /><br/>
 <sub><b>Employee editor</b> — duties, tool surface, SOP, skill bindings and model tier in one panel.</sub>
 </td>
 <td width="50%" valign="top">
-<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/org-canvas.png" alt="Org canvas: drag-and-drop org chart" /><br/>
+<img src="https://cdn.jsdelivr.net/gh/liujunyi106-cyber/bandi@main/assets/screenshots/org-canvas.png" alt="Org canvas: drag-and-drop org chart" /><br/>
 <sub><b>Org canvas</b> — build the org chart on a canvas: reporting lines and delegation, by dragging.</sub>
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
-<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/memory-approval.png" alt="Memory approval before writing to long-term memory" /><br/>
+<img src="https://cdn.jsdelivr.net/gh/liujunyi106-cyber/bandi@main/assets/screenshots/memory-approval.png" alt="Memory approval before writing to long-term memory" /><br/>
 <sub><b>Memory approval</b> — you see the distilled conclusion first; nothing enters long-term memory without a nod.</sub>
 </td>
 <td width="50%" valign="top">
-<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/ontology.png" alt="Ontology: the knowledge organization layer" /><br/>
+<img src="https://cdn.jsdelivr.net/gh/liujunyi106-cyber/bandi@main/assets/screenshots/ontology.png" alt="Ontology: the knowledge organization layer" /><br/>
 <sub><b>Knowledge layer</b> — entities, relations and assertions become a queryable ontology, not loose transcripts.</sub>
 </td>
 </tr>

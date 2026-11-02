@@ -3,7 +3,7 @@
 <p align="center"><i>像运营一家公司一样组织你的 AI 员工：角色、SOP、技能、模型，按项目派活。</i></p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/team-group-chat.png" alt="Bandi 团队群聊：多个 AI 员工在同一条会话里协作" width="100%" />
+  <img src="https://cdn.jsdelivr.net/gh/liujunyi106-cyber/bandi@main/assets/screenshots/team-group-chat.png" alt="Bandi 团队群聊：多个 AI 员工在同一条会话里协作" width="100%" />
 </p>
 
 <p align="center">
@@ -54,31 +54,31 @@ Bandi 是一个**组织向的个人 AI 员工框架**。它不把 AI 当成一�
 <table>
 <tr>
 <td width="50%" valign="top">
-<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/team.png" alt="团队页：成员、角色与任务" /><br/>
+<img src="https://cdn.jsdelivr.net/gh/liujunyi106-cyber/bandi@main/assets/screenshots/team.png" alt="团队页：成员、角色与任务" /><br/>
 <sub><b>团队</b> —— 一眼看清这家「公司」有哪些员工、谁向谁汇报、各自在忙什么。</sub>
 </td>
 <td width="50%" valign="top">
-<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/chat.png" alt="单聊：与单个 AI 员工对话" /><br/>
+<img src="https://cdn.jsdelivr.net/gh/liujunyi106-cyber/bandi@main/assets/screenshots/chat.png" alt="单聊：与单个 AI 员工对话" /><br/>
 <sub><b>单聊</b> —— 直接找某个员工干活，模型、技能、SOP 都按这个角色的配置来。</sub>
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
-<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/employee-editor.png" alt="员工编辑：职责、SOP、技能与模型" /><br/>
+<img src="https://cdn.jsdelivr.net/gh/liujunyi106-cyber/bandi@main/assets/screenshots/employee-editor.png" alt="员工编辑：职责、SOP、技能与模型" /><br/>
 <sub><b>员工编辑</b> —— 职责、工具面、SOP、技能绑定、模型档位，一个面板里配完。</sub>
 </td>
 <td width="50%" valign="top">
-<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/org-canvas.png" alt="组织编排：拖拽式组织架构" /><br/>
+<img src="https://cdn.jsdelivr.net/gh/liujunyi106-cyber/bandi@main/assets/screenshots/org-canvas.png" alt="组织编排：拖拽式组织架构" /><br/>
 <sub><b>组织编排</b> —— 用画布搭组织架构，谁汇报给谁、谁能派生谁，拖动即可。</sub>
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
-<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/memory-approval.png" alt="记忆审批：写入长期记忆前的确认" /><br/>
+<img src="https://cdn.jsdelivr.net/gh/liujunyi106-cyber/bandi@main/assets/screenshots/memory-approval.png" alt="记忆审批：写入长期记忆前的确认" /><br/>
 <sub><b>记忆审批</b> —— 员工想记什么，先给你看提炼后的结论，你点头才落长期记忆。</sub>
 </td>
 <td width="50%" valign="top">
-<img src="https://raw.githubusercontent.com/liujunyi106-cyber/bandi/main/assets/screenshots/ontology.png" alt="本体：知识组织层" /><br/>
+<img src="https://cdn.jsdelivr.net/gh/liujunyi106-cyber/bandi@main/assets/screenshots/ontology.png" alt="本体：知识组织层" /><br/>
 <sub><b>知识组织层</b> —— 实体、关系、断言沉淀成可查询的本体，而不是散落的聊天记录。</sub>
 </td>
 </tr>
