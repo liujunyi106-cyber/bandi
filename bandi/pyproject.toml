@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "个人多 Agent 数字员工组织（组织向）——单人搭建/管理 AI 员工组织（角色/SOP/skills/模型 + 项目制），本体降级为知识组织层"
 requires-python = ">=3.11"
 authors = []
-license = "MIT"
+license = "AGPL-3.0-or-later"
 
 dependencies = [
     "fastapi>=0.110.0",

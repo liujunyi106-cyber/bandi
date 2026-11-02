@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat" /></a>
+  <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg?style=flat" /></a>
   <a href="bandi/pyproject.toml"><img alt="python" src="https://img.shields.io/badge/python-3.11%2B-3776AB?style=flat&logo=python&logoColor=white" /></a>
   <a href="frontend/package.json"><img alt="node" src="https://img.shields.io/badge/node-20%2B-339933?style=flat&logo=node.js&logoColor=white" /></a>
   <a href="frontend/package.json"><img alt="react" src="https://img.shields.io/badge/React-18-61DAFB?style=flat&logo=react&logoColor=white" /></a>
@@ -275,4 +275,4 @@ cd frontend && pnpm run lint && pnpm test
 
 ## 许可证
 
-[MIT](LICENSE) —— 可自由使用、修改、分发与商用，保留版权声明即可。
+[AGPL-3.0-or-later](LICENSE) —— 可自由使用、修改、分发；若通过网络对外提供服务，衍生作品也需以 AGPL 开源。
