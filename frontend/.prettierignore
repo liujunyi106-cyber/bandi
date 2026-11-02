@@ -1,0 +1,9 @@
+node_modules
+dist
+release
+coverage
+electron/*.js
+electron/*.d.ts
+package-lock.json
+*.md
+src/i18n/*.json

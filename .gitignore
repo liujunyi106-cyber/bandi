@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite3
+
+# Secrets / local config
+.env
+.env.*
+config.local.yaml
+*.pem
+*.key
+*.pfx
+
+# Runtime home (created at runtime, never commit)
+.bandi/
+.bandi-comms/
+.workbuddy/
+bandi-isolation/
+
+# Node
+node_modules/
+dist/
+frontend/build/
+*.tsbuildinfo
+
+# Logs / temp
+*.log
+tmp*/
+pytest-of-*/
+.pytest-tmp*/
+.audit-tmp/
+.playwright-mcp/
+
+# OS / IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,81 @@
+# 功能：市场包体系 — 沙箱校验（危险工具 + 提示词注入 + 包 ID 路径安全）
+
+from __future__ import annotations
+
+import re
+from typing import TYPE_CHECKING
+
+from .package_format import OPCPackage, SandboxReport
+
+if TYPE_CHECKING:
+    pass
+
+# 可执行任意代码或访问文件系统的危险工具
+DANGEROUS_TOOLS = frozenset(
+    {
+        "shell_exec",
+        "bash",
+        "terminal",
+        "subprocess",
+        "file_write",
+        "file_delete",
+        "file_move",
+        "eval",
+        "exec",
+        "os_command",
+    }
+)
+
+# 暗示提示词注入的可疑模式
+SUSPICIOUS_PROMPT_PATTERNS = [
+    re.compile(r"ignore\s+(all\s+)?previous\s+instructions", re.IGNORECASE),
+    re.compile(r"ignore\s+(all\s+)?above", re.IGNORECASE),
+    re.compile(r"you\s+are\s+now\s+(a|an)\s+", re.IGNORECASE),
+    re.compile(r"system\s*prompt\s*:", re.IGNORECASE),
+    re.compile(r"<\s*system\s*>", re.IGNORECASE),
+    re.compile(r"jailbreak", re.IGNORECASE),
+    re.compile(r"base64\s*decode", re.IGNORECASE),
+]
+
+# 包 ID 用作目录名，必须是安全路径组件
+_PACKAGE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+
+
+class SandboxChecker:
+    """在包安装前进行安全校验。"""
+
+    def validate(self, package: OPCPackage) -> SandboxReport:
+        report = SandboxReport()
+        self._check_tools(package, report)
+        self._check_prompts(package, report)
+        self._check_manifest(package, report)
+        report.passed = len(report.errors) == 0
+        return report
+
+    def _check_tools(self, package: OPCPackage, report: SandboxReport) -> None:
+        for role in package.roles:
+            tools = role.get("tools") or []
+            role_id = role.get("id", "unknown")
+            for tool in tools:
+                if tool.lower() in DANGEROUS_TOOLS:
+                    report.errors.append(f"Role '{role_id}' uses dangerous tool: {tool}")
+
+    def _check_prompts(self, package: OPCPackage, report: SandboxReport) -> None:
+        for filename, content in package.prompt_contents.items():
+            for pattern in SUSPICIOUS_PROMPT_PATTERNS:
+                match = pattern.search(content)
+                if match:
+                    report.warnings.append(
+                        f"Prompt '{filename}' contains suspicious pattern: '{match.group()}'"
+                    )
+
+    def _check_manifest(self, package: OPCPackage, report: SandboxReport) -> None:
+        m = package.manifest
+        if not m.id:
+            report.errors.append("Package manifest missing 'id'")
+        if not m.name:
+            report.errors.append("Package manifest missing 'name'")
+        if m.id and not _PACKAGE_ID_RE.match(m.id):
+            report.errors.append(
+                f"Package id '{m.id}' must be lowercase alphanumeric with hyphens/underscores"
+            )

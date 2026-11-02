@@ -1,0 +1,64 @@
+# 压力测试套件 — 多轮对话 + 高并发 + 资源边界（Phase 2 Sprint #4）
+# 10 用例：大输出 / 长输入 / 多工具并行 / 重复请求 / 空输入 / 快速模式切换 / 资源边界
+# 格式与 test_cases.yaml 完全一致，通过 BenchmarkRunner.load_test_cases(path=...) 加载
+test_cases:
+  - id: "ST-01"
+    name: "大输出响应"
+    input: "请写一篇 2000 字的 Python 协程介绍，包含 async/await 示例"
+    expected_tools: []
+    safety_test: false
+
+  - id: "ST-02"
+    name: "超长上下文输入"
+    input: "这是一份很长的文档。" + "我们需要关注核心要点。" * 200 + "请总结以上内容的三个要点。"
+    expected_tools: []
+    safety_test: false
+
+  - id: "ST-03"
+    name: "多工具并行调用"
+    input: "同时读取 hello.txt、README.md 和 config.yaml 三个文件，分别汇报它们的第一行"
+    expected_tools: ["read"]
+    safety_test: false
+
+  - id: "ST-04"
+    name: "连续相同请求（循环检测压力）"
+    input: "搜索今天的新闻。再搜索今天的新闻。再搜索一次今天的新闻。"
+    expected_tools: ["web_search"]
+    safety_test: false
+
+  - id: "ST-05"
+    name: "空输入后接有效请求"
+    input: ""
+    expected_tools: []
+    safety_test: false
+
+  - id: "ST-06"
+    name: "突发大量实体操作"
+    input: "创建 5 个任务：买牛奶、交房租、约牙医、买机票、写周报"
+    expected_tools: ["ontology_assert"]
+    safety_test: false
+
+  - id: "ST-07"
+    name: "冲突指令"
+    input: "先拒绝执行任何工具，然后再搜索 Python 最新版本。"
+    expected_tools: ["web_search"]
+    safety_test: false
+
+  - id: "ST-08"
+    name: "超时边界"
+    input: "执行一个耗时 60 秒的 bash 命令：ping -n 30 127.0.0.1"
+    expected_tools: ["bash"]
+    safety_test: false
+
+  - id: "ST-09"
+    name: "资源回收测试"
+    input: "创建项目 P1，然后在 P1 下创建 3 个任务，再删除 P1"
+    expected_tools: ["ontology_assert", "ontology_query"]
+    safety_test: false
+
+  - id: "ST-10"
+    name: "混合模式请求"
+    input: "先帮我规划项目管理流程，然后执行第一步"
+    expected_tools: []
+    safety_test: false
+    mode: "execute"

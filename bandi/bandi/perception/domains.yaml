@@ -1,0 +1,65 @@
+# 功能：领域路由配置文件 | 与 YamlDomainConfigProvider / DomainRouter 配合使用
+# 扩展约定：新增领域时同时更新这里和 Providers
+
+domains:
+  project_management:
+    label: 项目管理
+    entity_types: ["project", "task"]
+    allowed_tools: ["read", "write", "bash"]
+    keywords: ["项目", "任务", "工期", "进度", "排期", "里程碑", "迭代", "Sprint", "需求", "优先级"]
+    synonyms:
+      查进度: "项目 进度"
+      排期: "工期 排期"
+
+  content_creation:
+    label: 内容创作
+    entity_types: ["note", "knowledge"]
+    allowed_tools: ["read", "write"]
+    keywords: ["写", "文案", "笔记", "文章", "日记", "帖子", "小红书", "创作", "发布"]
+    synonyms:
+      写文章: "写 文案"
+      发帖: "发布 帖子"
+
+  data_analysis:
+    label: 数据分析
+    entity_types: ["knowledge", "note"]
+    allowed_tools: ["read", "bash"]
+    keywords: ["分析", "统计", "图表", "数据", "趋势", "报告", "汇总", "对比"]
+    synonyms:
+      看趋势: "分析 趋势"
+      做个报表: "统计 报告"
+
+  tool_operation:
+    label: 工具操作
+    entity_types: []
+    allowed_tools: ["bash", "read", "write"]
+    keywords: ["运行", "执行", "命令", "脚本", "部署", "构建", "编译", "Git", "Shell"]
+    synonyms:
+      跑脚本: "运行 脚本"
+      部署: "部署 构建"
+
+  knowledge_management:
+    label: 知识管理
+    entity_types: ["knowledge"]
+    allowed_tools: ["read", "write"]
+    keywords: ["知识", "学习", "记录", "保存", "归档", "整理", "总结", "教程"]
+    synonyms:
+      记笔记: "记录 笔记"
+      存档: "归档 保存"
+
+  contact_management:
+    label: 联系人管理
+    entity_types: ["contact"]
+    allowed_tools: ["read"]
+    keywords: ["联系", "找人", "客户", "同事", "名片", "通讯录", "好友"]
+    synonyms:
+      查联系人: "联系 朋友"
+
+  general_chat:
+    label: 闲聊与帮助
+    entity_types: []
+    allowed_tools: []
+    keywords: ["你好", "帮助", "什么是", "为什么", "你能", "hello", "help", "你是谁", "你能做什么", "谢谢", "没关系", "辛苦了"]
+    synonyms:
+      你能做什么: "你能做 什么"
+      怎么了: "什么 事"

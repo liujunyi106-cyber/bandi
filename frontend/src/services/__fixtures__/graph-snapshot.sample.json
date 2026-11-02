@@ -1,0 +1,46 @@
+{
+  "entities": [
+    {
+      "id": "p-001",
+      "type": "project",
+      "name": "Bandi Agent"
+    },
+    {
+      "id": "t-001",
+      "type": "task",
+      "name": "实现知识图谱可视化"
+    },
+    {
+      "id": "k-001",
+      "type": "knowledge",
+      "name": "力导向布局参数"
+    },
+    {
+      "id": "c-001",
+      "type": "contact",
+      "name": "张三"
+    },
+    {
+      "id": "n-001",
+      "type": "note",
+      "name": "孤立笔记"
+    }
+  ],
+  "edges": [
+    {
+      "source": "k-001",
+      "target": "p-001",
+      "type": "references"
+    },
+    {
+      "source": "t-001",
+      "target": "c-001",
+      "type": "assigned_to"
+    },
+    {
+      "source": "t-001",
+      "target": "p-001",
+      "type": "belongs_to"
+    }
+  ]
+}

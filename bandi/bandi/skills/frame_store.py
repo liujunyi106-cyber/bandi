@@ -1,0 +1,99 @@
+# 功能：任务帧栈持久化（save_frames 原子落盘 / load_frames 读回）。
+# bandi/skills/serializer.py（临时文件 → replace 原子替换 + scope_id 路径安全校验）。
+from __future__ import annotations
+
+import json
+import os
+import uuid
+from pathlib import Path
+
+from bandi.skills.path_guard import validate_path_segment
+from bandi.skills.runtime import SkillFrameError, SkillFrameStack
+
+_FRAME_SUFFIX = ".frames.json"
+_TEMP_PREFIX = ".{scope_id}.tmp-{pid}-{token}"
+DEFAULT_FRAMES_DIR = "~/.bandi/skills/frames"
+
+
+class SkillFrameSaveError(SkillFrameError):
+    """帧栈无法落盘。"""
+
+
+class SkillFrameLoadError(SkillFrameError):
+    """帧栈无法读回（非法 JSON / 违反 schema / 含未知字段）。"""
+
+
+def save_frames(stack: SkillFrameStack, frames_dir: str = DEFAULT_FRAMES_DIR) -> Path:
+    """功能：将帧栈原子落盘到 frames_dir/<scope_id>.frames.json，返回写入路径。
+    并发写乐观锁：磁盘 revision 与本次 stack.revision 不一致时显式
+    拒绝（不得静默覆盖他人改动）；保存成功回写 stack.revision = 磁盘值 + 1。"""
+    _validate_scope_id(stack.scope_id, SkillFrameSaveError)
+    try:
+        base = Path(frames_dir).expanduser().resolve()
+        base.mkdir(parents=True, exist_ok=True)
+    except (OSError, ValueError) as exc:
+        raise SkillFrameSaveError(f"无法创建帧目录: {frames_dir}: {exc}") from exc
+    final_path = base / f"{stack.scope_id}{_FRAME_SUFFIX}"
+    disk_revision = _read_disk_revision(final_path)
+    if disk_revision is not None and disk_revision != stack.revision:
+        raise SkillFrameSaveError(
+            f"帧文件已被其他进程修改（磁盘 revision={disk_revision}，"
+            f"本次基于 revision={stack.revision}）：请重新加载后再保存: {final_path}"
+        )
+    stack.revision = (disk_revision if disk_revision is not None else stack.revision) + 1
+    tmp_path = base / _TEMP_PREFIX.format(
+        scope_id=stack.scope_id, pid=os.getpid(), token=uuid.uuid4().hex[:8]
+    )
+    try:
+        data = json.dumps(stack.model_dump(mode="json"), ensure_ascii=False, indent=2)
+    except (TypeError, ValueError) as exc:
+        raise SkillFrameSaveError(f"帧栈含不可 JSON 序列化字段: {exc}") from exc
+    try:
+        tmp_path.write_text(data, encoding="utf-8")
+        tmp_path.replace(final_path)
+    except (OSError, ValueError) as exc:
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise SkillFrameSaveError(f"写入失败: {final_path}: {exc}") from exc
+    return final_path
+
+
+def load_frames(scope_id: str, frames_dir: str = DEFAULT_FRAMES_DIR) -> SkillFrameStack | None:
+    """功能：按 scope_id 读回帧栈；文件不存在返回 None，内容非法显式失败。"""
+    _validate_scope_id(scope_id, SkillFrameLoadError)
+    path = Path(frames_dir).expanduser() / f"{scope_id}{_FRAME_SUFFIX}"
+    try:
+        text = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise SkillFrameLoadError(f"无法读取: {path}: {exc}") from exc
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise SkillFrameLoadError(f"非法 JSON: {path}: {exc}") from exc
+    try:
+        return SkillFrameStack(**payload)
+    except (TypeError, ValueError) as exc:
+        raise SkillFrameLoadError(f"Schema 校验失败: {path}: {exc}") from exc
+
+
+def _validate_scope_id(scope_id: str, error_cls: type[SkillFrameError]) -> None:
+    """功能：scope_id 路径安全校验（委托公共件 path_guard）。"""
+    validate_path_segment(scope_id, label="scope_id", error_cls=error_cls)
+
+
+def _read_disk_revision(path: Path) -> int | None:
+    """功能：读磁盘帧文件 revision——不存在/不可解析返回 None（按首写处理）。"""
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    try:
+        return int(payload.get("revision", 0))
+    except (TypeError, ValueError):
+        return 0

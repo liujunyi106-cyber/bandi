@@ -1,0 +1,41 @@
+/**
+ * 功能：单页壳路由表（@base docs/前端设计规划.md §2 路由 / §6 导航 IA）。
+ * `/` 会话默认（对话/群聊/单聊由参数分流）；`/shared/:token` 共享只读页（壳外全屏）；
+ * `/team` `/work` `/knowledge` `/skills` `/automation` `/settings` 为导航路由。
+ */
+import { Navigate, Route, Routes } from "react-router-dom";
+
+import { AppShell } from "@/components/layout/AppShell";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import AutomationPage from "@/pages/automation";
+import ChatPage from "@/pages/chat";
+import KnowledgePage from "@/pages/knowledge";
+import SettingsPage from "@/pages/settings";
+import SharedPage from "@/pages/shared";
+import SkillsPage from "@/pages/skills";
+import TeamPage from "@/pages/team";
+import WorkPage from "@/pages/work";
+
+export default function App() {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Routes>
+        <Route path="/shared/:token" element={<SharedPage />} />
+        <Route element={<AppShell />}>
+          <Route index element={<ChatPage />} />
+          <Route path="chat" element={<ChatPage />} />
+          <Route path="team" element={<TeamPage />} />
+          <Route path="work" element={<WorkPage />} />
+          <Route path="knowledge" element={<KnowledgePage />} />
+          <Route path="skills" element={<SkillsPage />} />
+          <Route path="automation" element={<AutomationPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+      {/* 功能：全局提示居中于顶部——避开右上操作按钮（SOP 编辑器）与底部输入区 */}
+      <Toaster position="top-center" richColors />
+    </TooltipProvider>
+  );
+}

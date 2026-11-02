@@ -1,0 +1,14 @@
+﻿{
+    "residue":  0,
+    "markers":  {
+                    "BandiError":  70,
+                    "com.bandi.desktop":  2,
+                    "BandiBot":  6,
+                    "bandi_skills_list":  3,
+                    "BandiSocket":  13,
+                    "bandi_ontology_query":  3,
+                    "bandi_knowledge_search":  3,
+                    "bandi_memory_search":  3
+                },
+    "taken_at":  "2026-09-26 19:18:20"
+}
