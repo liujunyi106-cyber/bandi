@@ -67,9 +67,7 @@ class MemoryExtract:
     def render_description(self, evidence: str = "") -> str:
         """功能：渲染一句话索引——判断「这条记忆和当前问题相关吗」用。
 
-        的 `description` 字段（`src/memdir/memoryTypes.ts:265`）
-        原文注释是「used to decide relevance in future conversations, so be specific」：
-        它不是给人读的解释，而是**给检索排序看的索引**——断言形态天然就是好索引，
+        它不是给人读的解释，而是**给检索排序看的索引**：断言形态天然就是好索引，
         无谓词时取原句首句并截断。
         """
         labels = {

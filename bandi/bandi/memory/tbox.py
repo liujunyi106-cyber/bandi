@@ -18,8 +18,7 @@ from dataclasses import dataclass
 class RelationTerm:
     """功能：一个可声明的关系词条——谓词 + 适用主体/客体 + 逻辑特征。
 
-    字段对齐 `RelationTerm`（`src/types.ts:47-66`）的子集
-    我们不需要 domain/range 全套描述逻辑，够用即可。
+    只保留本仓库用得到的字段，不引入 domain/range 全套描述逻辑。
     """
 
     id: str
@@ -148,8 +147,8 @@ def suggest_relations(predicate: str) -> list[str]:
 class Violation:
     """功能：一条校验失败原因。
 
-    措辞面向**必须修复它的那个模型**，不是给人看的日志
-    `src/types.ts:120-126`：错误消息要能直接驱动下一轮自我修正。
+    措辞面向**必须修复它的那个模型**，不是给人看的日志：错误消息要能直接驱动
+    下一轮自我修正。
     """
 
     code: str
@@ -209,8 +208,7 @@ def entailed_edges(
 ) -> list[tuple[str, str, str]]:
     """功能：按对称/传递/逆关系特征推导隐含边——只读推导，永不落库。
 
-    `entail`（`src/ontology.ts:481-519`）的核心：推论是
-    read-time 的派生物，撤回前提即自动消失，不留过期推理残留。
+    推论是 read-time 的派生物，撤回前提即自动消失，不留过期推理残留。
     """
     known = {tuple(e) for e in edges}
     derived: list[tuple[str, str, str]] = []

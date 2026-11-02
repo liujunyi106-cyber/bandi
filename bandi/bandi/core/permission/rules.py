@@ -1,4 +1,4 @@
-# 功能：权限规则匹配——shellRuleMatching 三类规则。
+# 功能：权限规则匹配——支持 exact / prefix / wildcard 三类规则。
 # 语法：`tool`（工具名 exact）/ `tool:content`（content 尾 `:*`→prefix；含 `*`→
 # wildcard 全串锚定；否则 exact）；action ∈ allow/ask/deny，裁决 deny>ask>allow。
 from __future__ import annotations

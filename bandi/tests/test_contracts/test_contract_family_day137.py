@@ -659,10 +659,8 @@ async def test_all_stream_handlers_emit_note_frames() -> None:
 # 现状：用户在单聊/群聊补充要求只会**新建** work_item；已派发/已 APPROVED 的卡
 # 用户碰不到（`READY_FOR_REWORK` 只有「评审失败」自动入口；APPROVED 仅允许回
 # `READY` 且走内部邮件复活）。
-# `_prepare_company_followup_target`（写 latest_user_directive）
-# → `reopen_approved_delegation_work_item_for_rework`（named bypass 受控回转）
-# → `build_rework_feedback_context`（把修正指令 + 上一版产出注入 brief
-# 注释原话「否则第二次尝试既看不到被拒原因，要么重复同样的错、要么盲改」）
+# 目标链路：写修正指令 → 受控回转（named bypass 只放行指定状态）→ 把修正理由与
+# 上一版产出注入 brief（否则第二次尝试既看不到被拒原因，只能重复同样的错或盲改）
 #
 # 本契约钉三层行为：
 # ① r2xday137_store 侧：APPROVED → READY_FOR_REWORK 的**唯一受控入口**（非 APPROVED 一律

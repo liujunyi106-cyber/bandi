@@ -1,5 +1,4 @@
-# 功能：Edit 回退匹配链
-# （findActualString/preserveQuoteStyle）+ FileEditTool.ts:275-311（外部修改由工具层消费）
+# 功能：Edit 回退匹配链——按由严到宽的匹配策略逐级尝试，取第一个命中的级别。
 from __future__ import annotations
 
 import re

@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg?style=flat" /></a>
+  <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat" /></a>
   <a href="bandi/pyproject.toml"><img alt="python" src="https://img.shields.io/badge/python-3.11%2B-3776AB?style=flat&logo=python&logoColor=white" /></a>
   <a href="frontend/package.json"><img alt="node" src="https://img.shields.io/badge/node-20%2B-339933?style=flat&logo=node.js&logoColor=white" /></a>
   <a href="frontend/package.json"><img alt="react" src="https://img.shields.io/badge/React-18-61DAFB?style=flat&logo=react&logoColor=white" /></a>
@@ -31,6 +31,21 @@ Bandi is an **organization-first personal AI employee framework**. It treats AI 
 - **In-org collaboration** — direct messages, team group chats, @mentions, and handoff summaries; employees actually hand work to each other.
 
 Everything lives in `~/.bandi/` on your machine. Both ports bind to `127.0.0.1` only, and model keys are yours (BYOK).
+
+## How it differs from a chatbot
+
+| The usual setup | Bandi |
+|---|---|
+| One chat box, one answer at a time | One organization: several employees with their own scope, work flowing between them |
+| Re-explain the context every session | Employees remember preferences, conclusions and lessons; long-term memory needs your approval |
+| Prompts hardcoded in source | Duties, SOPs, skills and models are configuration — change the config, change the employee |
+| One model does everything | Each employee can bind a different model: cheap ones for grunt work, strong ones for decisions |
+
+## Typical uses
+
+- **Solo product work**: PM splits the brief → design drafts → frontend and backend in parallel → QA signs off; you only approve at checkpoints.
+- **Project-by-project delivery**: create work items per project and assign them; roles and skills are reused across projects.
+- **Scheduled operations**: scheduled jobs let employees run research, write digests and watch metrics on their own, with output landing on the project board.
 
 ---
 
@@ -279,6 +294,7 @@ cd frontend && pnpm run lint && pnpm test
 
 ## License
 
-[AGPL-3.0-or-later](LICENSE) — free to use, modify and distribute; if you offer the modified software over a network, your version must also be released under the AGPL.
+[MIT](LICENSE) — free to use, modify, distribute and commercialize, as long as the copyright notice is kept.
 
-Third-party copyright and license notices are listed in [NOTICE.md](NOTICE.md).
+Portions of the tooling and design are adapted from LeAgent (Apache-2.0), OpenOPC and opencode (MIT);
+copyright and license notices are listed in [NOTICE.md](NOTICE.md).

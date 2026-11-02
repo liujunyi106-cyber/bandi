@@ -164,10 +164,8 @@ def _query_tokens(query: str) -> list[str]:
 def _description_boost(meta: dict[str, Any], query: str) -> float:
     """功能：一句话索引命中加成——description 是「相关性判断」专用索引。
 
-    `findRelevantMemories` 的做法
-    "used to decide relevance in future conversations"）：先用索引判断这条记忆
-    与当前问题相不相关，再决定要不要读全文。索引命中即给相关性加权，索引缺失
-    或不命中保持 1.0（不惩罚老数据）。
+    先用索引判断这条记忆与当前问题相不相关，再决定要不要读全文。索引命中即给
+    相关性加权，索引缺失或不命中保持 1.0（不惩罚老数据）。
     """
     desc = str(meta.get("description") or "").strip()
     if not desc or not query:

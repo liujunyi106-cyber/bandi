@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg?style=flat" /></a>
+  <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat" /></a>
   <a href="bandi/pyproject.toml"><img alt="python" src="https://img.shields.io/badge/python-3.11%2B-3776AB?style=flat&logo=python&logoColor=white" /></a>
   <a href="frontend/package.json"><img alt="node" src="https://img.shields.io/badge/node-20%2B-339933?style=flat&logo=node.js&logoColor=white" /></a>
   <a href="frontend/package.json"><img alt="react" src="https://img.shields.io/badge/React-18-61DAFB?style=flat&logo=react&logoColor=white" /></a>
@@ -31,6 +31,21 @@ Bandi 是一个**组织向的个人 AI 员工框架**。它不把 AI 当成一�
 - **组织内协作**——单聊、团队群聊、@提及、交接摘要，员工之间能真正接力。
 
 全部数据落在本机 `~/.bandi/`，默认只监听 `127.0.0.1`，模型密钥由你自己提供（BYOK）。
+
+## 和聊天机器人有什么不同
+
+| 常见做法 | Bandi 的做法 |
+|---|---|
+| 一个对话框，问一句答一句 | 一个组织，多个员工各管一摊，任务在成员之间按上下游流转 |
+| 每次都要重新描述背景 | 员工记得偏好、结论与经验；重要记忆先经你审批才落库 |
+| 提示词写死在代码里 | 职责 / SOP / 技能 / 模型都是配置，改配置就换人 |
+| 一个模型跑所有事 | 每个员工可绑不同模型：便宜的干粗活，强模型做决策 |
+
+## 典型用法
+
+- **一个人做产品**：产品经理拆需求 → UI 出方案 → 前端后端并行 → 测试验收，你只在关键节点审批。
+- **按项目交付**：每个项目独立建卡派活，角色与技能跨项目复用。
+- **自动化运营**：定时任务让员工每天自己跑调研、写周报、盯指标，产出落进项目看板。
 
 ---
 
@@ -275,6 +290,7 @@ cd frontend && pnpm run lint && pnpm test
 
 ## 许可证
 
-[AGPL-3.0-or-later](LICENSE) —— 可自由使用、修改、分发；若通过网络对外提供服务，衍生作品也需以 AGPL 开源。
+[MIT](LICENSE) —— 可自由使用、修改、分发与商用，保留版权声明即可。
 
-第三方代码的版权与许可声明见 [NOTICE.md](NOTICE.md)。
+部分工具与设计改编自 LeAgent（Apache-2.0）、OpenOPC 与 opencode（MIT），
+版权与许可声明见 [NOTICE.md](NOTICE.md)。
