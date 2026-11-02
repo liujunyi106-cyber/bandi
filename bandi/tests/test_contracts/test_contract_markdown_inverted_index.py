@@ -71,7 +71,7 @@ class TestInvertedCompleteness:
     )
     def test_result_matches_naive_semantics(self, tmp_path: Any, query: str) -> None:
         """倒排结果必须与朴素子串匹配召回一致（集合与顺序不变式）——
-        HB-P1后 FTS 命中时分数由 bm25 相关度承载（不再恒 1.0）
+        后 FTS 命中时分数由 bm25 相关度承载（不再恒 1.0）
         契约钉「不丢/不错排」而非具体分数口径。"""
         store = _seed_entries(_store(tmp_path))
         got = store.search_entries(query, limit=10)
