@@ -50,12 +50,15 @@ jobs:
     defaults:
       run:
         working-directory: frontend
+    env:
+      # package.json 里钉的 pnpm 版本比 runner 上可用版本新，避免 corepack 严格校验直接失败
+      COREPACK_ENABLE_STRICT: "0"
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Enable pnpm
         run: |
