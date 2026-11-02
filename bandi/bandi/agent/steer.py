@@ -1,4 +1,4 @@
-"""Codex/LeAgent 式 mid-turn 交互：steer 消息在工具批边界被 drain 并作为新的
+"""Codex/式 mid-turn 交互：steer 消息在工具批边界被 drain 并作为新的
 USER 消息追加进历史（append-only，不改写已发上下文）。
 
 保持 API 兼容；本队列为多条 FIFO 扩展——连续多次转向不再互相覆盖。

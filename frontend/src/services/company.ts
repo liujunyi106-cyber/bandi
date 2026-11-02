@@ -165,7 +165,7 @@ export interface GroupRoundSlot {
   work_item_id: string;
 }
 
-/** 群聊回合快照（GET /api/company/rounds 与 group_round 帧同构） */
+/* 群聊回合快照 */
 export interface GroupRoundSnapshot {
   round_id: string;
   session_id: string;

@@ -5,8 +5,8 @@
 # 让长期不被使用的事实真正沉底。二者叠加是有意为之——沉底要慢于排序降权。
 #
 #   - Hermes `plugins/memory/holographic/retrieval.py:52-71`：`score *=
-#     0.5^(age/half_life)`（同构公式；他们只做检索侧）
-#   - LeAgent `maintenance.py:144-172`：衰减 + floor 0.02 + 召回保护
+# 0.5^(age/half_life)`
+# `maintenance.py:144-172`：衰减 + floor 0.02 + 召回保护
 #     （他们缺显式条目豁免：EXPLICIT_REMEMBER 不落库，无从豁免）
 #   - Hermes `memory_tool_store.py:349`：拒绝把非空库批删空（事故 #103419）
 from __future__ import annotations

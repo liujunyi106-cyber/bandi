@@ -1,4 +1,4 @@
-# 功能：json_parser — JSON 解析/查询/校验/合并/差异/展平/序列化（基准 LeAgent tools/util/json_parser.py 移植）
+# 功能：json_parser — JSON 解析/查询/校验/合并/差异/展平/序列化
 from __future__ import annotations
 
 import copy

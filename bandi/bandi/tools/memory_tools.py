@@ -461,7 +461,7 @@ class MemoryAssertTool(BaseTool):
             subject_type=memory_type,
         )
         if violations:
-            # 拒绝写入 + 把违规原因回给模型，让它下一轮自己改（dsh-ontology 纪律）
+            # 拒绝写入 + 把违规原因回给模型，让它下一轮自己改
             return {
                 "asserted": False,
                 "violations": [{"code": v.code, "message": v.message} for v in violations],

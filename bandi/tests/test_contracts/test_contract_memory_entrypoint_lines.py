@@ -1,4 +1,4 @@
-# 功能：入口行数上限契约（cc-haha MAX_ENTRYPOINT_LINES 对齐 / ）
+# 功能：入口行数上限契约
 # 契约原则：入口文件行数超限必须收敛（指针行淘汰 + append 溢出 entries 化）；正文不丢数据。
 from __future__ import annotations
 

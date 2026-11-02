@@ -171,7 +171,7 @@ class TestGoogleStreamFunctionCall:
 
 
 class TestGoogleToolCallIdConsistency:
-    """流式/非流式 tool_call_id 必须同构（fc_{name} + 重名序号）——"""
+    """流式/非流式 tool_call_id 必须（fc_{name} + 重名序号）"""
 
     def test_extract_tool_calls_ids_unique_per_name(self) -> None:
         from bandi.llm.adapters.google import _extract_tool_calls

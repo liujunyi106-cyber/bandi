@@ -1,12 +1,12 @@
-"""功能：工具面 Top-N 关键词裁剪（对齐 LeAgent `registry._select_relevant_tools`）。
+"""功能：工具面 Top-N 关键词裁剪。
 
-背景（真机台账）：全量工具面 108 个 ≈ 32712 tokens，占单轮请求 80%——
-「一句你好花 2 万 token」的主因。LeAgent 的做法是按用户输入关键词打分，
+背景：全量工具面 108 个 ≈ 32712 tokens，占单轮请求 80%
+「一句你好花 2 万 token」的主因。的做法是按用户输入关键词打分
 只注入最相关的 ≤35 个（核心工具永远保留）。
 
-打分权重与 LeAgent 一致：工具名命中 3.0 / 描述命中 1.5 / 中文意图词命中 2.0。
+打分权重与 一致：工具名命中 3.0 / 描述命中 1.5 / 中文意图词命中 2.0。
 中文查询与英文工具名之间存在词面断层（「查竞品」≠ `web_search`），
-故补一张**中文意图词表**（`_INTENT_HINTS`，对齐 LeAgent 的 `search_hint` 设计），
+故补一张**中文意图词表**
 命中该表的意图词即给对应工具组加权。
 
 安全约束：裁剪只在**超量**时触发（≤ max_tools 一律原样返回，行为零变化）；
@@ -55,7 +55,7 @@ CORE_TOOL_NAMES: frozenset[str] = frozenset(
     }
 )
 
-# 功能：中文意图词 → 工具名关键词（对齐 LeAgent `search_hint`：把中文语义接到英文工具上）。
+# 功能：中文意图词 → 工具名关键词。
 _INTENT_HINTS: dict[str, tuple[str, ...]] = {
     # 检索/联网
     "搜索": ("web_search", "web", "search", "knowledge_search"),
@@ -296,7 +296,7 @@ def _pick_mcp_schemas(
 
 
 def score_schema(name: str, description: str, terms: list[str]) -> float:
-    """功能：LeAgent 同权重打分——工具名 3.0 / 描述 1.5 / 中文意图词 2.0。"""
+    """功能：同权重打分——工具名 3.0 / 描述 1.5 / 中文意图词 2.0。"""
     low_name = name.lower()
     low_desc = description.lower()
     score = 0.0

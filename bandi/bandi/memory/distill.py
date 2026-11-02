@@ -25,7 +25,7 @@ _DISTILL_BUDGET_SEC = 30.0
 _DISTILL_MAX_TOKENS = 512
 
 # 功能：提炼提示词——固定 JSON 契约（kind/key/content/importance），
-# 参考 StaffDeck memory_extractor_prompt 的稳定键与不存流水纪律。
+# 键名跨轮稳定，不把一次性流水写进长期记忆。
 DISTILL_PROMPT = """你是长期记忆提炼助手。从下面一段对话经历摘要中提炼一条**稳定的长期记忆**。
 
 严格遵守：

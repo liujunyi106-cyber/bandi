@@ -276,3 +276,5 @@ cd frontend && pnpm run lint && pnpm test
 ## 许可证
 
 [AGPL-3.0-or-later](LICENSE) —— 可自由使用、修改、分发；若通过网络对外提供服务，衍生作品也需以 AGPL 开源。
+
+第三方代码的版权与许可声明见 [NOTICE.md](NOTICE.md)。

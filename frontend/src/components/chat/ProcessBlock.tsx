@@ -48,7 +48,7 @@ interface BucketItem {
   /**
    * 该行正文可折叠（思考节点「摘要 + 展开全文」两级）。
    * 折叠态只给摘要标题，正文进 max-h 封顶滚动区——长思考不淹没对话
-   * （cc-haha `max-h-[300px]` / LeAgent `max-h-64` 同思路）。
+    * 。
    */
   collapsible?: boolean;
   durationMs?: number;
@@ -78,8 +78,8 @@ function buildBuckets(nodes: ProcessNode[]): Bucket[] {
   for (const node of nodes) {
     if (node.kind === "thought") {
       // 分级：折叠态只给摘要标题（标本「思考完成 + 一句话转述」）
-      // 原始 CoT 进展开区——避免长思考淹没对话（cc-haha max-h-[300px] /
-      // LeAgent max-h-64 同思路）。摘要为规则提取，不调 LLM。
+      // 原始 CoT 进展开区——避免长思考淹没对话
+      // max-h-64 同思路）。摘要为规则提取，不调 LLM。
       const { title, body } = thinkingSummary(node.text);
       push("thought", {
         id: node.id,

@@ -114,7 +114,7 @@ def test_pointer_line_removed_on_eviction(tmp_path: Any) -> None:
 
 
 def test_default_capacity_aligns_cc_haha(tmp_path: Any) -> None:
-    """常量契约：默认上限 = 200（cc-haha 条目上限对齐）；不传参数写入超限收敛。"""
+    """常量契约：默认上限 = 200；不传参数写入超限收敛。"""
     assert PROJECT_ENTRIES_MAX_COUNT == 200, "cc-haha 条目上限对齐"
     store = _store(tmp_path)
     ids = _seed(store, 3)

@@ -1,4 +1,4 @@
-# 功能：契约——workflow_embed_emit 工作流发布卡（LeAgent chat_workflow_embed_emit 对齐）。
+# 功能：契约——workflow_embed_emit 工作流发布卡。
 # 钉行为：合法 DAG 校验通过 → 结构化 payload（digest + 规范化 flow_data + title/summary/
 # flow_id + node_count）；非法 DAG / 非对象 flow_data fail-closed；只读不落库；
 # digest 与 workflow_save 同口径（同一文档两处 digest 一致，卡片与已存流程可对齐身份）。

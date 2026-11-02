@@ -341,7 +341,7 @@ async def test_run_agent_turn_compaction_persisted_and_recalled(
 
 
 def _build_production_like_manager(tmp_path: Any) -> Any:
-    """按生产 _build_memory_manager 同构组装（episodic 可省略不影响本断言）。"""
+    """按生产 _build_memory_manager 组装（episodic 可省略不影响本断言）。"""
     from bandi.memory.long_term import LongTermMemory
     from bandi.memory.memory_provider import MemoryManager
     from bandi.memory.working import ScratchpadStore

@@ -87,14 +87,14 @@ _PREVIOUS_TAG_CLOSE = "\n</previous-summary>"
 
 
 def append_previous_summary(user_content: str, previous_summary: str) -> str:
-    """功能：以 <previous-summary> 标签把旧摘要追加到摘要请求 user 内容（pi/opencode 同构）。"""
+    """功能：以 <previous-summary> 标签把旧摘要追加到摘要请求 user 内容。"""
     return f"{user_content}{_PREVIOUS_TAG_OPEN}{previous_summary}{_PREVIOUS_TAG_CLOSE}"
 
 
 def extract_previous_summary(messages: list[Message]) -> tuple[str | None, list[Message]]:
     """功能：识别并剥离历史压缩摘要消息，返回（摘要文本, 剩余消息）。多条摘要
     （fork/多路径压缩/历史恢复）全部按出现顺序合并保留——只留最后一条会令较早
-    摘要承载的目标与决策消失（审计 2.5，opencode completedCompactions 同构）。"""
+    摘要承载的目标与决策消失。"""
     previous_parts: list[str] = []
     remaining: list[Message] = []
     for m in messages:
@@ -125,7 +125,7 @@ _FIDELITY_BACKFILL_TOTAL_MAX = 150
 
 def extract_file_operations(messages: list[Message], max_files: int = _FILE_OPS_MAX) -> list[str]:
     """功能：从消息的 tool_calls 确定性提取被触碰文件路径（最近优先、去重保序）——
-    摘要尾部文件清单来源（审计 2.16，pi extractFileOperations 同构）。"""
+    摘要尾部文件清单来源。"""
     files: list[str] = []
     seen: set[str] = set()
     for m in reversed(messages):

@@ -111,7 +111,7 @@ def _enrichment_note(metadata: dict) -> str:
 
 
 def _freshness_note(metadata: dict) -> str:
-    """功能：陈旧经历新鲜度警告（>1 天，cc-haha memoryAge 语义）——保留记忆但
+    """功能：陈旧经历新鲜度警告——保留记忆但
     提醒可能过时，替代单纯降权淘汰。"""
     ts = metadata.get("created_at") or metadata.get("timestamp")
     if not ts:

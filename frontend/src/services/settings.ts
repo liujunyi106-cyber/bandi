@@ -53,7 +53,7 @@ export interface ProfilesPayload {
   profiles: (LlmProfile & { has_api_key?: boolean })[];
 }
 
-/** 用量分桶。后端 `/usage/stats` 的 total / by_model / by_role 同构。 */
+/* 用量分桶。后端 `/usage/stats` 的 total / by_model / by_role。 */
 export interface UsageBucket {
   /** 请求数 */
   requests: number;

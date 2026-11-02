@@ -564,8 +564,8 @@ def _track_prompt_prefix(ctx: ExecutionContext, provider_messages: list[dict]) -
 
 
 def _prune_before_request(ctx: ExecutionContext) -> None:
-    """功能：每次 LLM 请求前的零 LLM 免费 prune（审计 2.11，cc-haha 每请求 microcompact
-    同构）——旧工具输出超保护预算即占位化，未触发压缩的低占用会话同样受益；
+    """功能：每次 LLM 请求前的零 LLM 免费 prune
+    旧工具输出超保护预算即占位化，未触发压缩的低占用会话同样受益
     异常不阻断主链（prune 是优化非正确性前提）。"""
     try:
         from bandi.memory.compression_pipeline import prune_before_request
@@ -909,7 +909,7 @@ async def on_thinking(
                 if ctx.active_tools
                 else 0
             )
-            # 请求真实开销 = messages + 工具 schema（对齐 cc-haha `calculateContextBudget` 口径）。
+            # 请求真实开销 = messages + 工具 schema。
             # 只算 messages 会让 estimated 低估约一半
             # 并把这个偏差喂给校准观测对（record_observation）→ 校准系数被推到 2.2 倍补偿。
             estimated += tool_schema_tokens

@@ -7,7 +7,7 @@
 # ① 模块落 company 域（与 OrgEngine 同层），独立 AgentProfile 以 employee_id 引用组织层；
 # ② 绑定即校验：skill→SkillCard 落库卡、general_skill→SKILL.md 轨、tool→ToolRegistry
 # knowledge_base→KnowledgeStore（注入时校验 base 存在；未注入时只存引用，兼容环境）；
-# ④ Registry 移植 seal + sha256 快照 id，不移植 rehydrate（无 provider deployment 概念）；
+# ④ Registry seal + sha256 快照 id，不rehydrate（无 provider deployment 概念）
 # ⑤ 模型绑定（default/router/step 等 5 角色）不做：Bandi 已有 skill_model_config 派生
 # 预算链，避免双轨（=A）。
 from __future__ import annotations
@@ -184,7 +184,7 @@ class CapabilitySnapshot:
 
 
 class CapabilityRegistry:
-    """功能：显式能力注册表——register / seal / snapshot（=A，不移植 rehydrate）。"""
+    """功能：显式能力注册表——register / seal / snapshot。"""
 
     def __init__(self) -> None:
         self._bindings: dict[str, CapabilityBinding] = {}

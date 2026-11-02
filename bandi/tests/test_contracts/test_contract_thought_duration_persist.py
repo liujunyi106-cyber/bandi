@@ -100,7 +100,7 @@ class TestThoughtDurationSettledAtPersist:
 
     @pytest.mark.asyncio
     async def test_internal_marker_stripped_before_persist(self, monkeypatch) -> None:
-        """落库形态必须干净：内部起止标记不得进持久化（前端 ProcessNode 同构）。"""
+        """落库形态必须干净：内部起止标记不得进持久化。"""
         _patch_clock(monkeypatch, [1.0, 2.0])
         rec, store, _ = _recorder()
         await rec.on_thinking("s1", "x")

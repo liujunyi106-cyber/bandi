@@ -1,4 +1,4 @@
-# 功能：工具/生命週期 hooks——cc-haha hooks 事件 + 四类动作同构。
+# 功能：工具/生命週期 hooks——hooks 事件 + 四类动作。
 # 8 事件：PreToolUse / PostToolUse / PostToolUseFailure / UserPromptSubmit /
 # SessionStart / SessionEnd / PreCompact / PostCompact；动作：command / prompt /
 # additionalContext），hook allow 不绕过 settings deny（裁决在权限链后段继续执行）。
@@ -293,7 +293,7 @@ class HookRunner:
         return HookOutcome(hook_errors=[f"unknown action type: {rule.action_type}"])
 
     async def _run_command(self, rule: HookRule, payload: dict[str, Any]) -> HookOutcome:
-        # 功能：command 动作——stdin JSON 输入；exit 2=阻断（cc-haha 语义）
+        # 功能：command 动作——stdin JSON 输入；exit 2=阻断
         # 其余非 0 记错误不阻断；stdout JSON 解析决策。默认 exec 拆分执行（无
         if not rule.command.strip():
             return HookOutcome(hook_errors=["command hook missing command"])

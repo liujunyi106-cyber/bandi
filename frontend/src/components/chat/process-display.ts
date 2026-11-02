@@ -2,7 +2,7 @@
  * 过程展示的纯逻辑：思考摘要提取 + 工具聚合计数。
  *
  * - 摘要提取用**规则正则**，不调 LLM —— opencode `packages/tui/src/context/thinking.ts:8`
- * 与 cc-haha / pi / LeAgent 的工具组摘要一致；cc-haha 的 Haiku 摘要机制注释明说
+  * 与 / pi / 的工具组摘要一致；的 Haiku 摘要机制注释明说
  * `, ignore them in stream processing`（`utils/messages.ts:3076-3078`）
  * 桌面端根本不消费 ⇒ 加 LLM 往返是纯浪费。
  * - 聚合计数借 opencode `contextToolSummary`（`session-ui/.../message-part.tsx:916`）：
@@ -10,7 +10,7 @@
  */
 import type { ProcessNode } from "@/stores/chat-store";
 
-/** 摘要标题最大长度（cc-haha `toolUseSummaryGenerator.ts:15-24` 约束 30 字符，向上放宽到 40）。 */
+/* 摘要标题最大长度。 */
 const MAX_TITLE = 40;
 
 /**

@@ -99,7 +99,7 @@ class TestCatalogAlwaysPresent:
 
 class TestCatalogBudget:
     def test_c7_long_description_truncated(self) -> None:
-        # 功能：单项 description 超长须截断（对齐 cc-haha 的 250 字硬 cap）
+        # 功能：单项 description 超长须截断
         long_desc = "描" * 900
         catalog = _injector([_skill("alpha", long_desc)]).build_catalog()
 

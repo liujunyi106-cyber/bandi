@@ -1,4 +1,4 @@
-"""本体四工具：define / assert / query / retract（复刻 dsh-ontology `src/tools.ts`，727 行）。
+"""本体四工具：define / assert / query / retract。
 
 面向模型的四个工具，每个返回规范 JSON 值（便于程序化消费），人读解释只放在
 `render()` 里。

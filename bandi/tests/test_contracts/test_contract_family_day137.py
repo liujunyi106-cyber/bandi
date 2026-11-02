@@ -658,7 +658,7 @@ async def test_all_stream_handlers_emit_note_frames() -> None:
 #
 # 现状：用户在单聊/群聊补充要求只会**新建** work_item；已派发/已 APPROVED 的卡
 # 用户碰不到（`READY_FOR_REWORK` 只有「评审失败」自动入口；APPROVED 仅允许回
-# `READY` 且走内部邮件复活）。对标 OpenOPC：
+# `READY` 且走内部邮件复活）。
 # `_prepare_company_followup_target`（写 latest_user_directive）
 # → `reopen_approved_delegation_work_item_for_rework`（named bypass 受控回转）
 # → `build_rework_feedback_context`（把修正指令 + 上一版产出注入 brief

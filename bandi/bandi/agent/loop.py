@@ -202,7 +202,7 @@ def _mark_dispatched_tool_calls(ctx: ExecutionContext) -> None:
 
 def _assistant_tool_segment_end(messages: list[Any], call_id: str) -> int | None:
     """功能：定位声明 call_id 的 assistant 消息之后「连续 TOOL 段」的插入位——
-    与 tool_message_guard 的 stub 插位同构；找不到返回 None（调用方回落 append）。"""
+    与 tool_message_guard 的 stub 插位；找不到返回 None（调用方回落 append）。"""
     for idx, msg in enumerate(messages):
         calls = getattr(msg, "tool_calls", None) or []
         if msg.role != MessageRole.ASSISTANT or not calls:

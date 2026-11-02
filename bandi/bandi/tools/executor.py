@@ -131,7 +131,7 @@ _NETWORK_TOOL_HINTS: tuple[str, ...] = (
 
 
 def _with_network_next_step(result: ToolResult) -> ToolResult:
-    """功能：网络/检索类失败追加转向指引（对齐 LeAgent 的 next_step 语义）。
+    """功能：网络/检索类失败追加转向指引。
 
     模型在"网络不可用"时若无明确转向指令，会反复换工具诊断网络直到耗尽轮次。
     失败结果直接带上下一步路径（知识库/记忆/现有产物、缺失标「待取证」）。

@@ -6,7 +6,7 @@ export type MarkdownSegment =
   { type: "markdown"; content: string } | { type: "mermaid"; code: string };
 
 /** 功能：长内容判定（含代码块/标题/列表/引用/表格/多段落 → 全宽文档布局；
-  * 对齐：cc-haha shouldUseDocumentLayout 同构）。 */
+   * 对齐：shouldUseDocumentLayout）。 */
 export function shouldUseDocumentLayout(content: string): boolean {
   const normalized = content.trim();
   if (!normalized) return false;

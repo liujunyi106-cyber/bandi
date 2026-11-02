@@ -1,4 +1,4 @@
-# 功能：rule_matcher — 规则匹配/评分/过滤/校验（基准 LeAgent tools/util/rule_matcher.py 移植）
+# 功能：rule_matcher — 规则匹配/评分/过滤/校验
 from __future__ import annotations
 
 import operator

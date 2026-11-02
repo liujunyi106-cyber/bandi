@@ -221,7 +221,7 @@ def _has_text(m: Message) -> bool:
 
 
 def _boundary_floor(messages: list[Message]) -> int:
-    """最后一个 [压缩边界] 标记的下一条位置——向前扩展不得越过（cc-haha floor 不变量）。"""
+    """最后一个 [压缩边界] 标记的下一条位置——向前扩展不得越过。"""
     from bandi.memory.compression_pipeline import COMPACT_BOUNDARY_PREFIX
 
     floor = 0

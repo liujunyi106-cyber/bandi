@@ -59,7 +59,7 @@ _LONG_TEXT_CHARS = 60
 _PLEASANTRY_MAX_CHARS = 12
 _MARKS = "，。！？!?；;、,.…~～ \t\r\n"
 
-# 功能：可从现状推导的内容（cc-haha「What NOT to save」第2–5 类移植）——读代码、
+# 功能：可从现状推导的内容——读代码
 # `git log`/`git blame` 即可得出，不是经历事实。命中任一即不进经历层。
 _DERIVABLE_PATTERNS = re.compile(
     "|".join(

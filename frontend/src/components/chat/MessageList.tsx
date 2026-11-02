@@ -57,7 +57,7 @@ interface MessageListProps {
   children?: React.ReactNode;
 }
 
-/** 交付物 chip 的最小字段面（会话/项目两源同构）。 */
+/* 交付物 chip 的最小字段面。 */
 export interface SessionArtifactLike {
   id: string;
   path: string;

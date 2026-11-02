@@ -1,6 +1,6 @@
 /**
  * 功能：员工档案「知识与记忆」Tab（知识库绑定/上传/单个移除 + 记忆写审批）。
- * 知识库与技能同构是可复用资源：绑定只解除当前员工，不删库本身。
+  * 知识库与技能是可复用资源：绑定只解除当前员工，不删库本身。
  */
 import { Check, Plus, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";

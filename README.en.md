@@ -280,3 +280,5 @@ cd frontend && pnpm run lint && pnpm test
 ## License
 
 [AGPL-3.0-or-later](LICENSE) — free to use, modify and distribute; if you offer the modified software over a network, your version must also be released under the AGPL.
+
+Third-party copyright and license notices are listed in [NOTICE.md](NOTICE.md).

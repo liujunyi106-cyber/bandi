@@ -300,7 +300,7 @@ class MarkdownMemoryStore:
                 pass
 
     def _enforce_entrypoint_lines_unlocked(self) -> None:
-        """入口文件行数上限（cc-haha MAX_ENTRYPOINT_LINES 语义）：超限时按
+        """入口文件行数上限：超限时按
         最旧优先淘汰指针行；可见正文（非指针行）不自动裁剪（保用户内容）。
         调用方须已持锁。"""
         if not self._memory_file.exists():

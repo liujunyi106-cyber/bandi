@@ -555,7 +555,7 @@ class EpisodicStore:
     ) -> tuple[str, list[Any]]:
         """维度过滤 SQL 片段（语义对齐 long_term）：传值等值过滤；未传补 IS NULL
         ——仅匹配该维度全局层，全局检索不命中维度行（防跨项目串写）。team_id
-        同构：未传只命中非团队行，团队行必须带 team_id 显式查询。"""
+        未传只命中非团队行，团队行必须带 team_id 显式查询。"""
         conditions: list[str] = []
         args: list[Any] = []
         if project_id is not None:

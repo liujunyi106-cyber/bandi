@@ -202,7 +202,7 @@ _TOOL_ID_SEEN: dict[str, int] = {}
 
 
 def _next_tool_id(seen: dict[str, int], name: str) -> str:
-    """tool_call_id 同构生成——fc_{name}，同名工具重复调用追加序号。
+    """tool_call_id 生成——fc_{name}，同名工具重复调用追加序号。
     seen 必须为进程级共享 dict（跨响应累计）。"""
     count = seen.get(name, 0)
     seen[name] = count + 1

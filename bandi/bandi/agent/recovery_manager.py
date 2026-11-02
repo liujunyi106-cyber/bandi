@@ -46,7 +46,7 @@ class DegradationState:
 class RecoveryManager:
     def __init__(self, bus: EventBus | None = None, escalate_threshold: int = 3):
         # escalate_threshold：同一层连续错误达此数即升级终止。默认 3
-        # LeAgent `_TRANSIENT_RETRY_ATTEMPTS=3` / deepseek-harness `maxRetries=2`）——
+        # `_TRANSIENT_RETRY_ATTEMPTS=3` / deepseek-harness `maxRetries=2`）
         # 10 次会让上游故障场景白等数分钟。
         self.consecutive_errors: dict[str, int] = {}
         self.degradation = DegradationState()

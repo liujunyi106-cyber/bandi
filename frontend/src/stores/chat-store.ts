@@ -168,7 +168,7 @@ export function nodesFromEvents(events: unknown[]): ProcessNode[] {
   return nodes;
 }
 
-/** 功能：员工过程事件 → 过程节点归并（thread_progress 帧；与消息级 reducer 同构语义）。 */
+/* 功能：员工过程事件 → 过程节点归并。 */
 export function applyProgressNode(
   nodes: ProcessNode[],
   event: EmployeeProgressEvent,
@@ -610,7 +610,7 @@ export function parseEntryAttachments(metadata: unknown): ChatAttachment[] | und
 }
 
 /** 功能：会话条目 → 气泡模型（只保留有内容的 user/assistant/system 条目）。 */
-/** 功能：process 条目 metadata 还原为过程节点（-3c；形态与 ProcessNode 同构，容错降级）。 */
+/* 功能：process 条目 metadata 还原为过程节点。 */
 export function parseEntryProcessNodes(metadata: unknown): ProcessNode[] | undefined {
   let raw: unknown = metadata;
   if (typeof raw === "string") {
@@ -647,7 +647,7 @@ export function entriesToMessages(sessionId: string, entries: SessionEntry[]): C
     if (!String(entry.content ?? "").trim()) continue;
     const attachments = parseEntryAttachments(entry.metadata);
     // 员工产出回写条目（后端 append_employee_reply）→ 带发送者身份渲染
-    // （头像 tone 走 senderRole、名字优先 senderName 快照）——与 live thread_message 注入同构
+    // （头像 tone 走 senderRole、名字优先 senderName 快照）——与 live thread_message 注入
     const employeeReply = parseEntryEmployeeReply(entry.metadata);
     messages.push({
       id: entry.id,
@@ -951,7 +951,7 @@ export function applySubagentProgress(
   });
 }
 
-/** 功能：child 子树单步累积（与主列表节点同构：thought/tool/skill/note）。 */
+/* 功能：child 子树单步累积。 */
 function applyChildProgress(
   children: ProcessNode[],
   parentNodeId: string,
