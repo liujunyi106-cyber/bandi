@@ -152,7 +152,7 @@ class SkillLoader:
         except (OSError, UnicodeDecodeError) as e:
             logger.warning("skill load failed for %s: %s", path, e)
             return None
-        content = content.lstrip("\ufeff")  # BOM 兼容（SD-07 修复：否则 frontmatter 整体丢弃）
+        content = content.lstrip("\ufeff")  # BOM 兼容
         metadata, body = self._parse_frontmatter(content)
         sections = self._parse_sections(body)
         name = (

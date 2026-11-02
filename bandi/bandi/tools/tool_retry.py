@@ -21,7 +21,7 @@ def locate_tool_call(
     store: SessionStore, session_id: str, tool_call_id: str
 ) -> dict[str, Any] | None:
     """功能：在会话分支 assistant 消息 metadata.tool_calls 中按 id 定位调用
-    （Day122z 读回还原先例）；未知 id 返回 None。"""
+    未知 id 返回 None。"""
     # 定位调用需覆盖被压缩前的原始历史（重试可能指向边界之前的调用）
     for entry in store.get_branch(session_id, full=True):
         if entry.get("entry_type") != "message" or entry.get("role") != "assistant":

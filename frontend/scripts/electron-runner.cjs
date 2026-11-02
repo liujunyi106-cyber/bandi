@@ -2,11 +2,11 @@
 /**
  * 功能：Electron 启动器——自动规避「exe 所在路径含非 ASCII 字符导致无法启动」的本机限制。
  *
- * 背景（2026-11-02 实测）：工作区位于含中文的路径时，`node_modules/electron/dist/electron.exe`
+  * 背景：工作区位于含中文的路径时，`node_modules/electron/dist/electron.exe`
  * 启动即 ExitCode=1 且 stdout/stderr 全空、无事件日志、无崩溃记录，极难排查。
  * 物理复制 dist 到纯 ASCII 路径后正常；junction 无效（会被解析回真实路径）。
  * 官方开关 ELECTRON_OVERRIDE_DIST_PATH 可让 electron 从 ASCII 路径加载运行时，
- * 而 app 代码本身仍可留在中文路径（实测 ASCII exe + 中文 app = 正常工作）。
+  * 而 app 代码本身仍可留在中文路径。
  *
  * 用法：
  *   node scripts/electron-runner.js <electron 参数...>

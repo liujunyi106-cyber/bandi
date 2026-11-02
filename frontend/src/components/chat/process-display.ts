@@ -188,7 +188,7 @@ export function toolLabel(name: string): string {
 /**
  * 毫秒 → 展示串（<1s 用毫秒；<60s 用一位小数秒；≥60s 用 `3m11s`）。
  *
- * ≥60s 用词式 `3m11s`（用户拍板）——`3:11` 会被读成时钟时间而不是时长。
+  * ≥60s 用词式 `3m11s`——`3:11` 会被读成时钟时间而不是时长。
  * 无可用度量（null / 非法）返回占位符 `—`。
  */
 export function formatDurationMs(ms: number | null): string {

@@ -1,5 +1,5 @@
 /**
- * 功能：单页壳共享 WebSocket 客户端（@base docs/前端设计规划.md §8）。
+  * 功能：单页壳共享 WebSocket 客户端（@base docs/前端设计规划.md）。
  * - 视图切换不重连（模块级单例，全 App 共用一条连接）
  * - 断线自动重连：指数退避 + 抖动，attempt 有上限后转 closed 并等外部手动重连
  * - 事件订阅：按帧 `type` 分发（on(type, handler)），另有全局 onFrame

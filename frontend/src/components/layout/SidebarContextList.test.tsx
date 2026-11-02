@@ -461,7 +461,7 @@ describe("SidebarContextList", () => {
     expect(persisted.state?.sidebarTasksOpen).toBe(false);
   });
 
-  // 2026-10-09 用户拍板：项目行也有任务状态（聚合组内会话）；「更多」改悬浮显示
+  // 项目行也有任务状态（聚合组内会话）；「更多」改悬浮显示
   describe("项目行状态与悬浮更多", () => {
     const projectSession = (id: string) => ({
       id,

@@ -178,7 +178,7 @@ export interface GroupRoundSnapshot {
   updated_at?: number;
 }
 
-/** 附件上传记录（端点返回；Day137b-2 前端消费）。 */
+/* 附件上传记录。 */
 export interface UploadRecord {
   upload_id: string;
   name: string;
@@ -187,7 +187,7 @@ export interface UploadRecord {
   path: string;
 }
 
-/** 项目文件条目（@文件引用数据源——Day137b-2）。 */
+/* 项目文件条目。 */
 export interface ProjectFile {
   path: string;
   name: string;
@@ -376,7 +376,7 @@ export const companyApi = {
   /** 功能：用系统默认程序打开本地文件/目录（越界 403）。 */
   /** 预留：/api/fs/open 的 API 绑定；启用时机 UI 需系统打开时（当前 UI 已改右栏文件页签）。 */
   openLocalPath: (path: string) => api.post<{ opened: string }>("/fs/open", { path }),
-  /** 功能：对话附件上传（multipart；返回 upload_id 引用——端点，Day137b-2）。 */
+  /* 功能：对话附件上传。 */
   upload: (file: File, projectId = "") => {
     const form = new FormData();
     form.append("file", file);

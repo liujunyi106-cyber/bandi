@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 功能：sidecar 链路冒烟（Day147 C-2/C-3）——不需要 Electron/GUI。
+  * 功能：sidecar 链路冒烟——不需要 Electron/GUI。
  *
  * 模拟壳视角完整链路：
  *   spawn `python -m bandi serve --port 0`（BANDI_HOME 指到隔离目录）

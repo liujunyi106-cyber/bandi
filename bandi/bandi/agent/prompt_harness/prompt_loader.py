@@ -1,8 +1,6 @@
 # 功能：提示词模板读取（单一真相源 = artifacts.py 常量）
 #
-# 历史：曾支持 prompts/*.yaml 覆盖（loader 优先读 YAML、常量兜底），但生产无任何
-# 调用方使用该能力——同一段提示词存两份，改常量而真机跑另一份，是BC-007/BC-003/
-# BC-008 修复时踩到的坑。现删除 YAML 层，常量为唯一真相源。
+# 提示词以常量形式维护，不读取外部 YAML 覆盖文件。
 from __future__ import annotations
 
 from bandi.agent.prompt_harness.artifacts import (

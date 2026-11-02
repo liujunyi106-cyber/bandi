@@ -73,7 +73,7 @@ def test_summary_returns_none_without_snapshots(tmp_path: Any) -> None:
 
 
 def test_summary_capped_by_total_token_budget(tmp_path: Any) -> None:
-    """契约（P1c，审查项3）：摘要总 token 必须受上限约束（防海量 turn 快照把
+    """契约：摘要总 token 必须受上限约束
     摘要撑到失控，进 SYSTEM 消息挤爆上下文）——超过预算时保留最近 turn（尾部
     优先，会话记忆新近性），内容不丢可发现性（至少最新快照进入摘要）。"""
     from bandi.memory.session_memory import build_session_memory_summary

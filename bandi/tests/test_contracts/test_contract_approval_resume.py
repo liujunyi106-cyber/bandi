@@ -252,7 +252,7 @@ async def test_allow_session_is_tool_wide_not_param_scoped() -> None:
 
 @pytest.mark.asyncio
 async def test_allow_once_is_param_scoped_to_exact_call() -> None:
-    """契约（P0-6 混合粒度）：allow_once=仅本次这一条具体调用——
+    """契约：allow_once=仅本次这一条具体调用
     批准后同参命中；改参数（换一次调用）必须重新审批；不同工具不放行。"""
     from bandi.tools.approval import (
         PendingApproval,

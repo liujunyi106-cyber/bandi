@@ -1,8 +1,8 @@
 /**
- * 功能：Electron 主进程壳（@base docs/ADR.md ADR-42 / docs/前端设计规划.md §12）。
+  * 功能：Electron 主进程壳。
  * dev：加载 vite dev server（VITE_DEV_SERVER_URL），三进程并行（vite + uvicorn + 本窗口）。
- * 生产：加载 `dist/index.html`（由壳内 spawn 的 FastAPI sidecar 托管亦可，P5-6 定）。
- * 托盘 / 窗口状态记忆 / 自启动 / `/ready` 就绪探针后开窗 → P5-6 细化。
+  * 生产：加载 `dist/index.html`。
+  * 托盘 / 窗口状态记忆 / 自启动 / `/ready` 就绪探针后开窗 → 细化。
  */
 import { BrowserWindow, app, session, shell } from "electron";
 import path from "node:path";
@@ -29,7 +29,7 @@ function openExternalSafely(value: string): void {
   void shell.openExternal(value);
 }
 
-/** 功能：创建主窗口（1440×900，最小 1024×700 —— §8 窗口与断点）。 */
+/* 功能：创建主窗口（1440×900，最小 1024×700 —— 窗口与断点）。 */
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1440,
@@ -89,7 +89,7 @@ function createWindow(): void {
     return;
   }
 
-  // 生产模式（ADR-42）：spawn sidecar → /ready → loadURL（SPA+API+WS 单端口）。
+  // 生产模式：spawn sidecar → /ready → loadURL（SPA+API+WS 单端口）。
   // sidecar 起不来/超时/崩溃耗尽 → 降级 loadFile（静态壳，不白屏）。
   void sidecar.start().then((handle) => {
     if (handle) {

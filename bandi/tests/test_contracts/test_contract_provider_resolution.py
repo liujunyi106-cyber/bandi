@@ -85,7 +85,7 @@ def test_contract_provider_cache_key_includes_credentials() -> None:
     assert p_a2 is p_a, "同配置必须复用实例（缓存语义保持）"
 
 
-# ── 跨 provider 链候选端点隔离（BC-002 残）─────────────────────────────────
+# ── 跨 provider 链候选端点隔离─────────────────────────────────
 
 
 def _profile_cfg(*, provider: str, base_url: str, key: str = "sk-profile") -> BandiConfig:
@@ -99,7 +99,7 @@ def _profile_cfg(*, provider: str, base_url: str, key: str = "sk-profile") -> Ba
 
 
 def test_cross_provider_candidate_does_not_inherit_profile_endpoint() -> None:
-    """契约（BC-002 残·破坏者）：链候选归属 provider ≠ 激活档案 provider 时，
+    """契约：链候选归属 provider ≠ 激活档案 provider 时
     不得继承档案 base_url（修复前 xiaomi/mimo 候选被劫持到档案端点——
     「首个端点失败即锁定」的真实机制）。"""
     cfg = _profile_cfg(provider="openai_compat", base_url="https://private-hub.example/v1")

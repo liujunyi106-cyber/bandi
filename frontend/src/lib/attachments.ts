@@ -1,5 +1,5 @@
 /**
- * 功能：附件上传消费（Composer 用；立即上传 + store 三态管理——Day137b-2）。
+  * 功能：附件上传消费。
  */
 import { companyApi } from "@/services/company";
 import { useChatStore, type ChatAttachment } from "@/stores/chat-store";

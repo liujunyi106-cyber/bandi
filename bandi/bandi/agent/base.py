@@ -408,7 +408,7 @@ class ExecutionContext:  # 功能：Agent 执行上下文，贯穿整个循环�
         self.compress.compress_failed_count = value
 
     def _message_tokens(self, counter: Any, m: Any) -> int:
-        # 功能：RF-6——单消息真实请求 token（content + tool_calls.arguments；
+        # 功能：——单消息真实请求 token
         # arguments 随请求序列化发送（message.py），原口径漏计致大参数低估）
         total = counter(m.content or "")
         for tc in getattr(m, "tool_calls", None) or []:

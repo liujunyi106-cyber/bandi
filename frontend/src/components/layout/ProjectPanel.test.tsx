@@ -384,7 +384,7 @@ describe("ProjectPanel", () => {
     expect(screen.queryAllByTestId("panel-project-session")).toHaveLength(0);
     // 存在群聊会话时入口保留（解散后仍可进入只读提示）
     expect(screen.getByTestId("panel-group-entry")).toBeInTheDocument();
-    // 无团队引导提示已按用户要求下线（2026-10-12）
+    // 无团队引导提示已按用户要求下线
     expect(screen.queryByTestId("panel-no-team")).not.toBeInTheDocument();
     // 会话行能力不受影响（仅秘书行）
     expect(screen.getAllByTestId("panel-session-more").length).toBe(1);
@@ -741,7 +741,7 @@ describe("ProjectPanel", () => {
     expect(await screen.findByTestId("panel-select-team")).not.toHaveAttribute("data-disabled");
   });
 
-  // 2026-10-09 用户拍板：面板内秘书/团队会话与员工单聊都要有任务状态；「更多」改悬浮显示
+  // 面板内秘书/团队会话与员工单聊都要有任务状态；「更多」改悬浮显示
   describe("头像行任务状态与悬浮更多", () => {
     it("秘书会话组有在跑 → 秘书行显示执行中转圈", async () => {
       useChatStore.setState({

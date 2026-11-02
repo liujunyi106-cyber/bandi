@@ -309,7 +309,7 @@ def is_conversational_prose(text: str) -> str | None:
         if marker in t:
             return f"plan:{marker}"
 
-    # ⑤ 能力自我介绍——BC-004 已拦部分问法，这里兜住 markdown 分档式复述
+    # ⑤ 能力自我介绍——已拦部分问法，这里兜住 markdown 分档式复述
     for marker in ("我能帮你做什么", "我能做的", "我可以帮你做", "目前我的能力"):
         if marker in t:
             return f"capability_listing:{marker}"
@@ -317,7 +317,7 @@ def is_conversational_prose(text: str) -> str | None:
     # ⑥ 任务应答正文——引用了工具产物路径 **且** 给出计数/名单结论。
     # 这类文本"有具体事实"故前五类都拦不住，但它是**一次查询的结果快照**：
     # staff.csv 一换内容，"去重后共 5 人"立刻过时，却已固化进记忆库被反复召回。
-    # 更糟的是把当时的幻觉一并存下（实测存过"陈敏"，真实是"陈静"）。
+    # 更糟的是把当时的幻觉一并存下。
     # 需两个信号同时出现才拒——单独出现任一个仍可能是合法事实
     # （「老板偏好 fixtures/ 下的数据」含路径但无结论）。
     has_artifact_ref = bool(_ARTIFACT_REF.search(t))

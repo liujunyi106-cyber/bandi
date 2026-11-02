@@ -96,7 +96,7 @@ class SessionManager:
     def _write_metadata(self, patch: dict[str, Any], _retries: int = 3) -> None:
         """读-改-写 sessions.metadata（CAS）：保留既有键，patch 值为 None 删除。
         跨进程并发 stage 经 update_session_if_metadata 原子认领——冲突重读重试
-        耗尽抛错（诚实失败优于静默丢更新，Day127-fix 收口）。"""
+        耗尽抛错。"""
         for _ in range(_retries):
             session = self.store.get_session(self.session_id)
             if session is None:

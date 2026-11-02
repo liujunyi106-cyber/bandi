@@ -1,10 +1,10 @@
 /**
- * 功能：Composer（@base docs/前端设计规划.md §8 交互规范）。
+  * 功能：Composer（@base docs/前端设计规划.md 交互规范）。
  * 布局：附件 chips（输入上方）→ 输入栏（可增高至 240px）→ 功能栏
  * （⊕ 聚合菜单 / 模式圆圈 / 模型·思考控制条 / 发送·停止）。
  * textarea：Enter 发送、Shift+Enter 换行（IME 保护）；/ 触发斜杠面板、@ 触发引用菜单（键盘导航）。
  * 增强（enhanced=true——ChatView 主会话）：附件上传（⊕/拖拽；立即上传三态 chips）+
- * @ 引用（对话附件/项目文件/员工）+ 斜杠命令 + 模型/思考会话级覆盖（Day137b-2）。
+  * @ 引用（对话附件/项目文件/员工）+ 斜杠命令 + 模型/思考会话级覆盖。
  * 模式切换：圆圈内「计划/执行」——点击或 Shift+Tab 切换；showMode=false（派单视图）隐藏。
  * 终止：busy 时发送键原位变停止态——点击两次确认（3s），Esc 直接停止。
  */
@@ -59,7 +59,7 @@ interface ComposerProps {
   showMode?: boolean;
   /** 输入占位文案（缺省用会话链路的默认文案）。 */
   placeholder?: string;
-  /** 增强模式（⊕/@/斜杠/控制条/附件；ChatView 主会话——Day137b-2）。 */
+  /* 增强模式。 */
   enhanced?: boolean;
   /** 附件模式（仅 ⊕ 上传/拖拽/chips——单聊/群聊派单链路； 轮三-5 新增）。 */
   attachmentsEnabled?: boolean;

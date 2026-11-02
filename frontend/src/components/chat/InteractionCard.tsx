@@ -1,12 +1,12 @@
 /**
- * 功能：统一决策卡（@base docs/前端设计规划.md §8 / v5 原型；
+  * 功能：统一决策卡
  * -3a 起为「统一决策区」内卡片——呈现在输入框上方）。
  * 分流（payload 优先）：
  * - `ui_variant=permission` → 权限三态（仅本次允许 / 本会话始终允许 / 拒绝）→ approval-decision 端点；
  * - `payload.notify` → 非交互提示（无按钮/无倒计时——）；
  * - choices 选项（单选/多选 multi_select + allow_custom → clarify 应答）；
  * - 无 choices → 允许/拒绝两态（confirm）或 input 文本（clarify）；
- * - 倒计时（expires_in → mm:ss，超时禁用作答；Day137b-1）。
+  * 倒计时。
  */
 import { ChevronLeft, ChevronRight, Info, ListChecks, ShieldQuestion } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -23,7 +23,7 @@ interface InteractionCardProps {
   onResolved: (interactionId: string) => void;
   onError: (message: string) => void;
   /**
-   * 功能：作答草稿（§18.16①）。
+    * 功能：作答草稿（①）。
    * 多张决策卡并存时用户会切走再切回，卡片一旦卸载其本地作答即丢失；
    * 由父级按 interaction_id 分桶持久化，切回时经 initialDraft 复原。
    * 缺省时组件自持草稿（单卡场景与单测无需父级参与）。

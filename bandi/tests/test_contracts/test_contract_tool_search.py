@@ -1,4 +1,4 @@
-# 功能：Day134c ToolSearchTool 契约——search() 检索面=MCP 工具、评分排序、select 直选、disabled 不泄
+# 功能：ToolSearchTool 契约——search 检索面=MCP 工具、评分排序、select 直选、disabled 不泄
 # 契约钉「行为结果/最终产物」：检索面只含 MCP 工具（严格照搬）、total_deferred_tools=MCP 计数
 # disabled 工具 fail-closed 不泄漏、评分权重名称>描述>参数、select 直选透传。
 from __future__ import annotations

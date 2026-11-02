@@ -25,7 +25,7 @@ import pytest
 
 from bandi.skills.loader import SkillLoader
 
-# 测试环境会把 home 重定向到 tmp（FM-62 家族），故按路径**后缀**断言级联覆盖，
+# 测试环境会把 home 重定向到 tmp，故按路径**后缀**断言级联覆盖
 # 不钉某台机器的绝对路径——要钉的是「这些目录被纳入了」，不是「在哪儿」。
 
 

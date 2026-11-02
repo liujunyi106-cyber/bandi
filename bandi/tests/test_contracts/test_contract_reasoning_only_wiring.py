@@ -178,7 +178,7 @@ class TestNoBlanketExcept:
 
 class TestDetectionShape:
     def test_real_provider_shape_detected(self) -> None:
-        """真机返回的响应形态（finish_reason=stop、无 tool_calls）必须被判中，
+        """返回的响应形态（finish_reason=stop、无 tool_calls）必须被判中
         否则线上永远触发不了重试。"""
         from bandi.agent.states import _is_reasoning_only
 

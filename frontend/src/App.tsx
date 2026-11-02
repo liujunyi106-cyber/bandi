@@ -1,5 +1,5 @@
 /**
- * 功能：单页壳路由表（@base docs/前端设计规划.md §2 路由 / §6 导航 IA）。
+  * 功能：单页壳路由表（@base docs/前端设计规划.md 路由 / 导航 IA）。
  * `/` 会话默认（对话/群聊/单聊由参数分流）；`/shared/:token` 共享只读页（壳外全屏）；
  * `/team` `/work` `/knowledge` `/skills` `/automation` `/settings` 为导航路由。
  */

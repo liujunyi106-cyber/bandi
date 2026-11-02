@@ -27,7 +27,7 @@ from bandi.tools.registry import ToolRegistry
 from bandi.tools.tool_retry import locate_tool_call, retry_tool_call
 from bandi.tools.user_input import UserInputTool
 
-# 功能：契约——-3 破坏性/决策端点畸形输入 fail-closed（第 2 轮审查修复批）
+# 功能：契约——-3 破坏性/决策端点畸形输入 fail-closed
 # 钉行为（不钉实现）：
 
 
@@ -610,7 +610,7 @@ async def test_retry_endpoint_production_assembly(home: Any) -> None:
 
 
 # ==================== 137b3_review_fixes ====================
-# 功能：契约——-3 第二轮审查修复批（终止补帧 / 工具失败回喂语义 / plan 只读白名单）
+# 功能：契约——-3 第二轮修复批（终止补帧 / 工具失败回喂语义 / plan 只读白名单）
 # 钉行为（不钉实现）：
 # 正常路径（无 final_message 或已流式发出）不补帧；帧异常不阻断收尾。
 # 连续失败达阈值后暂停工具（拦截不执行 + 指引文案）；暂停后仍被反复调用

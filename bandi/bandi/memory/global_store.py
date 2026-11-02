@@ -328,7 +328,7 @@ def _now() -> str:
 
 
 def _parse_ts(value: str) -> datetime:
-    # 功能：RF-10——时间戳归一化（旧本地 naive 与新 UTC ISO 混排时字符串
+    # 功能：——时间戳归一化
     try:
         dt = datetime.fromisoformat(str(value))
     except (TypeError, ValueError):

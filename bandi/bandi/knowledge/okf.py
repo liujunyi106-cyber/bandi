@@ -109,7 +109,7 @@ def build_okf_for_document(
     buckets: list[KnowledgeBucket],
 ) -> list[dict[str, Any]]:
     """功能：文档 → 概念集——1 个 Source Document 入口概念 + 每桶 1 个 Topic
-    概念（规则锚定桶结构，ADR-33 无 LLM 提取）。"""
+    概念。"""
     doc_slug = safe_path_segment(document.title or Path(document.filename).stem or document.id)
     doc_slug = f"{doc_slug}-{_id_short(document.id)}"
     entry_concept_id = f"sources/{doc_slug}"

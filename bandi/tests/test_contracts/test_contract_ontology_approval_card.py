@@ -1,4 +1,4 @@
-"""契约：本体式写入审批分流 + 草稿结构化展示（2026-10-14 用户拍板批）
+"""契约：本体式写入审批分流 + 草稿结构化展示
 
 覆盖：
 - 结构化写入工具（ontology_define/ontology_assert/ontology_retract/memory_assert）
@@ -222,7 +222,7 @@ async def test_ontology_assert_approved_writes_only_ontology(
         agent_id="sess-onto",
     )
 
-    # 审批授权单例隔离——进程单例读 ~/.bandi/approvals.json（真机持久授权会
+    # 审批授权单例隔离——进程单例读 ~/.bandi/approvals.json
     # 命中 wildcard grant 直接放行，破坏「未批准先暂停」前提）；禁用
     # reset_approval_store（会清真实用户授权数据）。
     from bandi.tools import approval as approval_mod

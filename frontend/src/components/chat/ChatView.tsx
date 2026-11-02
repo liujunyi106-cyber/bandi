@@ -1,5 +1,5 @@
 /**
- * 功能：对话主视图（@base docs/前端设计规划.md §6 会话行 / §8 交互规范）。
+  * 功能：对话主视图（@base docs/前端设计规划.md 会话行 / 交互规范）。
  * 组成：会话详情加载 + 消息流（keyed 增量）+ 过程块 + 中断恢复提示 + 回滚暂存条 +
  * 挂起交互卡 + Composer（发送/转向/停止）。群聊·单聊视图见 pages/chat 分流。
  */
@@ -235,7 +235,7 @@ export function ChatView() {
         useChatStore
           .getState()
           .loadMessages(activeSessionId, entriesToMessages(activeSessionId, detail.messages));
-        // Day137b-1：任务台账从会话 metadata 恢复（刷新后任务条不消失）
+        // 任务台账从会话 metadata 恢复（刷新后任务条不消失）
         useChatStore.getState().setTaskLedger(activeSessionId, sessionTaskLedger(detail.session));
         // 模式从会话持久值恢复（sessions.mode；无持久值时保留当前选择）
         const persistedMode = detail.session?.mode;
@@ -318,7 +318,7 @@ export function ChatView() {
         content: String(data.content ?? ""),
         // 成员任务卡关联键（线程消息 message_id = work item id）
         workItemId: String(data.message_id ?? "").trim() || undefined,
-        // Day137b-1：员工执行过程随回复固化（回复消息上方过程块；槽取出即清）
+        // 员工执行过程随回复固化（回复消息上方过程块；槽取出即清）
         // 槽键含 thread（= 这一次执行的身份，与产出回写同源）
         // 落定即结算 running（回写是执行中途快照，残留 running 是死状态）
         process: settleRunningNodes(
@@ -547,7 +547,7 @@ export function ChatView() {
       type: "chat",
       message: text,
       session_id: sessionId,
-      // Day137b-1：模式切换器（后端 resolve_initial_mode；plan=只读规划）
+      // 模式切换器（后端 resolve_initial_mode；plan=只读规划）
       mode: ui.chatMode,
       // 新会话标题由后端创建时一次写入（无 PATCH 竞态；列表刷新后标题不丢）
       ...(title ? { title } : {}),
@@ -569,7 +569,7 @@ export function ChatView() {
         : !dmTargetRole && isNewSession && activeProjectId
           ? { session_origin: "secretary" }
           : {}),
-      // Day137b-2：附件引用（upload_id）+ 会话级模型/思考覆盖（控制条）
+      // 附件引用（upload_id）+ 会话级模型/思考覆盖（控制条）
       ...(attachments?.length
         ? {
             attachments: attachments.map((item) => ({
@@ -588,7 +588,7 @@ export function ChatView() {
     setPendingEmployee(null);
   };
 
-  // 中断重试（2026-10-15 用户拍板）：重试属于**新的一次请求**——先终止内核侧
+  // 中断重试：重试属于**新的一次请求**——先终止内核侧
   // 可能仍挂着的旧轮（刷新页面不会终止它，槽位未释放时重发会撞 SESSION_BUSY），
   // 再以同内容重发；中断上下文（目标+已执行过程）经会话历史自动携带。
   const retryInterrupted = async (messageId: string) => {
@@ -831,9 +831,9 @@ export function ChatView() {
   const [interactionIndex, setInteractionIndex] = useState(0);
   const pendingInteraction =
     pendingInteractions[Math.min(interactionIndex, pendingInteractions.length - 1)];
-  // §18.16①：作答草稿按 interaction_id 分桶持久化。key={interaction_id} 让切卡时
+  // ①：作答草稿按 interaction_id 分桶持久化。key={interaction_id} 让切卡时
   // 卡片重挂载（-3 要求「卡 A 移除后卡 B 不残留 A 的答案」），但重挂载也会连带丢掉
-  // 用户在 A 上已答的内容——而 §18.16① 的语义恰恰是「先翻到别的决策点，回头再答这张」。
+  // 用户在 A 上已答的内容——而 ① 的语义恰恰是「先翻到别的决策点，回头再答这张」。
   // 分桶后两个语义同时成立：新卡无桶即全新，同卡回访从桶复原；卡片解决时删桶防泄漏。
   const [cardDrafts, setCardDrafts] = useState<Record<string, InteractionDraft>>({});
   // 当前卡被解决/移除后游标回落到有效范围（否则会停在空档）

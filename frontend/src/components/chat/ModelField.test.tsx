@@ -1,5 +1,5 @@
 /**
- * 功能：模型字段契约（Day137b-2b ）——两态字段文案、候选按 provider 分组
+  * 功能：模型字段契约——两态字段文案、候选按 provider 分组
  * 底部配置入口两态均保留（破坏者：只在一态出现 = 违规）、箭头旋转态、选择回传。
  */
 import { fireEvent, render, screen } from "@testing-library/react";

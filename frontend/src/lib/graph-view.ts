@@ -1,6 +1,6 @@
 /**
- * 功能：图谱视图变换层（纯函数，@base docs/前端设计规划.md §6「图谱：缩放/平移」）。
- * 技法对齐参考源 datafoundry `TraceDagCanvas`：`<g transform="translate scale">` + 光标锚定缩放 + 自适应铺满。
+  * 功能：图谱视图变换层（纯函数，@base docs/前端设计规划.md 「图谱：缩放/平移」）。
+  * 技法对齐datafoundry `TraceDagCanvas`：`<g transform="translate scale">` + 光标锚定缩放 + 自适应铺满。
  * 与渲染解耦——本模块只算 transform，SVG/Canvas 都能消费。
  */
 

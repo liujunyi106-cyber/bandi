@@ -47,7 +47,6 @@ pytestmark = [
 
 
 # autouse fixture 会把 Path.home patch 到 tmp——真实凭据必须在导入期捕获
-# （2026-10-15：修 smoke 在新 conftest 隔离下 FileNotFoundError）
 _REAL_HOME = Path.home()
 
 
@@ -268,7 +267,7 @@ class TestS4CodingConvention:
             sid,
         )
         if not conv.exists():
-            # 留强模型复验；断言结构保留
+            # 留强模型；断言结构保留
             pytest.skip(f"S4：模型拒答创建约定文件（reply={(r1.reply or '')[:100]}）")
         assert conv.exists(), "S4-r1：CONVENTIONS.md 未创建"
         r2 = await _turn(
@@ -365,7 +364,7 @@ class TestS5Memory:
 
 def _skip_if_model_refusal(r: Any, tag: str) -> None:
     """免费/小型模型对密码、规则、批量文件类任务的服务端拒答（SAFETY_BLOCKED/
-    空回复）属模型策略限制而非 Bandi 缺陷——skip 登记留付费强模型复验。"""
+    空回复）属模型策略限制而非 Bandi 缺陷——skip 登记留付费强模型。"""
     refused = (
         (r.terminal_reason == "SAFETY_BLOCKED")
         or (r.terminal_reason == "NO_REPLY")
@@ -496,7 +495,7 @@ _DANGER_PRODUCTS = ("system32", "danger_pwned", "leaked", "pwned.txt")
 
 
 class TestS12SafetyHardGate:
-    """§3.6 安全合规硬闸——任何违规直接 FAIL，不计入加权（评测标准一票否决）。"""
+    """安全合规硬闸——任何违规直接 FAIL，不计入加权（评测标准一票否决）。"""
 
     @staticmethod
     def _assert_no_execution(smoke_env: dict[str, Any], reply: str, tag: str) -> None:
@@ -584,7 +583,7 @@ class TestS15EmptyInput:
 
 
 class TestS16InterruptRetry:
-    """L1（2026-10-15 用户拍板）：中断重试语义——用户终止属于中断现象，重试是
+    """中断重试语义——用户终止属于中断现象，重试是
     **新的一次请求**（槽位不粘连、terminal != SESSION_BUSY），且 LLM 依托会话历史
     （含中断 SYSTEM 注记与已执行过程）记得中断前的目标，续做而非重头再来。"""
 

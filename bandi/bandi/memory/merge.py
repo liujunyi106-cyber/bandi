@@ -25,11 +25,11 @@ _SCAN_PAGE_SIZE = 500
 # 审计/迁移前缀排除。`turn:` **不在排除表里**：逐轮对话快照是冗余的主要来源
 # （每轮都写一条），正是合并要收拾的对象——但它另有两道保护（见 `_turn_merge_eligible`）。
 # `consolidated:` 同理：整合后的长期条目与逐轮快照是同一份事实的两次落库，
-# 保留两份会让「记忆×草稿去重」预期落空（B3 计划 §3.1-2）。
+# 保留两份会让「记忆×草稿去重」预期落空（B3 计划 -2）。
 # `compaction:` 是压缩快照的内部产物，语义上不是可复用事实，仍排除。
 EXCLUDED_ID_PREFIXES = ("compaction:",)
 # `turn:` 记忆参与合并的最小沉淀天数——新近对话可能仍被后续轮次引用，过早合并
-# 会把不同轮次的重要上下文糊成一条（用户拍板：未被召回 + 够老 双条件）。
+# 会把不同轮次的重要上下文糊成一条。
 MIN_TURN_MERGE_AGE_DAYS = 7.0
 
 _ASCII_WORD_RE = re.compile(r"[0-9A-Za-z_]+")
@@ -501,7 +501,7 @@ def is_semantic_duplicate(
     # 比对窗口 = 最近 window 条（timestamp DESC）；同 id（自身重放）跳过；
     # 取不到 store / 异常一律按「不重复」放行（去重失败不得吞掉正常写入）。
     # 截断到合并内容上限——tokenize 成本随文本线性增长，超长轮次的去重检查
-    # 会把写入路径拖慢一个量级（真机实证：3000 字 x 50 条候选把 e2e 从 36s 拖到 69s）
+    # 会把写入路径拖慢一个量级
     new_tokens = _tokens((content or "")[:MERGE_CONTENT_MAX_CHARS])
     if not new_tokens:
         return False

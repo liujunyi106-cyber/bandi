@@ -65,7 +65,7 @@ class TestClamping:
         assert len(store.load_visible_text()) <= PROJECT_MEMORY_MAX_CHARS
 
     def test_max_chars_configurable_soft_budget(self, tmp_path) -> None:
-        """审查项9：MAX_CHARS 由模块常量改为实例可配置软预算——超出预算
+        """项9：MAX_CHARS 由模块常量改为实例可配置软预算——超出预算
         的内容路由 entries 保留（不静默丢数据），预算阈值可按项目调。"""
         store = MarkdownMemoryStore(tmp_path, max_chars=120)
         store.save_visible_text("# 项目记忆\n\n" + "x" * 4000)
@@ -80,7 +80,7 @@ class TestClamping:
 
 class TestSearchEntriesLimit:
     def test_search_entries_zero_limit_returns_empty(self, store: MarkdownMemoryStore) -> None:
-        """审查项9：search_entries limit<=0 必须返回空——不得因 max(1, limit)
+        """项9：search_entries limit<=0 必须返回空——不得因 max(1, limit)
         兜底翻转成返回 1 条（语义缺陷：limit=0 应语义为「不返回结果」）。"""
         store.save_entry("选品", "蓝鲸选品 回滚 灰度的经验")
         store.save_entry("部署", "回滚预案演练")
@@ -90,7 +90,7 @@ class TestSearchEntriesLimit:
         assert store.search_entries("蓝鲸", limit=-1) == [], "负 limit 同样返回空"
 
     def test_search_entries_positive_limit_still_topk(self, store: MarkdownMemoryStore) -> None:
-        """审查项9（回归）：正 limit 仍按相关度 top-k，不改原有行为。"""
+        """项9（回归）：正 limit 仍按相关度 top-k，不改原有行为。"""
         store.save_entry("选品", "蓝鲸选品 回滚 灰度的经验")
         store.save_entry("部署", "回滚预案演练")
         hits = store.search_entries("蓝鲸", limit=1)

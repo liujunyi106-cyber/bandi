@@ -1,4 +1,4 @@
-# 功能：TokenCounter.breakdown 生产观测契约（审查残余修复）——LLM 调用路径记录 prompt 组成
+# 功能：TokenCounter.breakdown 生产观测契约——LLM 调用路径记录 prompt 组成
 """
 生产接线：states._do_llm_call（全部 LLM 生产调用的唯一装配层）在每次调用
    记录 ctx.meta["last_prompt_breakdown"]——按 role 分项计量

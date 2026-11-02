@@ -1,4 +1,4 @@
-# 功能：Day134 定时任务调度器契约（A）——CronExpr 5 字段解析 + next_after 触发计算
+# 功能：定时任务调度器契约（A）——CronExpr 5 字段解析 + next_after 触发计算
 # 背景：定时自动化内核依赖。方案 A = 自实现 5 字段 cron（零外部依赖，不引 croniter——
 # 对齐「Python + stdlib、无 Windows 外部依赖」纪律）。语义对齐 Vixie cron：day-of-month
 # 与 day-of-week 同时受限时 OR（任一匹配即触发）。

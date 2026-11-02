@@ -11,7 +11,7 @@ import pytest
 
 def _pin_tempdir_outside_repo() -> None:
     """功能：把测试临时根目录收敛到专用目录——系统 TEMP 失效时 tempfile 会回落到 CWD，
-    使 mkdtemp/pytest basetemp 散落进工作区（实测残留上千个目录）。"""
+    使 mkdtemp/pytest basetemp 散落进工作区。"""
     repo_root = Path(__file__).resolve().parents[2]
     try:
         active = Path(tempfile.gettempdir()).resolve()

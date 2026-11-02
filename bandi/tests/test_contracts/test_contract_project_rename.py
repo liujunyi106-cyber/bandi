@@ -23,7 +23,7 @@ def _isolate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
     monkeypatch.setenv("HOME", str(tmp_path))
-    # 项目 store 是模块级单例——不重置会沿用别的用例（真机 home）建的实例
+    # 项目 store 是模块级单例——不重置会沿用别的用例建的实例
     monkeypatch.setattr(_APP_MODULE, "_project_store", None, raising=False)
     # 鉴权中间件读模块级 _API_KEY：全量下别的用例泄漏 api_key 时会 401，
     # 本组用例显式钉住「未配 key」分支（回落到 host 校验），不依赖环境状态

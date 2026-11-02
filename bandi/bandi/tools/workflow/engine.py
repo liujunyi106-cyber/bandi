@@ -493,6 +493,6 @@ def _record(node_id, output, next_node, node_started: float) -> dict[str, Any]:
         "error": None,
         "duration_ms": int(
             round((time.perf_counter() - node_started) * 1000)
-        ),  # 节点耗时（P2-2 审查修复：逐节点而非全程）
+        ),  # 节点耗时
         "next_node": next_node,
     }

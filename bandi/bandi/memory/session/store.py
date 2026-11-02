@@ -814,7 +814,7 @@ class SessionStore:
         return self.get_branch(session_id, full=True)
 
     def resolved_branch(self, session_id: str, at: str | None = None) -> list[dict]:
-        """Day127 无状态预览：返回会话分支按恢复点 at 截断（含自身）的视图。
+        """无状态预览：返回会话分支按恢复点 at 截断（含自身）的视图。
 
         起 at=None 返回**全量历史**（审计/时间旅行视图），活动切片走
         get_branch()。at 指向不存在的 entry 显式报错，不静默回退。
@@ -868,7 +868,7 @@ class SessionStore:
         return id_map
 
     def truncate_branch(self, session_id: str, entry_id: str) -> int:
-        """Day127：截断——删除恢复点 entry 之后的所有条目并归档，保留恢复点自身。"""
+        """截断——删除恢复点 entry 之后的所有条目并归档，保留恢复点自身。"""
         removed, _operation_id = self.truncate_branch_archived(session_id, entry_id)
         return removed
 

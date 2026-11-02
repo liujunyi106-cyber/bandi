@@ -27,7 +27,7 @@ _QUERY_MAX_CHARS = 200
 _MAX_QUERY_TERMS = 80
 
 # 功能：永不裁剪的核心工具名（读写/终端/交互/任务台账/技能检索/团队组建/记忆族）。
-# 记忆族（search/read/assert）入核心集的理由：真机实测「订单服务依赖支付服务」
+# 记忆族（search/read/assert）入核心集的理由：「订单服务依赖支付服务」
 # 这类**关系记忆**请求不含检索意图词，memory_assert 被裁掉后模型只剩 ontology_query
 # 可调——连查 7 次空结果、三元组始终写不进来。
 CORE_TOOL_NAMES: frozenset[str] = frozenset(
@@ -107,7 +107,7 @@ _INTENT_HINTS: dict[str, tuple[str, ...]] = {
 _WORD_RE = re.compile(r"[0-9A-Za-z_]+|[\u4e00-\u9fff]+")
 
 # 功能：寒暄问法——这类轮次直接作答、不调工具，故只保留最小工具面。
-# 命中任一即走精简分支（真机台账：闲聊轮仍送 25 个工具 schema ≈ 5524 tokens，
+# 命中任一即走精简分支
 # 占单轮 input 的 61%，而 history 仅 16 tokens——对话内容几乎不占预算）。
 _CHITCHAT_PHRASES = (
     "你是谁",
@@ -142,7 +142,7 @@ _CHITCHAT_MAX_CHARS = 40
 
 # 功能：业务信号词——出现即视为有实质诉求，不走闲聊精简分支。
 # 只收无歧义的动作动词；「帮我」这类泛化请求词不入表——它是「能帮我做什么」的子串，
-# 收了会把能力询问误判成业务轮（真机实测门槛第一版就栽在这）。
+# 收了会把能力询问误判成业务轮。
 _BUSINESS_SIGNALS = (
     "报错",
     "错误",

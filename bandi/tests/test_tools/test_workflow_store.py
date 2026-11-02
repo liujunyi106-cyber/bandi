@@ -136,7 +136,7 @@ def test_list_executions_ordered_and_limited(store: WorkflowStore) -> None:
 
 
 def test_update_execution_rejects_unknown_column() -> None:
-    """审查修复 update_execution 动态列白名单——非法字段显式 ValueError。"""
+    """修复 update_execution 动态列白名单——非法字段显式 ValueError。"""
     store = WorkflowStore(":memory:")
     exec_id = "ex1"
     store.create_execution(

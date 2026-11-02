@@ -17,7 +17,7 @@ import pytest
 
 from bandi.memory.ingest_review import is_conversational_prose, review_ingest
 
-# L1 真机中实际入库的 19 条助手原话（节选，代表五类污染）
+# L1 中实际入库的 19 条助手原话（节选，代表五类污染）
 POLLUTED = [
     ("permission", "抱歉，我当前处于**计划模式**，只允许只读操作，无法写入文件"),
     ("permission", "老板，当前处于计划模式，无法直接执行写入操作。我先制定计划"),

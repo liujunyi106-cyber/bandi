@@ -274,7 +274,7 @@ export function SidebarContextList() {
   const activeView = searchParams.get("view");
   const activeProject = searchParams.get("project");
 
-  // Day137b-1：URL 项目参数同步到 store——直达 /?project= 时派单归属/过程槽 key
+  // URL 项目参数同步到 store——直达 /?project= 时派单归属/过程槽 key
   // 依赖 store.activeProjectId（缺失会导致 @派单不触发）
   useEffect(() => {
     if (activeProject !== null) {

@@ -592,7 +592,7 @@ class MemoryHierarchyManager:
 
     @classmethod
     def _mandatory_prefix(cls, block: str) -> str:
-        """字段级必留（审查项7）：块整体放不进预算时，其**必留标识字段**＝首行
+        """字段级必留：块整体放不进预算时，其**必留标识字段**＝首行
         （一般承载块语义身份：条目标题/决策标签/关键标记）。返回首行；单行块无
         可省体（首行即整块）→ 返回空表示不可拆，整块舍弃省得产生无身份残片。"""
         lines = block.splitlines()

@@ -1,5 +1,5 @@
 /**
- * 功能：InteractionCard 行为测试（倒计时显示 / 超时禁用；Day137b-1；
+  * 功能：InteractionCard 行为测试
  * -3a：权限三态 + notify 分流）。
  */
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";

@@ -401,7 +401,7 @@ def check_fidelity(source_text: str, summary_text: str) -> FidelityReport:
 
 def build_fidelity_retry_hint(report: FidelityReport, max_hint: int = 8) -> str:
     """功能：生成重试提示——列出摘要遗漏的缺失实体（去重），引导 LLM 补全；
-    语义状态缺失（审查项2）时额外提示保留未完成/阻塞标记。"""
+    语义状态缺失时额外提示保留未完成/阻塞标记。"""
     missing_values = [e.value for e in report.missing]
     seen: set[str] = set()
     unique: list[str] = []
@@ -447,7 +447,7 @@ def build_fidelity_retry_hint(report: FidelityReport, max_hint: int = 8) -> str:
 
 def _resp_truncated(resp: Any) -> bool:
     """功能：LLM 响应是否因输出上限被截断（finish_reason=length / Anthropic·Google
-    的 max_tokens 形态，审计 2.3；审查修复统一两系枚举）。"""
+    的 max_tokens 形态，审计 2.3；修复统一两系枚举）。"""
     return str(getattr(resp, "finish_reason", "") or "").lower() in {"length", "max_tokens"}
 
 

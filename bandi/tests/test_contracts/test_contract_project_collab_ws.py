@@ -374,7 +374,7 @@ class TestProjectWsRouting:
             assert "project not found" in str(err["data"])
 
     def test_ws_ping_keepalive_pong(self) -> None:
-        """Day136 修复：两条 WS 通道均应答心跳 ping（前端 判活；否则周期重连风暴）。"""
+        """修复：两条 WS 通道均应答心跳 ping（前端 判活；否则周期重连风暴）。"""
         with client.websocket_connect(
             "/ws/company", headers={"authorization": "Bearer test"}
         ) as shell_ws:
@@ -402,7 +402,7 @@ class TestProjectWsRouting:
         assert any("公司消息" in m["content"] for m in inbox)
 
     def test_project_threads_rest_route(self) -> None:
-        """Day136 修复：项目线程 REST 可查——WS 建线程 → 带 project_id 可查；company 空间隔离。"""
+        """修复：项目线程 REST 可查——WS 建线程 → 带 project_id 可查；company 空间隔离。"""
         _create_project()
         resp = client.post("/api/company/teams/selection-team/instantiate", json={})
         assert resp.status_code == 200, resp.text
@@ -426,7 +426,7 @@ class TestProjectWsRouting:
         assert missed.status_code == 404, "company 空间不得看到项目线程（隔离）"
 
     def test_thread_followup_without_mention_appends(self, tmp_path: Path) -> None:
-        """Day136 修复：带 thread_id 的跟帖（无 @）也必须追加到线程（ThreadView 回复路径）。"""
+        """修复：带 thread_id 的跟帖（无 @）也必须追加到线程（ThreadView 回复路径）。"""
         from bandi.api.company_chat import handle_chat_message
         from bandi.company.discussion_thread import ThreadManager
         from bandi.company.store import WorkItemStore

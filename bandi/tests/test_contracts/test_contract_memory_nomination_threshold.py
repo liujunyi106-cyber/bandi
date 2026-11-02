@@ -6,7 +6,7 @@
 #   3. 巩固（consolidation）与维护（maintenance）两路门槛同源
 #   4. 破坏者视角：importance=1.0 也不能让 recall=1 的情节越过门槛
 #   5. multi_query 通道（低重要性但被 ≥2 次不同查询召回）须带真实信号——
-#      importance < 0.5 的纯普通轮即便被召回也不得走复用通道（真机实证修正）
+# importance < 0.5 的纯普通轮即便被召回也不得走复用通道
 
 from __future__ import annotations
 
@@ -95,7 +95,7 @@ class TestConsolidationThreshold:
         self, tmp_path: Any, pending_store: Any
     ) -> None:
         """纯基准普通轮（importance 0.4）被召回也不得走复用通道——否则
-        普通对话会被 n-gram 召回互相 bump 顶成提名噪音（真机实证）。"""
+        普通对话会被 n-gram 召回互相 bump 顶成提名噪音。"""
         episodic = EpisodicStore(str(tmp_path / "ep.db"))
         long_term = LongTermMemory(str(tmp_path / "lt.db"))
         _seed_episode(

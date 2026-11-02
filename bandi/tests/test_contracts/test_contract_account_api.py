@@ -1,4 +1,4 @@
-# 功能：Day133 账号 API 端点契约（FE-装配面）
+# 功能：账号 API 端点契约（FE-装配面）
 # + GET /{user_id}），生产装配 ~/.bandi/data/account.db + 惰性 ensure_local_user。
 # 契约钉：建用户→读回（tenant 默认/角色 member）、未知 404、非法角色 400、local 默认账号存在。
 from __future__ import annotations

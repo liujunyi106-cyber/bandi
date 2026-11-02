@@ -1,4 +1,4 @@
-# 功能：Day132c interaction API 契约——POST /confirm /clarify 端点行为族 + 会话隔离
+# 功能：interaction API 契约——POST /confirm /clarify 端点行为族 + 会话隔离
 # 背景：SSE/WS 流式对话装配 HTTPUserInteraction 后，LLM 工具执行路径遇 ask/提问
 # 会 register pending + 推 interaction 帧 + 真挂起。前端渲染卡片 → 用户点选/答复 →
 # 契约钉端点行为：批准/拒绝/答复写回、跨会话 404、未知 404、非 input 不可 clarify。

@@ -58,7 +58,7 @@ def _item(item_id: str, content: str, **kwargs: Any) -> MemoryItem:
     )
 
 
-# -- §3.1 去重 ---------------------------------------------------------------
+# 去重
 
 
 class TestDedupeKeyMerge:
@@ -199,7 +199,7 @@ class TestConsolidatedMergeParticipation:
         assert not any(s.startswith("compaction:") for s in sources), "compaction: 必须仍被排除"
 
 
-# -- §3.3 衰减 / 遗忘 --------------------------------------------------------
+# 衰减 / 遗忘
 
 
 class TestPersistentDecay:

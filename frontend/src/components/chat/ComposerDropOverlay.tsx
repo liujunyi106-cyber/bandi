@@ -1,5 +1,5 @@
 /**
- * 功能：Composer 拖拽覆盖层（HTML5 DnD 落点提示——Day137b-2）。
+  * 功能：Composer 拖拽覆盖层。
  * 视觉：卡片 + 主色虚线描边（不用毛玻璃）。
  */
 import { Upload } from "lucide-react";

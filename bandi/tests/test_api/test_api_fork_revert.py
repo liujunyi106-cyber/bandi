@@ -1,4 +1,4 @@
-# 功能：Day127 Fork/Revert API 端点接线测试（生产装配点：api/app.py /api/sessions/{id}/fork + /revert/*）
+# 功能：Fork/Revert API 端点接线测试（生产装配点：api/app.py /api/sessions/{id}/fork + /revert/*）
 from __future__ import annotations
 
 from pathlib import Path

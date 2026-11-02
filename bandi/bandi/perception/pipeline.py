@@ -263,7 +263,7 @@ class PerceptionPipeline:
                     item.content for item in planned_items if item.source_type == "company"
                 ]
                 # 闲聊/能力询问轮不注入召回记忆——这类输入的召回结果只有自我介绍类
-                # 噪音，真机实测占 memory_tokens 的绝大部分却对作答无贡献。
+                # 噪音，占 memory_tokens 的绝大部分却对作答无贡献。
                 from bandi.tools.selection import is_chitchat_query
 
                 if is_chitchat_query(message.content):

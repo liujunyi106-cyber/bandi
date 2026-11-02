@@ -1,10 +1,10 @@
 /**
  * 功能：图谱力导向布局层（**可替换纯函数**：只吃实体/边，吐坐标；视图层不碰算法）。
  * 实现选型 = d3-force（docs/ADR.md 决策：Barnes-Hut O(n log n) + 成熟参数
- * 因后端全图上限 10000 实体、且 Day139 要「过滤后重排」的交互式探索）。
+  * 因后端全图上限 10000 实体、且 要「过滤后重排」的交互式探索）。
  * 确定性：种子化随机源 + 手算初始摆位 + 固定 ticks（`stop()` 后手动 tick，无 rAF/定时器）
  * → 同输入必得同布局，可写坐标级断言。
- * @base docs/前端设计规划.md §6「知识 · 图谱」；技法对齐 datafoundry `TraceDagCanvas`。
+  * @base docs/前端设计规划.md 「知识 · 图谱」；技法对齐 datafoundry `TraceDagCanvas`。
  */
 import {
   forceCenter,
@@ -461,7 +461,7 @@ export function layoutGraph(input: LayoutGraphInput, options: LayoutOptions = {}
 }
 
 /* ─────────────────────────────────────────────────────────────
- * 拖拽实时重排（ADR-43 选 d3-force 的核心理由之一）
+  * 拖拽实时重排
  * ───────────────────────────────────────────────────────────── */
 
 /** 单次拖拽升温后的 alpha：够热以推开邻居，又不至于把整图炸散。 */

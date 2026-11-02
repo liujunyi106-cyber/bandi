@@ -223,7 +223,7 @@ async def test_derive_boolop_vector_and_or() -> None:
 
 @pytest.mark.asyncio
 async def test_derive_rejects_attribute_escape() -> None:
-    """审查修复：derive 表达式拒绝属性访问/下标逃逸（原受限 eval 可经
+    """修复：derive 表达式拒绝属性访问/下标逃逸
     __class__.__mro__ 链逃逸 RCE）——fail-closed 报错，绝不执行。"""
     _, _, transform, *_ = _tools()
     result = await transform.execute(
@@ -255,7 +255,7 @@ async def test_derive_rejects_attribute_escape() -> None:
 
 @pytest.mark.asyncio
 async def test_derive_whitelist_vector_semantics() -> None:
-    """审查修复：白名单求值保留向量语义——算术/白名单函数/比较/in 可用
+    """修复：白名单求值保留向量语义——算术/白名单函数/比较/in 可用
     下标/属性/列表推导等一律拒绝且不产出列。"""
     _, _, transform, *_ = _tools()
     result = await transform.execute(

@@ -32,7 +32,7 @@ _INVISIBLE_RE = re.compile(r"[\u200b\u200c\u200d\u2060\ufeff\u202a-\u202e\u2066-
 
 @lru_cache(maxsize=1)
 def _injection_matchers() -> tuple[tuple[re.Pattern[str], str], ...]:
-    # 功能：清收——复用 prompt_guard 注入模式集（模块级编译一次）
+    # 功能：——复用 prompt_guard 注入模式集（模块级编译一次）
     # 外部内容命中时在边界声明 suspicious 属性（可观测 + 模型警觉，不阻断）
     from bandi.safety.prompt_guard import DEFAULT_INJECTION_PATTERNS
 

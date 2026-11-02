@@ -1,4 +1,4 @@
-# 功能：契约——Day136 会话元数据扩展（session project_id 维度 + PATCH rename）。
+# 功能：契约——会话元数据扩展（session project_id 维度 + PATCH rename）。
 # 钉行为不钉实现：create_session 带 project_id 落 metadata（无则 "{}" 旧格式）/
 # 不存在 404 / DoD-12 端到端（建会话→改名→列表同回 project_id 与 title）。
 from __future__ import annotations
@@ -37,7 +37,7 @@ def _isolate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
 class TestSessionProjectMeta:
     def test_store_create_session_records_title(self, tmp_path: Path) -> None:
-        """Day136：create_session 支持 title（新会话标题创建时一次写入，无 PATCH 竞态）。"""
+        """create_session 支持 title（新会话标题创建时一次写入，无 PATCH 竞态）。"""
         store = SessionStore(str(tmp_path / ".bandi" / "data" / "bandi.db"))
         sid = store.create_session(title="首条消息作标题")
         assert store.get_session(sid)["title"] == "首条消息作标题"

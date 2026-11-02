@@ -1,4 +1,4 @@
-# 功能：Day134m MCP resource 契约族——resources/list + resources/read 全链（client→broker→工具→装配）
+# 功能：MCP resource 契约族——resources/list + resources/read 全链（client→broker→工具→装配）
 # 生产调用路径唯一链：build_mcp_broker 装配 → register_mcp_resource_tools → 工具.execute → broker.{list,read}_resource → client.{list,read}_resource → transport
 # 行为族级覆盖（DoD-10）：过滤/聚合/失败容忍/能力判断/blob 落盘白名单/上限/空结果/装配&门控，逐层钉行为不钉实现
 from __future__ import annotations

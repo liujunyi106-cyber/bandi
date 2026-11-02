@@ -763,7 +763,7 @@ def test_consolidation_report_exposes_merged_sources(tmp_path: Any) -> None:
     lt.close()
 
 
-# ── turn: 前缀合并双保护（未被召回 + 够老；用户拍板）─────────────────────
+# ── turn: 前缀合并双保护─────────────────────
 
 _TURN_OLD_TS = time.time() - 30 * 86400.0
 _TURN_TEXT = "竞品分析报告：三家主要对手的价格与渠道对比结论已经确认"

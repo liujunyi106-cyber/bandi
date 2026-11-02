@@ -33,7 +33,7 @@ _MAX_TOKEN_LEN = 4
 _FTS_CANDIDATE_LIMIT = 200
 
 # 功能：通用词（停用词）——单/双 token 查询命中「所有含该 gram 的条目」，
-# 零区分度，召回即噪音（真机证据：20 轮普通对话中 5 条被「什么/回答/用户」
+# 零区分度，召回即噪音
 # 顶到 recall 2~4，喂进 consolidation 提名通道）。覆盖 tokenize_cn 产出的
 # 2~4 gram 组合（同一句里「是什么」「怎么」这类衔接词）。
 _QUERY_STOP_TERMS = frozenset(

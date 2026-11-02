@@ -1,4 +1,4 @@
-# 功能：多 Provider 档案（Day137b-2b 「B 方案」）——档案并存，跨 provider 不丢 key
+# 功能：多 Provider 档案——档案并存，跨 provider 不丢 key
 #
 # - 存储位置 `~/.bandi/llm_profiles.json`（与 `~/.bandi/config.yaml` 同级，不进仓库）；
 # - api_key 落盘前经 `core/security/secret_protect` 的 通道加密（复用安全 10 项实现，不重造）；

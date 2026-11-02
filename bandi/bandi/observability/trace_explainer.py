@@ -29,7 +29,7 @@ class TraceExplainer:
         self._steps: dict[str, list[ExplanationStep]] = {}
 
     def _event_session(self, event: Event) -> str:
-        # 功能：RF-4——会话键统一取 event.session_id（EventBus 装配时自动填充）
+        # 功能：——会话键统一取 event.session_id（EventBus 装配时自动填充）
         # 再退 data 内字段；生产 VERDICT/COMPRESSION 事件 data 无 session_id
         return event.session_id or str(event.data.get("session_id") or "_default")
 

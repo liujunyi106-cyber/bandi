@@ -1,5 +1,5 @@
 /**
- * 功能：Day137b-2 前端行为测试——Composer 增强（⊕/@/斜杠/附件发送）+ 附件 chips + 解析。
+  * 功能：前端行为测试——Composer 增强（⊕/@/斜杠/附件发送）+ 附件 chips + 解析。
  */
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";

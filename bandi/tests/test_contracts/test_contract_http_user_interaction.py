@@ -1,4 +1,4 @@
-# 功能：Day132c HTTPUserInteraction 契约——真挂起闭环（register→推帧→await→resolve 唤醒同一 turn 续跑）
+# 功能：HTTPUserInteraction 契约——真挂起闭环（register→推帧→await→resolve 唤醒同一 turn 续跑）
 # 背景：API 场景（uvicorn）装配 HTTPUserInteraction 到 PermissionsPipeline/UserInputTool。
 # （同一 turn 真挂起，事件循环释放）→ 用户 POST /confirm|/clarify → resolve/reject 唤醒恢复。
 # 契约钉行为：ask_permission/ask_input 挂起→唤醒闭环、超时 fail-closed、reject、会话隔离。
@@ -115,7 +115,7 @@ async def test_show_notification_pushes_frame_without_wait() -> None:
 
 @pytest.mark.asyncio
 async def test_default_input_ttl_matches_long_human_window() -> None:
-    """契约（真机修复）：提问挂起窗口 ≥1800s（与 permission 同口径）——员工链路
+    """契约：提问挂起窗口 ≥1800s（与 permission 同口径）——员工链路
     短窗让用户在办别的事时回来卡已死、晚到答复被弃（员工降级默认口径继续）。"""
     store = InteractionStore()
     seen, on_interaction = _collector()

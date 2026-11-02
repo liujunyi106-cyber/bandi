@@ -1,5 +1,5 @@
 /**
- * 功能：单页壳（@base docs/前端设计规划.md §1 端口架构 B 方案 / §6 AppShell）。
+  * 功能：单页壳（@base docs/前端设计规划.md 端口架构 B 方案 / AppShell）。
  * 视图切换不换壳、不重连 WS——左栏 + 顶栏常驻，内容区由路由 Outlet 渲染（面板级 ErrorBoundary 兜底）。
  * ：项目面板通高置顶（与左栏对齐，不在顶栏下方）；顶栏收缩按钮
  * 一键「全部收缩/全部展开」（左栏 offcanvas + 项目面板同步）。
@@ -30,7 +30,7 @@ export function AppShell() {
   useHostEvents();
   // 面板整体收缩态（左栏 offcanvas 由 SidebarProvider 管理，本状态控制项目面板）
   const [panelsCollapsed, setPanelsCollapsed] = useState(false);
-  // FE-15 命令面板（-3e）：Cmd/Ctrl+K 全局唤起
+  // 命令面板（-3e）：Cmd/Ctrl+K 全局唤起
   const [paletteOpen, setPaletteOpen] = useState(false);
   // 右栏 v5：全屏时占满对话列 + 右栏区域（左栏/项目面板常驻）
   const fullscreen = usePanelStore((state) => state.fullscreen);

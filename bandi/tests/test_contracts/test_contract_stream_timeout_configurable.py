@@ -1,5 +1,5 @@
 # 功能：契约——单次流式调用整体超时可配（`llm.stream_timeout`）：
-# 高思考档模型单次生成可达数分钟，240s 硬常量会掐断长推理（2026-10-19 真机实锤：
+# 高思考档模型单次生成可达数分钟，240s 硬常量会掐断长推理
 # opencode-go DeepSeek V4.1 Flash 思考=max 时 planner 调用流式超时 240s → 任务失败）。
 # 缺省 240s 防挂起不变；档案/config 可放宽（open-code-go 档案置 900s）。
 from __future__ import annotations

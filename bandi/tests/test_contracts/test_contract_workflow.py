@@ -625,7 +625,7 @@ def test_factory_chat_workflow_validates_against_live_registry() -> None:
 
 
 def test_save_flow_rejects_fanout_silent_drop() -> None:
-    """审查修复：fan-out（非 condition 多出边）保存期拒绝——禁止静默丢分支。"""
+    """修复：fan-out（非 condition 多出边）保存期拒绝——禁止静默丢分支。"""
     svc = make_service()
     doc = {
         "nodes": [
@@ -679,7 +679,7 @@ def test_execute_fanout_fails_loudly_not_silent_completed() -> None:
 
 
 def test_save_flow_rejects_cycle_at_validation() -> None:
-    """审查修复：环 DAG 保存期拒绝（运行期才 fail 已晚——save 前静态拒绝）。"""
+    """修复：环 DAG 保存期拒绝（运行期才 fail 已晚——save 前静态拒绝）。"""
     svc = make_service()
     doc = {
         "nodes": [
@@ -703,7 +703,7 @@ def test_save_flow_rejects_cycle_at_validation() -> None:
 
 
 def test_save_flow_rejects_dangling_edge() -> None:
-    """审查修复：悬空边（target/source 不在节点集）保存期拒绝。"""
+    """修复：悬空边（target/source 不在节点集）保存期拒绝。"""
     svc = make_service()
     doc = {
         "nodes": [

@@ -231,7 +231,7 @@ class EngineSeatExecutor:
     ) -> None:
         self._active: dict[str, CompanyRuntime] = {}
         # 传 bundle.communication；CLI/API 装配点同目录传 CommunicationManager
-        # 全部 3 个生产装配点均已接线（wiring-check -AssemblyPoint 复验）
+        # 全部 3 个生产装配点均已接线
         self._communication = communication
         # 做 role-scoped 工具过滤（None = 不过滤，保持现状）
         self._org_engine = org_engine

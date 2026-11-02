@@ -34,7 +34,7 @@ from bandi.ontology.types import (
     relation_of,
 )
 
-# 容量守卫（计划 §4.2-7）：事实 20000 / 实体 100000
+# 容量守卫（计划 -7）：事实 20000 / 实体 100000
 DEFAULT_MAX_FACTS = 20000
 DEFAULT_MAX_ENTITIES = 100000
 

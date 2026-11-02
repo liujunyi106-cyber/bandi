@@ -78,7 +78,7 @@ def test_chat_list_tools_shows_real_tools(home: Any) -> None:
 
 
 def test_chat_execute_turn_forwards_project_employee(home: Any) -> None:
-    """AR-20：CLI chat 必须把 project_id/employee_id 透传给 run_agent_turn——
+    """CLI chat 必须把 project_id/employee_id 透传给 run_agent_turn
     层级记忆（global/project/session/employee）在 CLI 链路真实生效，不得缺席。"""
     import asyncio
     from io import StringIO

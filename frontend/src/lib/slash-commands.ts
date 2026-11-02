@@ -1,5 +1,5 @@
 /**
- * 功能：Web 端本地斜杠命令清单（cc-haha 全清单映射；/compact 走后端端点——Day137b-2）。
+  * 功能：Web 端本地斜杠命令清单。
  */
 export interface SlashCommand {
   /** 命令名（不含斜杠；如 new / compact）。 */

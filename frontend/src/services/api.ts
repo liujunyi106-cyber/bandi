@@ -1,8 +1,8 @@
 /**
- * 功能：同源 fetch 客户端（@base docs/API契约.md / docs/前端设计规划.md §2）。
+  * 功能：同源 fetch 客户端（@base docs/API契约.md / docs/前端设计规划.md）。
  * - 统一走 `/api`（dev 由 vite proxy 转到内核 8766，生产由 FastAPI 托管）
  * - FastAPI 422 校验错误体 `detail[{loc,msg}]` → `loc: msg` 可读文案
- * - TierB 统一错误体 `{code,message,detail,request_id}` 原样透出，便于 toast / 追踪
+  * 统一错误体 `{code,message,detail,request_id}` 原样透出，便于 toast / 追踪
  * - 非 JSON / 空响应不崩，返回空对象
  */
 

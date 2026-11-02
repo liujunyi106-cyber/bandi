@@ -1,4 +1,4 @@
-# 功能：账号/tenant 轻量抽象（ADR-34 预留）— User 模型 + tenant_id + RoleBinding 关联
+# 功能：账号/tenant 轻量抽象— User 模型 + tenant_id + RoleBinding 关联
 # 范围：本地单机优先；不做登录/密码/token/UI。多人时起服务端不返工（DB 已预置结构）。
 
 from __future__ import annotations

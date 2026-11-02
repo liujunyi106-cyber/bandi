@@ -149,7 +149,7 @@ async def test_compaction_target_driven_by_token_counter() -> None:
 
 @pytest.mark.asyncio
 async def test_compaction_split_driven_by_token_counter() -> None:
-    """契约（.6，审查项1）：MemoryCompactor 切分点必须 token 驱动——旧码用
+    """契约：MemoryCompactor 切分点必须 token 驱动——旧码用
     chars_per_token=4 × 字符累计切分，对中文（≈1 token/字）消费量放大 4×
     把本应保留的较新消息也吞进摘要压缩目标。token 驱动后，最近消息留在保留区
     （result 尾部的 keep_messages 具名消息幸存），不被压缩为摘要。"""

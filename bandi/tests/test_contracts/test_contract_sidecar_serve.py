@@ -1,4 +1,4 @@
-"""契约：`bandi serve --port 0` sidecar 动态端口回写（Day147 C-2 / ADR-42）。
+"""契约：`bandi serve --port 0` sidecar 动态端口回写。
 
 壳（Electron）视角的完整链路：spawn 子进程 → 端口出现在 `sidecar.port` 与
 stdout 结构化行 → `/ready` 探针可达 → 退出后端口文件被清理。

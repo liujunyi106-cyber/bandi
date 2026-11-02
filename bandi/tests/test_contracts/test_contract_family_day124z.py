@@ -910,7 +910,7 @@ def test_search_unified_applies_topk_limit(tmp_path: Any) -> None:
 
 
 def test_budget_field_level_mandatory_prefix_preserved(tmp_path: Any) -> None:
-    """契约（J-1d/审查项7 破坏者）：块整体放不进预算但首行标识能放进时
+    """契约：块整体放不进预算但首行标识能放进时
     必须保留该块的**必留首行**（字段级），而非整块抹除——高价值块的语义身份
     drop 整块，连 `决策：` 这样的标识字段也一并消失。"""
     h = _hierarchy(tmp_path)
@@ -926,7 +926,7 @@ def test_budget_field_level_mandatory_prefix_preserved(tmp_path: Any) -> None:
 
 
 def test_category_floor_promotes_excluded_category(tmp_path: Any) -> None:
-    """契约（J-3a，审查项3）：高 importance 分类占满 top-k 时，被挤出的分类
+    """契约：高 importance 分类占满 top-k 时，被挤出的分类
     必须保底 1 条进 top-k（替换掉高分分类的冗余最低分条目）。"""
     from bandi.memory.memory_provider import MemoryHit, _apply_category_floor
 
@@ -1241,7 +1241,7 @@ class TestL2BuilderCountBasedTruncation:
 
 
 # ==================== day124zm ====================
-# 功能：Day124z-m 契约测试——long_term prune 分区化（按 project/employee 分区独立配额）
+# 功能：-m 契约测试——long_term prune 分区化（按 project/employee 分区独立配额）
 
 
 def r6xday124zm__store(

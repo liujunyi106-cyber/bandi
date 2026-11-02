@@ -4,7 +4,6 @@
 # floor 0.2）只压排序分、不改数据；本模块在维护周期**持久化**降低 importance，
 # 让长期不被使用的事实真正沉底。二者叠加是有意为之——沉底要慢于排序降权。
 #
-# 参考源：
 #   - Hermes `plugins/memory/holographic/retrieval.py:52-71`：`score *=
 #     0.5^(age/half_life)`（同构公式；他们只做检索侧）
 #   - LeAgent `maintenance.py:144-172`：衰减 + floor 0.02 + 召回保护

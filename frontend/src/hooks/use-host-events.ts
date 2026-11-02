@@ -1,5 +1,5 @@
 /**
- * 功能：宿主级聚合流（events.host，@base docs/前端设计规划.md §8 应用内通知中心）。
+  * 功能：宿主级聚合流（events.host，@base docs/前端设计规划.md 应用内通知中心）。
  * 把两条 WS 通道的关键事件聚合为「宿主感」输出：通知中心条目（完成/出错/交互/断线补发）
  * + 会话连接状态镜像（ui store）。数据归并在 use-session-stream；本 hook 只管通知与状态。
  */
@@ -187,7 +187,7 @@ export function useHostEvents(): void {
         return;
       }
       if (frame.type === "thread_progress") {
-        // Day137b-1 插队批：员工执行过程帧 → 过程槽归并（单聊/群聊实时过程块数据源）；
+        // 插队批：员工执行过程帧 → 过程槽归并（单聊/群聊实时过程块数据源）
         // 槽键含 thread_id（= 「这一次执行」的身份，与产出回写同源）
         const data = frameData(frame);
         const inner = data.event as { type?: unknown; data?: unknown } | undefined;

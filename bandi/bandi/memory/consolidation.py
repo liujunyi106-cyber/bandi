@@ -29,7 +29,7 @@ CONSOLIDATION_MIN_RECALLS = 2
 # 但复用的经验仍值得晋升（openclaw min_unique_queries 语义）。
 # 0.5 底线：纯基准 0.4 的普通轮（无转向/无工具错误/无异常终止信号）即便被
 # n-gram 召回互相 bump 也不得走复用通道——否则普通对话会被相似问句顶成
-# 提名噪音（真机实证：20 轮普通问答被宽松召回顶到 recall=2 全线提名）。
+# 提名噪音。
 CONSOLIDATION_MIN_MULTI_RECALLS = 2
 CONSOLIDATION_MIN_MULTI_IMPORTANCE = 0.5
 CONSOLIDATION_MIN_UNIQUE_QUERIES = 2

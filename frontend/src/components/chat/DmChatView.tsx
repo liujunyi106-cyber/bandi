@@ -157,7 +157,7 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
     return () => useUiStore.getState().clearHeaderTools();
   }, [toolItems]);
 
-  // Day137b-1 插队批：员工执行过程实时块（thread_progress 帧归并——不依赖 work-items 轮询）
+  // 插队批：员工执行过程实时块（thread_progress 帧归并——不依赖 work-items 轮询）
   // 只认**本单聊线程**的槽（线程未建立时匹配空线程键）；不跨线程兜底——
   // 否则群聊/其他会话的执行过程会串进单聊视图（「回复完了还在执行」的串台源）。
   const progressNodes = useChatStore((state) => {
@@ -290,7 +290,7 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
       // 首条消息前线程 id 尚未落地：用服务端帧里的线程 id 补位，
       // 否则实时过程槽（按键含 thread）对不上本视图的槽键。
       if (!current && incoming) setThreadId(incoming);
-      // Day137b-1：员工执行过程随回复固化——**先消费槽再 setState**（updater 必须纯函数：
+      // 员工执行过程随回复固化——**先消费槽再 setState**
       // 在 updater 内消费会因 React 重放 updater 导致第二次取到空槽、过程块丢失）
       // 槽键含 thread（当时用于过滤的同一 thread_id ⇒ 过程与回复精确配对）
       const processNodes = useChatStore

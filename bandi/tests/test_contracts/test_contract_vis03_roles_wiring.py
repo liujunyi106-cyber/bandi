@@ -1,4 +1,4 @@
-# 功能：Day133 VIS-03 角色接线闭环契约（技术债清单 roles.py 项核销证据）
+# 功能：VIS-03 角色接线闭环契约（技术债清单 roles.py 项核销证据）
 # 背景：4 内置角色（admin/power_user/member/readonly）策略已可经 register_builtin_role
 # ① 白名单事实 ② register 注入引擎可证（策略真正生效路径，非纸面"已定义"）
 # ③ 未知角色拒绝 ④ 账号白名单 == 内置角色（VIS-03 对齐）⑤ 平台账号与 company org 角色域共存。

@@ -7,7 +7,7 @@ import { defineConfig } from "vitest/config";
 
 import { backendLauncher } from "./vite-backend-plugin";
 
-/** 内核（FastAPI sidecar）监听地址——与 ADR-35/42 口径一致，仅回环。 */
+/* 内核（FastAPI sidecar）监听地址——与 /42 口径一致，仅回环。 */
 const KERNEL_ORIGIN = process.env.BANDI_KERNEL_ORIGIN ?? "http://127.0.0.1:8766";
 
 export default defineConfig(({ command }) => ({
@@ -44,7 +44,7 @@ export default defineConfig(({ command }) => ({
     setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     css: false,
-    // 2026-09-23：交互密集/图谱计算类用例在系统负载高时超 5s 默认值（两次实证干扰全量门禁）——
+    // 交互密集/图谱计算类用例在系统负载高时超 5s 默认值（两次实证干扰全量门禁）
     // 全局给足余量（正常用例不受影响，仅上限放宽）
     testTimeout: 20000,
   },

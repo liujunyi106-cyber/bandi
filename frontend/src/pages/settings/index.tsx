@@ -1,6 +1,6 @@
 import { PagePlaceholder } from "@/components/layout/PagePlaceholder";
 
-/** 功能：设置页占位（设置系统 + 能力管理 CRUD）。Day143 / 。 */
+/* 功能：设置页占位（设置系统 + 能力管理 CRUD）。/。 */
 export default function SettingsPage() {
   return (
     <PagePlaceholder

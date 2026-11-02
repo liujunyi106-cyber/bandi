@@ -1,5 +1,5 @@
 /**
- * 功能：顶栏（@base docs/前端设计规划.md §8 顶栏 56px 三槽位）。
+  * 功能：顶栏（@base docs/前端设计规划.md 顶栏 56px 三槽位）。
  * 左：收缩开关（一键全部收缩/展开：左栏 + 项目面板）+ 当前会话名（+ 重命名按钮）；
  * 右：右栏开合 icon（v5：连接灯移除，与左栏切换按钮对称；WS 异常时保留文字提示）。
  * ：通知中心移至左栏底部；顶栏标题旁加重命名；
@@ -86,7 +86,7 @@ export function AppHeader({
   const status = worseStatus(wsStatus, sessionWsStatus);
   const labelKey = wsLabelKey(status);
   // 右栏开合（v5：与左栏 SidebarTrigger 同款镜像图标；仅收起态出现——展开后收起由右栏自身负责
-  // 用户拍板：单一开合入口、不与右栏「⇥ 收起」双按钮并存）
+  // 单一开合入口、不与右栏「⇥ 收起」双按钮并存）
   // .2：作用域放宽——会话与项目内员工单聊（DM 路由）均有右栏入口
   const panelOpen = usePanelStore((state) => state.open);
   const panelScope = isChatRoute

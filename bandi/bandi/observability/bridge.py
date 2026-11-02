@@ -72,7 +72,7 @@ class MetricsBridge:
         tool = data.get("tool_name", "unknown")
         call_id = data.get("tool_call_id", "") or tool
         duration_ms = data.get("duration_ms")
-        start = self._tool_start.pop(call_id, None)  # HB-P2（批 3）：弹出防无界累积
+        start = self._tool_start.pop(call_id, None)  # （批 3）：弹出防无界累积
         if duration_ms is None:
             duration_ms = (
                 time.monotonic() - (start if start is not None else time.monotonic())
@@ -84,7 +84,7 @@ class MetricsBridge:
         tool = data.get("tool_name", "unknown")
         call_id = data.get("tool_call_id", "") or tool
         duration_ms = data.get("duration_ms")
-        start = self._tool_start.pop(call_id, None)  # HB-P2（批 3）：弹出防无界累积
+        start = self._tool_start.pop(call_id, None)  # （批 3）：弹出防无界累积
         if duration_ms is None:
             duration_ms = (
                 time.monotonic() - (start if start is not None else time.monotonic())

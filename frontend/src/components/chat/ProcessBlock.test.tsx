@@ -57,7 +57,7 @@ describe("ProcessBlock", () => {
     fireEvent.click(screen.getByTestId("process-bucket-web"));
     const item = screen.getByTestId("process-item");
     expect(item).toHaveTextContent('query="竞品价格"');
-    // 2026-10-12 用户拍板：明细行右侧不再常驻耗时（12ms/800ms）——
+    // 明细行右侧不再常驻耗时（12ms/800ms）
     // 该位置本应承载展开/收起，而工具行的展开入口是点击行打开右侧详情。
     expect(item).not.toHaveTextContent("800ms");
     // 耗时仍由总行汇总呈现

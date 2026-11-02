@@ -890,7 +890,7 @@ class ToolExecutor:  # 功能：工具执行引擎（并发/串行分区执行 +
         if not needs:
             return None
 
-        # 员工工作区免审批（用户拍板 2026-10-16）：员工会话（role-session）内
+        # 员工工作区免审批：员工会话（role-session）内
         # 文件写入/bash 且目标全落在本 run 工作区内、无敏感/危险特征 → 自动放行。
         # 该判定先于 UI/headless 分叉：cache_approved 让 pipeline 的 UI 询问
         # （_check_ui）直接缓存命中放行——有交互通道时不再弹权限卡；工作区外/

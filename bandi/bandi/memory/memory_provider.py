@@ -28,7 +28,7 @@ _PROJECT_MD_SNIPPET_CHARS = 300
 
 
 def _unit_score(value: float) -> float:
-    """跨分类 score 归一化到统一 [0,1] 无量纲（项10 审查补齐）——各分类原始
+    """跨分类 score 归一化到统一 [0,1] 无量纲——各分类原始
     score 量纲不同（long_term/episodic 乘未限幅 importance 可 >1，working/
     project_md 恒为 relevance∈[0,1]）。跨分类排序前限幅到 [0,1]，杜绝某一分类
     因自身量纲上限高而系统性压过其余分类，使 score 可比（同量纲下 relevance/
@@ -203,7 +203,7 @@ def _fusion_score(meta: dict[str, Any], intent_bias: float = 0.0) -> float:
 
 
 def _apply_category_floor(hits: list[MemoryHit], limit: int) -> list[MemoryHit]:
-    """审查项3：per-category 公平保底——纯 score 排序下高 importance 分类可能
+    """项3：per-category 公平保底——纯 score 排序下高 importance 分类可能
     占满 top-k，其他有命中的分类被整体挤出。保底：每个有命中的分类至少 1 条进
     top-k（前提：有命中分类数 ≤ limit；limit 本身仍是硬上限）。
 

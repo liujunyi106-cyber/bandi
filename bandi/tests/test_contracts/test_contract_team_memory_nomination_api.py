@@ -55,7 +55,7 @@ class TestNominationHook:
         assert "SKILL.md" in pending[0].summary and "e1" in pending[0].summary
 
     def test_fail_and_escalate_not_nominated(self, tmp_store: Path) -> None:
-        """仅返工/工作成功经验提名——fail/escalate 不提名（2026-10-16 拍板）。"""
+        """仅返工/工作成功经验提名——fail/escalate 不提名。"""
         from bandi.agent.states import _nominate_team_lesson
         from bandi.memory.team_staging import TeamMemoryStaging
 

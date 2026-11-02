@@ -111,7 +111,7 @@ class AttachmentStore:
         return path.name.split("__", 1)[-1]
 
 
-# 功能：文本类附件内容提取（LLM 注记注入用——Day137b-2）
+# 功能：文本类附件内容提取
 MAX_ATTACHMENT_TEXT_BYTES = 20 * 1024
 TEXT_EXTENSIONS = frozenset(
     {

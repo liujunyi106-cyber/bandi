@@ -469,7 +469,7 @@ class TestBashTool:
 
 
 def test_rm_separated_flags_denied() -> None:
-    """审查修复：rm -r -f 分离 flag 必须 DENY（修复前交集空降 WARN）。"""
+    """修复：rm -r -f 分离 flag 必须 DENY（修复前交集空降 WARN）。"""
     from bandi.tools.bash import BashTool
 
     result = BashTool._match_patterns("rm", ["-r", "-f", "/tmp/x"])

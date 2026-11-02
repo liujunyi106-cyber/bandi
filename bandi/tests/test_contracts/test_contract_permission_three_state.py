@@ -84,7 +84,7 @@ class TestConfirmScope:
         assert store.is_granted("s-grant", "write", digest), "会话授权必须可复用（第三次仍成立）"
 
     def test_scope_once_grant_is_param_scoped_until_window_expires(self) -> None:
-        """allow_once：仅本次这一条具体调用（P0-6 混合粒度）——同参重复放行，
+        """allow_once：仅本次这一条具体调用——同参重复放行
         改参数视为另一次调用必须重新审批；跨会话不得继承，到期由短窗口回收。"""
         from bandi.tools.approval import get_approval_store, params_digest
 
@@ -143,7 +143,7 @@ class TestConfirmScope:
 
     @pytest.mark.asyncio
     async def test_confirm_once_scope_is_param_scoped(self, monkeypatch) -> None:
-        """P0-6：/confirm 的 allow_once 按参数摘要落 once——改参数必须重新审批。"""
+        """/confirm 的 allow_once 按参数摘要落 once——改参数必须重新审批。"""
         import importlib
 
         from bandi.core.user_interaction import InteractionStore

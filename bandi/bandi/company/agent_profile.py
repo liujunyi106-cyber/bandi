@@ -69,9 +69,9 @@ class CapabilityRegistryError(AgentProfileError):
 class AgentResourceType(StrEnum):
     """功能：可绑定资源类型。"""
 
-    SKILL = "skill"  # 功能：SkillCard 图卡（SD-01 轨）
+    SKILL = "skill"  # 功能：SkillCard 图卡
     GENERAL_SKILL = "general_skill"  # 功能：SKILL.md 技能包（importer 轨）
-    KNOWLEDGE_BASE = "knowledge_base"  # 功能：知识库引用（SD-06 落地前只存引用）
+    KNOWLEDGE_BASE = "knowledge_base"  # 功能：知识库引用
     TOOL = "tool"  # 功能：工具注册表内的工具名
 
 

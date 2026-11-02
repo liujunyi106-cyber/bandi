@@ -1,4 +1,4 @@
-# 功能：审查补齐契约（项11）——MemoryManager.search_all 的 long_term 检索路径
+# 功能：补齐契约（项11）——MemoryManager.search_all 的 long_term 检索路径
 # 必须路由到 FTS5（中文 2-gram recall + relevance），并在关键词命中时保持
 # 既有重要性排序、维度隔离、空召回 LIKE 兜底等可观测不变式。
 from bandi.memory.long_term import LongTermMemory, MemoryItem

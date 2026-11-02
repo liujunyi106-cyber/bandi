@@ -13,7 +13,7 @@ from __future__ import annotations
 from bandi.ontology.engine import render_tbox, stats_of
 from bandi.ontology.types import GraphView
 
-# 词表摘要的词数上限（计划 §4.2-6）
+# 词表摘要的词数上限（计划 -6）
 MAX_TBOX_TERMS = 60
 
 _EMPTY_GUIDANCE = (

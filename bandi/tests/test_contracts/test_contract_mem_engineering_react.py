@@ -71,7 +71,7 @@ class TestIngestReviewRules:
             assert verdict.score < 0.3
 
     def test_plain_long_text_without_structure_rejects(self) -> None:
-        # 语义变更（用户拍板）：1 条件命中不再提请审批——历史行为 stage 让每轮普通
+        # 语义变更：1 条件命中不再提请审批——历史行为 stage 让每轮普通
         # 对话都进审批中心（「不可能每次都直接提名」）。低置信内容直接丢弃，
         # 审批只保留给显式触达 / 无人值守背景 / 冲突裁决三类真触点。
         verdict = review_ingest("这是一个足够长的回复内容，" * 30, memory_type="business_fact")

@@ -303,7 +303,7 @@ def test_fork_new_session_has_provenance_metadata(store: SessionStore) -> None:
 
 
 def test_fork_inherits_scope_metadata(store: SessionStore) -> None:
-    """派生必须继承归属维度（project_root/project_id/origin）——Day136/137 metadata
+    """派生必须继承归属维度（project_root/project_id/origin）——/137 metadata
     扩展后派生会话不得丢失项目/秘书归属（否则刷新后从项目面板消失、跑错分区
     工具沙箱根丢失）。"""
     sid = store.create_session(

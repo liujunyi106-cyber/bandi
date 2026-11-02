@@ -1,5 +1,5 @@
 /**
- * 功能：Bandi sidecar 进程管理（Day147 C-3 / @base docs/ADR.md ADR-42）。
+  * 功能：Bandi sidecar 进程管理。
  *
  * 职责：生产模式下 Electron 壳 spawn `bandi serve --port 0`（动态端口），
  * 等待就绪后把 `http://127.0.0.1:<port>/` 交给窗口加载；退出时树杀 sidecar
@@ -36,7 +36,7 @@ export interface SidecarCommand {
 }
 
 /**
- * 功能：sidecar 启动命令解析（C-5 打包口径）。
+  * 功能：sidecar 启动命令解析。
  *
  * 优先级：
  *   ① `BANDI_SIDECAR_CMD` 显式覆盖（PyInstaller onedir exe 完整路径）；

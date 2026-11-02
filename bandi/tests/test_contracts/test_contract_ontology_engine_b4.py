@@ -1,4 +1,4 @@
-"""契约：本体推理内核（对照表 §4.1-2 / §4.2-2,3,4）。
+"""契约：本体推理内核（对照表 -2 / -2,3,4）。
 
 复刻 dsh-ontology `src/ontology.ts`（749 行全读）。行为不变式：
 
@@ -30,7 +30,7 @@
   17. `find_path` 边视为无向找最短链
   18. `stats_of` / `render_tbox`（≤60 词、顺序稳定 → prompt 缓存友好）
 
-参考源：dsh-ontology `src/ontology.ts:113-749`。
+dsh-ontology `src/ontology.ts:113-749`。
 """
 
 from __future__ import annotations

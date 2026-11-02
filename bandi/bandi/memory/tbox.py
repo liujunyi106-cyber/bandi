@@ -4,8 +4,8 @@
 # 该项目的核心设计是 **validate, not parse**——LLM 通过 tool-call 显式给三元组，
 # 代码侧不解析散文，只校验三元组是否落在已声明的词汇上。
 #
-# 我们此前是「谓词词表硬编码在抽取函数里 + 关系类型任意字符串」（技术债 AR-18：
-# "rel_type 无校验——类型枚举随 AR-18 退役，无白名单来源"）。本模块就是那个
+# 我们此前是「谓词词表硬编码在抽取函数里 + 关系类型任意字符串」
+# "rel_type 无校验——类型枚举随 退役，无白名单来源"）。本模块就是那个
 # 缺失的白名单来源：关系类型集中声明、附带 domain/range 约束、违规时给出
 # **写给模型看的可操作错误消息**（dsh-ontology `src/types.ts:120-126` 的原话：
 # "One reason an input was rejected, phrased for the model that must fix it"）。

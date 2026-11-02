@@ -1,11 +1,11 @@
-# 功能：契约（BC-010 / BC-011）沙箱须放行用户日常目录与应用数据目录
+# 功能：契约沙箱须放行用户日常目录与应用数据目录
 #
-# 产品预期（用户 2026-10-10 拍板）：桌面端形态下（安装包与应用在 D 盘、用户数据在
+# 产品预期：桌面端形态下
 # C 盘），普通会话/项目会话都应能正常读写桌面文件。
 #
 # 行为不变式（钉行为，不钉实现）：
-#   1. 应用数据目录 ~/.bandi 可解析——系统提示引导的偏好文件必须可达（BC-010）
-#   2. 桌面/文档/下载可解析（BC-011）
+# 1. 应用数据目录 ~/.bandi 可解析——系统提示引导的偏好文件必须可达
+# 2. 桌面/文档/下载可解析
 #   3. 放行范围可由 env 显式扩展（桌面端部署到自定义盘时用）
 #   4. 不放行任何系统目录（破坏者视角：沙箱缺口不得扩大到 Windows/Program Files）
 #   5. 用户目录与项目根、workspace 构成并集，不互相取代
@@ -42,13 +42,13 @@ def user_dirs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 class TestUserScopeRoots:
     def test_includes_app_data_dir(self, user_dirs: Path) -> None:
-        """功能：~/.bandi 必须进放行根——提示词引导的偏好文件在此（BC-010）。"""
+        """功能：~/.bandi 必须进放行根——提示词引导的偏好文件在此。"""
         roots = {Path(p).resolve() for p in user_scope_roots()}
 
         assert (user_dirs / ".bandi").resolve() in roots
 
     def test_includes_desktop_documents_downloads(self, user_dirs: Path) -> None:
-        """功能：桌面/文档/下载必须进放行根（BC-011）。"""
+        """功能：桌面/文档/下载必须进放行根。"""
         roots = {Path(p).resolve() for p in user_scope_roots()}
 
         for name in ("Desktop", "Documents", "Downloads"):
@@ -95,7 +95,7 @@ class TestUserPathsResolvable:
         assert got == (user_dirs / ".bandi" / "preferences.md").resolve()
 
     def test_desktop_file_resolvable(self, user_dirs: Path) -> None:
-        """功能：端到端——桌面文件可读写解析（BC-011 核心）。"""
+        """功能：端到端——桌面文件可读写解析。"""
         got = resolve_within_workspace("~/Desktop/menu.txt")
 
         assert got == (user_dirs / "Desktop" / "menu.txt").resolve()

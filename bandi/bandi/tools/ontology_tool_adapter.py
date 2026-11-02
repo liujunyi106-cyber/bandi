@@ -21,9 +21,9 @@ _DESTRUCTIVE = {"ontology_retract"}
 
 
 def _normalize_schema(node: Any) -> Any:
-    """功能：递归把参考源的 `required: True` 标注转成 JSON Schema 的顶层数组。
+    """功能：递归把的 `required: True` 标注转成 JSON Schema 的顶层数组。
 
-    参考源用 `{name: {type, required: true, description}}` 的扁平标注；JSON Schema
+    用 `{name: {type, required: true, description}}` 的扁平标注；JSON Schema
     要求 `required` 是数组且只出现在对象节点顶层——故须逐层下钻转换。
     """
     if isinstance(node, list):

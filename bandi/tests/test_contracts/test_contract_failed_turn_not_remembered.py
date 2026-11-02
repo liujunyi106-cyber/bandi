@@ -17,7 +17,7 @@ from bandi.agent.base import TerminalReason
 from bandi.core.agent_runner import _EPISODIC_ELIGIBLE_TERMINALS, _persist_memory
 from bandi.memory.ingest_review import review_episodic_ingest, review_ingest
 
-# L1 真机取样的两条污染样本（消息中心 episodic_consolidation 条目原文）
+# L1 取样的两条污染样本（消息中心 episodic_consolidation 条目原文）
 POLLUTED_MODEL_ERROR = (
     "你好呀，你能帮我做什么？ → 回答: all LLM candidates failed "
     "(capability + config chain): Client error '400 Bad Request' for url "

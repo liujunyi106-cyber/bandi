@@ -1,5 +1,5 @@
 /**
- * 功能：过程消息（@base docs/前端设计规划.md §8 / 原型）——无卡片
+  * 功能：过程消息（@base docs/前端设计规划.md / 原型）——无卡片
  * 字段行 + 多级折叠：总行（过程消息 · 状态 · 总耗时）→ 分类行（思考/联网搜索/调用 Skills/
  * 调用知识库/其他工具，×N）→ 明细行（具体项 + 耗时）；知识条目一行虚化 + 「展示」按钮 →
  * 约 100px 滚动内容区。执行中 spinner；完成灰色 ✓；进行中自动展开/完成 1.5s 自动收起。
@@ -502,7 +502,7 @@ export function ProcessBlock({
     <div
       // [&_svg]:stroke-[1.75]：全块图标描边统一（CSS 覆盖 SVG 表现属性，lucide 默认 2 在
       // 12–14px 下偏重）——一处生效，覆盖桶图标 / 状态图标 / 折叠箭头
-      // select-none：过程块整体禁止文本选中（点击总行/思考行不出现选区高亮，用户拍板）
+      // select-none：过程块整体禁止文本选中
       className="mb-1.5 w-full min-w-0 select-none [&_svg]:stroke-[1.75]"
       data-testid="process-block"
     >

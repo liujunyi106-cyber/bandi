@@ -55,7 +55,7 @@ _SRC = _REPO / "bandi"  # ...\bandi\bandi  (production package)
 _CONFIG_FILE = "core/config.py"
 
 # 豁免清单：字段 → 理由。新增条目须先实证（勿用来掩盖真死配置）。
-# G9（2026-09-17）：原 4 项（system.temp_dir / safety.l2_threshold /
+# 原 4 项
 # safety.block_threshold / llm.budget_limit）均已真接线，审计 STALE 提示后移除；
 # 机制保留备将来「整体消费不逐字段引用」型字段登记。
 ALLOWLIST: dict[str, str] = {}

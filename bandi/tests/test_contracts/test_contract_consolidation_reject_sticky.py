@@ -52,7 +52,7 @@ def _seeded(tmp_path, *, episode_id: str = "rej-1"):
 
 
 def test_rejected_episode_not_renominated(tmp_path, pending_store) -> None:
-    """核心不变式：驳回后重扫不得再提名（复现「删了又回来」真机缺陷）。"""
+    """核心不变式：驳回后重扫不得再提名。"""
     episodic, long_term = _seeded(tmp_path, episode_id="rej-1")
     report = consolidate_episodes(episodic, long_term)
     assert report.staged == ["rej-1"]
@@ -154,7 +154,7 @@ def test_reject_endpoint_marks_episode(tmp_path, pending_store, monkeypatch) -> 
 
 
 def test_turn_direct_write_blocks_nomination(tmp_path, pending_store) -> None:
-    """直写去重：该轮已有 turn: 直写条目 → 草稿不得再提名（真机双份重复防护）。"""
+    """直写去重：该轮已有 turn: 直写条目 → 草稿不得再提名。"""
     episodic, long_term = _seeded(tmp_path, episode_id="dup-1")
     episodic.record(
         replace(episodic.get("dup-1"), user_input="我特别喜欢数字 8 和靛蓝色，记住啦。")

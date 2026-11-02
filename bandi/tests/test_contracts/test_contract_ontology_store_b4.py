@@ -1,4 +1,4 @@
-"""契约：本体持久层（对照表 §4.1-3,4 / §4.2-5,7）。
+"""契约：本体持久层（对照表 -3,4 / -5,7）。
 
 复刻 dsh-ontology `src/spec.ts`（122 行，三表）+ `src/store.ts`（296 行，写入语义）。
 
@@ -24,7 +24,7 @@
      / 有事实用它作谓词 / 别的关系声明它是 inverse），并给出点名依赖者的文案
  12. 撤回单条事实：派生态无存储键，前提消失后自然不成立
 
-参考源：dsh-ontology `src/spec.ts:109-119`、`src/store.ts:75-296`。
+dsh-ontology `src/spec.ts:109-119`、`src/store.ts:75-296`。
 """
 
 from __future__ import annotations
@@ -297,7 +297,7 @@ class TestCapacityGuards:
         assert "撤回" in message or "配置" in message, f"文案须给出下一步：{message}"
 
     def test_defaults_match_plan(self) -> None:
-        """计划 §4.2 指定的容量守卫：20000 事实 / 100000 实体。"""
+        """计划 指定的容量守卫：20000 事实 / 100000 实体。"""
         assert DEFAULT_MAX_FACTS == 100000 or DEFAULT_MAX_FACTS == 20000
         assert DEFAULT_MAX_ENTITIES in (100000, 20000)
 

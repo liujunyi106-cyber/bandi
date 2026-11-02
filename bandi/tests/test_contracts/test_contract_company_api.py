@@ -1,4 +1,4 @@
-# 功能：Day132b FE-01 company/org API 面契约——员工 CRUD / 组织配置 / WorkItem / Talent / 群聊
+# 功能：company/org API 面契约——员工 CRUD / 组织配置 / WorkItem / Talent / 群聊
 # 背景：后端 company 能力全现成（OrgEngine/TalentMarket/WorkItemStore/CommunicationManager）
 # 契约钉「行为结果/最终产物」：写→读回一致、org.json 持久化、非法入参 4xx。
 from __future__ import annotations
@@ -320,7 +320,7 @@ class TestTalentHire:
 
 class TestApiDispatcherPersistCallable:
     def test_org_change_auto_persists_to_org_json(self, tmp_path: Path) -> None:
-        """AR-14：API _get_company_dispatcher 装配后，org 变更必须自动落盘 org.json
+        """API _get_company_dispatcher 装配后，org 变更必须自动落盘 org.json
         ——register_* 触发 _persist_callable（与 CLI cli/company.py 装配一致）
         不得依赖端点各自显式 save_org（易漏）。"""
         import json

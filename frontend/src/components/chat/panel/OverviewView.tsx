@@ -279,7 +279,7 @@ function SessionOverview({ sessionId }: { sessionId: string }) {
     setSop(null);
     setWorkItems(null);
     // 产物数据源按作用域分流：项目会话（群聊）用**项目聚合**（含全部员工执行会话
-    // 产物——每名员工跑完即出现一条，真机用户要求）；无项目/秘书会话回落会话级。
+    // 产物——每名员工跑完即出现一条，用户要求）；无项目/秘书会话回落会话级。
     const artifactsRequest =
       projectId && !isSecretary
         ? panelApi.projectArtifacts(projectId).then((result) => result.artifacts)
@@ -311,7 +311,7 @@ function SessionOverview({ sessionId }: { sessionId: string }) {
         .then(async (result) => {
           const project = result.projects.find((item) => item.project_id === projectId);
           const memberRoles = new Set((project?.members ?? []).map((member) => member.role_id));
-          // 技能数 = **团队员工绑定技能合计**（用户拍板 2026-10-16；此前为全局技能库存）
+          // 技能数 = **团队员工绑定技能合计**
           void companyApi
             .employees()
             .then((empResult) => {

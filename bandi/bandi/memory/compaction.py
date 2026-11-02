@@ -238,7 +238,7 @@ class MemoryCompactor:
     def _cut_summary(self, text: str, reserve_chars: int = 0) -> str:
         """功能：摘要输出截断——token 预算优先，显式字符兜底其次（两者取更严格）；
         发生截断时预留预算追加「不完整检查点」标记（审计 2.3：截断不得无感）。
-        RF-17：reserve_chars 为尾部附录预留（原预算不含附录，极端输入总产物超限）。"""
+        reserve_chars 为尾部附录预留（原预算不含附录，极端输入总产物超限）。"""
         marker = INCOMPLETE_CHECKPOINT_MARKER
         marker_cost = TokenCounter.count(marker)
         reserve = max(0, reserve_chars)

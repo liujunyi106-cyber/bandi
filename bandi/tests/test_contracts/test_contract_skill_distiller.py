@@ -298,7 +298,7 @@ async def test_distill_level1_normal_json_builds_draft_and_persists(
         "反馈最终结果",
     ]
     assert response.draft_skill.nodes[-1].type == "response"
-    assert provider.call_count == 2  # distill L1(1) + SD-02b 反思(1)，反思失败时保留草稿
+    assert provider.call_count == 2  # distill L1(1) + 反思(1)，反思失败时保留草稿
 
     saved = os.path.join(tmp_skills_dir, "sk_ship_order.card.json")
     assert os.path.isfile(saved), f"draft 未落盘: {saved}"
@@ -337,7 +337,7 @@ async def test_distill_level2_repair_succeeds_after_bad_json(tmp_skills_dir) -> 
     distiller = SkillDistiller(provider=provider, skills_dir=tmp_skills_dir)
     response = await distiller.distill(_request(), model_config=LLMConfig())
 
-    assert provider.call_count == 3  # L1(1) + repair(1) + SD-02b 反思(1)
+    assert provider.call_count == 3  # L1(1) + repair(1) + 反思(1)
     assert response.draft_skill.skill_id == "sk_ship_order"
     assert len(response.draft_skill.nodes) >= 3  # 两个流程节点 + 闭环 response 节点
 
@@ -345,7 +345,7 @@ async def test_distill_level2_repair_succeeds_after_bad_json(tmp_skills_dir) -> 
 @pytest.mark.asyncio
 async def test_distill_level3_staged_builds_outline_after_two_failures(tmp_skills_dir) -> None:
     """契约（staged）：正常+repair 均失败 → 分段生成
-    （outline → 逐节点扩写 → 终审）；staged 阶段输出合法大纲 → 产物仍为可构建完整卡。"""
+    staged 阶段输出合法大纲 → 产物仍为可构建完整卡。"""
     from bandi.skills.distiller import SkillDistiller
 
     outline_payload: dict[str, Any] = {
@@ -368,7 +368,7 @@ async def test_distill_level3_staged_builds_outline_after_two_failures(tmp_skill
 
     assert (
         provider.call_count >= 5
-    )  # L1(1) + repair(2) + outline(1) 起步 + SD-02b 反思(1)；后续扩写/终审若成功继续累加
+    )  # L1(1) + repair(2) + outline(1) 起步 + 反思(1)；后续扩写/若成功继续累加
     assert response.draft_skill.skill_id == "sk_ship_order"
     assert len(response.draft_skill.nodes) >= 2
     assert response.draft_skill.start_node_id in {n.node_id for n in response.draft_skill.nodes}
@@ -518,7 +518,7 @@ async def test_distill_level1_survives_non_numeric_edge_priority(tmp_skills_dir)
     distiller = SkillDistiller(provider=provider, skills_dir=tmp_skills_dir)
     response = await distiller.distill(_request(), model_config=LLMConfig())
 
-    assert provider.call_count == 2  # L1(1) + SD-02b 反思(1)，L1 成功即不再走降级链
+    assert provider.call_count == 2  # L1(1) + 反思(1)，L1 成功即不再走降级链
     assert response.draft_skill.skill_id == "sk_ship_order"
     assert not any("最低可运行草稿" in w for w in response.warnings)
     assert all(
@@ -591,7 +591,7 @@ async def test_repair_receives_previous_raw_output(tmp_skills_dir) -> None:
     distiller = SkillDistiller(provider=provider, skills_dir=tmp_skills_dir)
     response = await distiller.distill(_request(), model_config=LLMConfig())
 
-    assert provider.call_count == 3  # L1(1) + repair(1) + SD-02b 反思(1)
+    assert provider.call_count == 3  # L1(1) + repair(1) + 反思(1)
     repair_input = provider.calls[1]["messages"][1]["content"]
     assert bad_output in repair_input, "repair 首轮必须携带上一轮原始输出"
     assert response.draft_skill.skill_id == "sk_ship_order"

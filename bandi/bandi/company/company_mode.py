@@ -969,7 +969,7 @@ class CompanyDispatcher:
             logger.debug("deadlock check failed: %s", e)
 
     def _tick_peer_wait_refresh(self, report: DispatcherReport) -> None:
-        """Day125-peer wait 解析接入 tick——WAITING_FOR_PEER 卡批量解析
+        """peer wait 解析接入 tick——WAITING_FOR_PEER 卡批量解析
         （回复到达解除回 READY / 超时升级 manager / 超时升级 meeting）。
         此前 refresh_waiting_tasks 生产零调用，等待卡永不流转。解除与
         meeting 升级（metadata 变更）均落库。"""
@@ -2664,7 +2664,7 @@ class CompanyDispatcher:
                 return
 
     def _maybe_record_project_delivery(self, item: WorkItem) -> None:
-        """功能：交付卡（turn_type=DELIVER）进入终态即触发项目反思与技能晋升（OP-27）。
+        """功能：交付卡（turn_type=DELIVER）进入终态即触发项目反思与技能晋升。
 
         边界：审批型交付卡停在 AWAITING_MANAGER_REVIEW 时不算交付完成（终态才触发）。
         """

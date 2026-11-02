@@ -1,5 +1,5 @@
 /**
- * 功能：chat-store 行为测试（Day136 keyed 增量归并 / 多会话隔离 / 草稿采纳 / 通知）。
+  * 功能：chat-store 行为测试。
  * 钉行为不钉实现：断言渲染产物（消息内容与状态），不依赖 React 渲染。
  */
 import { beforeEach, describe, expect, it } from "vitest";
@@ -503,7 +503,7 @@ describe("Day137b-1 插队批（员工执行过程 thread_progress）", () => {
   });
 
   it("破坏者：done/error 终态必须收尾所有 running 节点（快照回放不得残留「正在执行」）", () => {
-    // 真机：回复已落地/失败 + 页面刷新后，过程块仍显示「正在执行」——
+    // 回复已落地/失败 + 页面刷新后，过程块仍显示「正在执行」
     // 根因是 done/error 落入 default 不收尾，回放的 running 节点永久悬浮。
     let nodes: ProcessNode[] = [];
     nodes = applyProgressNode(nodes, { type: "thinking_delta", data: { text: "想" } });

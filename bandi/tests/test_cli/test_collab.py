@@ -1,4 +1,4 @@
-# 功能：Day122t collab CLI 测试——send/read/reply/meeting/colleagues + env 契约 + JSON 输出
+# 功能：collab CLI 测试——send/read/reply/meeting/colleagues + env 契约 + JSON 输出
 
 import json
 from pathlib import Path

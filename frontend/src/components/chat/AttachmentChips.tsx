@@ -1,5 +1,5 @@
 /**
- * 功能：附件 chips（Composer 草稿 / 用户消息内展示——Day137b-2）。
+  * 功能：附件 chips。
  * 三态：uploading（spinner）/ done / error（红字）；可选移除按钮。
  */
 import { FileText, Loader2, X } from "lucide-react";

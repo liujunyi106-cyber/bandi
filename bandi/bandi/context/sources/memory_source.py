@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 _MEMORY_ITEM_LIMIT = 5
 _MEMORY_ITEM_CHARS = 200
 _ENRICHED_ENTITY_LIMIT = 3
-# AR-17（ADJ-04 方案 1 过渡）：focused 规则打分——标题命中 ×3、正文命中 ×1、警示词 +0.5
+# focused 规则打分——标题命中 ×3、正文命中 ×1、警示词 +0.5
 _FOCUSED_HEADING_WEIGHT = 3.0
 _FOCUSED_BODY_WEIGHT = 1.0
 _FOCUSED_WARNING_BONUS = 0.5
@@ -59,7 +59,7 @@ def _query_terms(query: str) -> list[str]:
 
 def _focused_score(entry: object, terms: list[str]) -> float:
     """功能：focused 规则打分——标题面（key/title）命中 ×3、正文命中 ×1
-    警示词（清单/警告/坑/风险）命中共 +0.5（ADJ-04 方案 1）。"""
+    警示词（清单/警告/坑/风险）命中共 +0.5。"""
     metadata = getattr(entry, "metadata", None) or {}
     key = str(getattr(entry, "key", "") or "")
     title = str(metadata.get("title") or "")

@@ -1,7 +1,7 @@
 /**
- * 功能：会话页路由分流（@base docs/前端设计规划.md §6 会话行 IA）。
+  * 功能：会话页路由分流（@base docs/前端设计规划.md 会话行 IA）。
  * 默认 = 对话 ChatView（项目会话，团队群聊也由此承载——.3 已删群聊独立视图）；
- * `?view=dm&target=` 员工单聊基础视图（Day137 完整增强）。
+  * `?view=dm&target=` 员工单聊基础视图。
  */
 import { useSearchParams } from "react-router-dom";
 

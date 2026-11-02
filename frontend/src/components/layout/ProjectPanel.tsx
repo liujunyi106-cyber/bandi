@@ -969,7 +969,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
     ) : null;
 
   /** 功能：头像行内置「＋新建会话」（聊天气泡加号）——与「更多」同口径：
-   * 平时隐形，条目悬浮 / 聚焦时浮现（2026-10-19 拍板）。 */
+    * 平时隐形，条目悬浮 / 聚焦时浮现。 */
   const newSessionButton = (scope: string, onNew: () => void) => {
     const hoverKey = `entry:${scope}`;
     return (
@@ -994,7 +994,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
   };
 
   /** 功能：头像行内置「更多操作 ⋯」（三类行统一入口，菜单内容按行类型区分）。
-      2026-10-09 用户拍板：与会话行同口径——平时隐形，条目悬浮 / 聚焦时浮现。 */
+       * 与会话行同口径——平时隐形，条目悬浮 / 聚焦时浮现。 */
   const moreMenu = (scope: string, items: React.ReactNode) => {
     const hoverKey = `entry:${scope}`;
     return (

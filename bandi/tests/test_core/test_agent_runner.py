@@ -45,7 +45,7 @@ class TestAssistantPersistContent:
         assert _assistant_persist_content("pineapple-77", "pineapple-77") == "pineapple-77"
 
     def test_tool_abort_keeps_model_output(self) -> None:
-        """工具中止终态（BC-006）：系统文案不落库，模型已送达的原话要留存。"""
+        """工具中止终态：系统文案不落库，模型已送达的原话要留存。"""
         got = _assistant_persist_content(
             "工具 read 已被暂停——已中止本轮。", "好的老板，我已经记住了！"
         )
@@ -471,7 +471,7 @@ class TestRunAgentTurn:
 
     @pytest.mark.asyncio
     async def test_session_title_passed_to_store(self, tmp_path: Any) -> None:
-        """Day136：run_agent_turn 的 session_title 透传到 create_session（新会话标题一次写入）。"""
+        """run_agent_turn 的 session_title 透传到 create_session（新会话标题一次写入）。"""
         from pathlib import Path
 
         with patch("pathlib.Path.home", return_value=Path(str(tmp_path))):

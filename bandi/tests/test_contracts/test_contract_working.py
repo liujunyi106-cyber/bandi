@@ -328,7 +328,7 @@ def test_working_search_covers_error_text(tmp_path: Any) -> None:
 
 
 def test_tool_history_dedupes_by_invocation_id(tmp_path: Any) -> None:
-    """契约（P7a，审查修复）：同一 (session_id, invocation_id) 重复写入只保留最新一条——
+    """契约：同一 (session_id, invocation_id) 重复写入只保留最新一条
     checkpoint 恢复/同 turn 重跑导致 append_tool 重复调用时不污染 tool history。"""
     from bandi.memory.working import ToolInvocation
 
@@ -385,7 +385,7 @@ def test_tool_history_different_invocation_ids_kept(tmp_path: Any) -> None:
 
 
 def test_tool_history_limit_returns_latest_records(tmp_path: Any) -> None:
-    """契约（AR-21 修复的破坏者视角）：limit<记录数时必须返回最新 N 条
+    """契约：limit<记录数时必须返回最新 N 条
     而非 ASC 语义下的最旧 N 条（旧实现 ORDER BY id ASC LIMIT n 取早期记录）。"""
     from bandi.memory.working import ToolInvocation
 

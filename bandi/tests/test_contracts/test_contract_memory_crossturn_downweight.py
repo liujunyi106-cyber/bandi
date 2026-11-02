@@ -1,4 +1,4 @@
-# 功能：MemoryContextSource 跨轮注入降权契约（审查项 #8）
+# 功能：MemoryContextSource 跨轮注入降权契约
 """
 首轮无降权：fresh session 下所有未注入记忆保持原 score 顺序（降权 no-op）
 跨轮降权：已注入过的记忆（同 session、同 entry.key）在后续轮排到未注入

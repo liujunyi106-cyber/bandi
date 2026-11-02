@@ -450,7 +450,7 @@ class AgentLoop:  # 功能：Agent 主循环（状态机驱动的思考→工具
         fairness = getattr(result, "fairness_report", None)
         # intent_hint / domain_route 只作观测、不驱动路由，但必须**落盘**——
         # 评测的「意图命中率 / domain 精度」靠 events 对照用例标注集算，
-        # 不落盘这两项就没有基准可比（真机 L1 实测：算得出来却查不到）。
+        # 不落盘这两项就没有基准可比。
         domain_route = getattr(result, "domain_route", None)
         await ctx.bus.emit(
             Event(

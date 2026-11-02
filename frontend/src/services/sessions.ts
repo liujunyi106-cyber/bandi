@@ -60,7 +60,7 @@ export interface InteractionFrame {
   session_id: string;
   kind: string;
   payload: Record<string, unknown>;
-  /** 剩余倒计时秒数（Day137b-1；缺省 = 后端未提供，不显示倒计时）。 */
+  /* 剩余倒计时秒数。 */
   expires_in?: number;
   /** 孤儿标记（重放端点标注：执行已结束、进程内无挂起方——答复无处唤醒）。 */
   orphaned?: boolean;
@@ -143,7 +143,7 @@ export const sessionsApi = {
     api.post<{ queued: boolean }>(`/sessions/${sessionId}/steer`, { message }),
   inject: (sessionId: string, message: string) =>
     api.post<{ injected: boolean }>(`/sessions/${sessionId}/inject`, { message }),
-  /** 功能：强制压缩会话（单块全量摘要 → fork 新会话；原会话保留——Day137b-2）。 */
+  /* 功能：强制压缩会话。 */
   compact: (sessionId: string) =>
     api.post<{
       compacted: boolean;

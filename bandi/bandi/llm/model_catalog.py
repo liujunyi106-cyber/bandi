@@ -370,14 +370,14 @@ BUILTIN_MODELS: dict[str, ModelSpec] = {
     "space-bunny-free": ModelSpec(
         name="space-bunny-free",
         provider="opencode",
-        # 实测下限：374188 prompt_tokens 请求成功（2026-10-09）。800K 探针服务端
-        # 直接断连且未给出上下文超限错误，原因不明 ⇒ 保守登记实测下限而非臆造上限。
+        # 下限：374188 prompt_tokens 请求成功。800K 探针服务端
+        # 直接断连且未给出上下文超限错误，原因不明 ⇒ 保守登记下限而非臆造上限。
         context_window=400000,
         max_output_tokens=32768,
-        # 服务端返回 reasoning_content（实测），但思考开关不可控 ⇒ 不列 effort 档位，
+        # 服务端返回 reasoning_content，但思考开关不可控 ⇒ 不列 effort 档位
         # 前端据 supports_reasoning=False 隐藏「思考」挡位。
         supports_reasoning=False,
-        # 端点零费用（免费档实测可用），故定价为 0——不计入成本台账，避免污染评测成本口径。
+        # 端点零费用，故定价为 0——不计入成本台账，避免污染评测成本口径。
         pricing=ModelPricing(0, 0),
     ),
     "mock": ModelSpec(

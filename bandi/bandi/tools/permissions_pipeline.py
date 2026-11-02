@@ -29,7 +29,7 @@ RESERVED_LAYERS: tuple[str, ...] = ("ui", "external")
 TOTAL_LAYERS: int = len(ACTIVE_LAYERS) + len(RESERVED_LAYERS)
 
 # 此处缺省必须与其保持一致（契约 test_contract_ask_tools_single_source 钉死相等）。
-# memory_assert 是结构化三元组直写长期记忆——与本体写入同走权限卡（用户拍板 2026-10-14）
+# memory_assert 是结构化三元组直写长期记忆——与本体写入同走权限卡
 _ASK_TOOLS: set[str] = {"bash", "write", "ontology_define", "ontology_assert", "memory_assert"}
 
 # 触发询问的风险级默认值——唯一真实默认源：core/config.py PermissionsConfig.ask_risk_levels。
@@ -129,7 +129,7 @@ _GIT_CONFIG_GLOBAL_RE = re.compile(r"\bgit\b[^|;&<>]*?\bconfig\b[^|;&<>]*?--(?:g
 
 
 def _expand_home_token(token: str) -> str:
-    """功能：RF-1——写目标 token 的 home 展开（~ / $HOME 前缀）；含其他变量/
+    """功能：——写目标 token 的 home 展开（~ / $HOME 前缀）；含其他变量/
     命令替换的目标原样返回（由 _check_shell_safety fail-closed 拒绝）。"""
     t = token.strip()
     home = str(Path.home())
@@ -146,9 +146,9 @@ def _expand_home_token(token: str) -> str:
 
 
 def extract_shell_write_targets(command: str) -> list[str]:
-    """功能：提取 shell 命令的落盘写目标（6.7 + 清收）——重定向目标
+    """功能：提取 shell 命令的落盘写目标——重定向目标
     cp/mv/tee 等命令的目标位置参数、sed -i 文件参数、dd of= 目标、git 全局配置；
-    去重保序（沙箱校验消费）；RF-1：引号包裹目标提取 + 波浪号/$HOME 展开归一。"""
+    去重保序（沙箱校验消费）；：引号包裹目标提取 + 波浪号/$HOME 展开归一。"""
     if not command:
         return []
     targets: list[str] = []

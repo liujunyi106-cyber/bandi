@@ -221,7 +221,7 @@ describe("NotificationMenu · 团队记忆待确认", () => {
   });
 });
 
-/** 待批准分区与「清空通知」的动作语义——真机 61 条批量复现后收敛的行为契约。 */
+/* 待批准分区与「清空通知」的动作语义——61 条批量复现后收敛的行为契约。 */
 describe("NotificationMenu · 待批准分区与清空动作", () => {
   beforeEach(() => {
     vi.clearAllMocks();

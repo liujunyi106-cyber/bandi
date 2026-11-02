@@ -107,7 +107,7 @@ def test_quantity_trigger_counts_message_evidence(ctx: ExecutionContext) -> None
     assert v.verification_required(ctx) is True, "消息窗口工具数达标必须触发 VER"
 
 
-# ── 生产主链路端到端：工具→综合轮 VER 不得被绕过（§6a 功能验证） ────────────
+# ── 生产主链路端到端：工具→综合轮 VER 不得被绕过（功能验证） ────────────
 
 
 class _RecordingBus(EventBus):

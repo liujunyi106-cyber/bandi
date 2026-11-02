@@ -1,5 +1,5 @@
 /**
- * 功能：右栏 v5 状态机测试（开合/页签/联动/宽度/自动展开记忆——@base docs/前端设计规划.md §8）。
+  * 功能：右栏 v5 状态机测试（开合/页签/联动/宽度/自动展开记忆——@base docs/前端设计规划.md）。
  */
 import { beforeEach, describe, expect, it } from "vitest";
 

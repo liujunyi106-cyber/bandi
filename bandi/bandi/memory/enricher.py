@@ -1,4 +1,4 @@
-# 功能：记忆本体增强——实体抽取 + 图谱只读事实/矛盾查询（ADR-33 不建重图）
+# 功能：记忆本体增强——实体抽取 + 图谱只读事实/矛盾查询
 from __future__ import annotations
 
 import logging

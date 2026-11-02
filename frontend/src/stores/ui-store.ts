@@ -1,5 +1,5 @@
 /**
- * 功能：全局 UI 态（zustand，@base docs/前端设计规划.md §2 状态管理 / §8 持久化）。
+  * 功能：全局 UI 态（zustand，@base docs/前端设计规划.md 状态管理 / 持久化）。
  * 只放 UI 全局态（语言、侧栏、WS 状态指示）+ 顶栏会话工具栏槽（会话视图发布
  * 顶栏消费的临时槽位，不持久化、不复制业务数据源）；业务数据走服务层 hooks。
  * 持久化 key 前缀 `bandi:`。
@@ -17,7 +17,7 @@ export interface HeaderToolItem {
   content: string;
 }
 
-/** 功能：对话模式（后端 resolve_initial_mode 双模式；Day137b-1 Composer 切换器）。 */
+/* 功能：对话模式。 */
 export type ChatMode = "execute" | "plan";
 
 /** 功能：项目面板宽度（拍板拖拽； 拍板自适应——override 语义）。 */
@@ -45,13 +45,13 @@ interface UiState {
   sidebarCollapsed: boolean;
   /** 内核 WS 当前状态（顶栏/状态栏指示用）。 */
   wsStatus: WsStatus;
-  /** 会话级 WS 状态（Day136 第二条常驻连接；顶栏并示）。 */
+  /* 会话级 WS 状态。 */
   sessionWsStatus: WsStatus;
   /** 对话模式（plan=只读规划 / execute=执行；持久记忆用户选择）。 */
   chatMode: ChatMode;
-  /** 会话级模型覆盖（控制条；空 = 跟随全局——Day137b-2）。 */
+  /* 会话级模型覆盖。 */
   sessionModel: string;
-  /** 会话级思考模式（控制条；空 = 关闭——Day137b-2）。 */
+  /* 会话级思考模式。 */
   sessionThinking: string;
   /**
    * 左栏「任务」段折叠态。常驻 store：左栏 offcanvas 折叠会卸载上下文列表区

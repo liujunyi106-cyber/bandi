@@ -910,7 +910,7 @@ async def on_thinking(
                 else 0
             )
             # 请求真实开销 = messages + 工具 schema（对齐 cc-haha `calculateContextBudget` 口径）。
-            # 只算 messages 会让 estimated 低估约一半（实测 8950 vs reported 19830，工具占 55%），
+            # 只算 messages 会让 estimated 低估约一半
             # 并把这个偏差喂给校准观测对（record_observation）→ 校准系数被推到 2.2 倍补偿。
             estimated += tool_schema_tokens
             # system 消息承载，此值把「记忆占用」从 system 总量中拆出可观测）
@@ -1587,7 +1587,7 @@ async def _retry_reasoning_only(
     from bandi.llm.strategy import FallbackEngine, ProviderChainExhaustedError
 
     # 链来源取 bandi_config（覆盖后主配置）——ctx.config 是 AgentConfig（无 llm
-    # 字段），从它取链恒空 ⇒ 换模型重试退化为同模型重发（真机实证：日志恒
+    # 字段），从它取链恒空 ⇒ 换模型重试退化为同模型重发（实证：日志恒
     # "fallback <当前模型>" 且随 bearer 空 key 连败）。
     llm_cfg = getattr(bandi_config, "llm", None) or getattr(
         getattr(ctx, "config", None), "llm", None
@@ -2599,7 +2599,7 @@ async def on_reflecting(
 
 _LESSON_MAX_CHARS = 200
 _COMPRESSION_FALLBACK_RISK_THRESHOLD = 3
-# 提名显著性阈值（参考源权重口径）——低于阈值不提名，避免每轮刷屏
+# 提名显著性阈值——低于阈值不提名，避免每轮刷屏
 _NOMINATION_THRESHOLD = 0.35
 
 # 功能：纯文本轮（未触发验证闸门）的合成判定——action=pass 表示「无需返工」

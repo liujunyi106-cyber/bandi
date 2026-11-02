@@ -75,7 +75,7 @@ def test_skill_frontmatter_fields(tmp_path: Path) -> None:
     assert skill.fork is True
     assert skill.model == "deepseek-flash"
     assert skill.effort == "high"
-    # paths 无消费方：不再解析进模型（未知 frontmatter 键按忽略处理）
+    # paths 不再解析进模型（未知 frontmatter 键按忽略处理）
     assert not hasattr(skill, "paths")
 
     registry = SkillRegistry()

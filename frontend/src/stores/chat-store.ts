@@ -1,6 +1,6 @@
 /**
- * 功能：会话域全局状态（zustand，@base docs/前端设计规划.md §8 交互规范）。
- * 核心机制（Day136 方案 A 拍板）：
+  * 功能：会话域全局状态（zustand，@base docs/前端设计规划.md 交互规范）。
+  * 核心机制
  * - keyed 增量归并：发送时开 pending 槽（`<sessionId>:pending:<ts>`），content_delta 累积
  * 工具事件挂过程节点、done/error 定稿——按槽定位，多会话保留（流式期间切会话不串流）；
  * - 会话/消息缓存在 store；通知中心（events.host 聚合）与挂起交互同店；
@@ -14,7 +14,7 @@ import type { GroupRoundSnapshot } from "@/services/company";
 import { sessionsApi } from "@/services/sessions";
 import type { InteractionFrame, SessionEntry, SessionSummary } from "@/services/sessions";
 
-/** CoT 思考节点（Day137 工具时间线：thinking_delta 增量累积）。 */
+/* CoT 思考节点。 */
 export interface ProcessThoughtNode {
   id: string;
   kind: "thought";
@@ -31,7 +31,7 @@ export interface ProcessThoughtNode {
   startedAt?: number;
 }
 
-/** 工具调用节点（Day137：携带输入摘要/实时进度/错误态；-3b：+toolCallId 重试定位/skipped 本地跳过态）。 */
+/* 工具调用节点。 */
 /** 功能：知识库引用（knowledge_search.citations 的展示子集）。 */
 export interface CitationRef {
   id?: string;
@@ -66,7 +66,7 @@ export interface ProcessToolNode {
   children?: ProcessNode[];
 }
 
-/** Skill 使用组节点（Day137：skill_injected 事件归并——「Skill 已激活 · N 次查阅」）。 */
+/* Skill 使用组节点。 */
 export interface ProcessSkillNode {
   id: string;
   kind: "skill";
@@ -139,7 +139,7 @@ function settleThought(node: ProcessThoughtNode, now: number = Date.now()): Proc
   return { ...rest, status: "success", durationMs };
 }
 
-/** 任务台账条目（TASK_LEDGER_UPDATED 帧 / session metadata.task_ledger；Day137b-1）。 */
+/* 任务台账条目。 */
 export interface TaskLedgerItem {
   id: string;
   title: string;
@@ -147,7 +147,7 @@ export interface TaskLedgerItem {
   status: "pending" | "in_progress" | "completed";
 }
 
-/** 员工执行过程事件（thread_progress 帧内层 event——与会话帧同构；Day137b-1 插队批）。 */
+/* 员工执行过程事件。 */
 export interface EmployeeProgressEvent {
   type: string;
   data?: Record<string, unknown>;
@@ -305,7 +305,7 @@ export function applyProgressNode(
     }
     case "done":
     case "error": {
-      // 终态收尾（真机实证：done/error 落入 default 后省略收尾，快照回放的
+      // 终态收尾
       // running 节点永久「正在执行」——刷新后残留）；全部未结节点结为已结束。
       return next.map((node) => {
         if (node.kind === "thought" && node.status === "running") return settleThought(node);
@@ -349,7 +349,7 @@ export interface ChatMessage {
   /** 该回复对应的工作项 id（线程帧 message_id = work item id）——成员任务卡据此
    * 关联子卡（parent_id 匹配）。 */
   workItemId?: string;
-  /** 对话附件（消息绑定渲染 + 下载；Day137b-2）。 */
+  /* 对话附件。 */
   attachments?: ChatAttachment[];
     /** 回复底部「下一步」交接行：下一个待执行卡与执行者。 */
     nextAssignee?: { roleId: string; card: string };
@@ -362,7 +362,7 @@ export interface ChatAttachment {
   size: number;
 }
 
-/** 草稿附件（Composer chips；上传三态——Day137b-2）。 */
+/* 草稿附件。 */
 export interface PendingAttachment {
   upload_id: string;
   name: string;
@@ -422,7 +422,7 @@ interface ChatState {
   interactions: Record<string, InteractionFrame>;
   notifications: NotificationItem[];
   stagedRevert: StagedRevert | null;
-  /** 会话任务台账（task_ledger 实时帧 / 详情 metadata 恢复；Day137b-1）。 */
+  /* 会话任务台账。 */
   tasksBySession: Record<string, TaskLedgerItem[]>;
   /** 群聊回合状态（group_round 帧 / GET 回合快照）——key = session_id */
   roundsBySession: Record<string, GroupRoundSnapshot>;
@@ -432,7 +432,7 @@ interface ChatState {
   employeeProgressText: Record<string, string>;
   /** 员工过程槽「已完成」标记（done/error 后置位；新执行首帧到达即清槽重建——过程块保留可回顾）。 */
   employeeProgressDone: Record<string, boolean>;
-  /** 草稿附件（Composer 待发送 chips；上传三态——Day137b-2）。 */
+  /* 草稿附件。 */
   draftAttachments: PendingAttachment[];
   /** 草稿文件引用（Composer 引用 chips；发送时转 @路径 文本——）。 */
   draftReferences: DraftReference[];
@@ -457,7 +457,7 @@ interface ChatState {
   /** 功能：清掉本地系统提示（员工回复落位后「已转交员工」等过渡注记应消失）。 */
   clearTransientNotes: (sessionId: string) => void;
   /** 员工工作回复注入（thread_message 帧——团队会话/群聊的消息流呈现；
-   * process = 该员工本次执行过程（回复到达时从过程槽固化到消息上方，Day137b-1）。 */
+    * process = 该员工本次执行过程。 */
   appendEmployeeReply: (
     sessionId: string,
     reply: {
@@ -471,7 +471,7 @@ interface ChatState {
     },
   ) => void;
   appendLocalUser: (sessionId: string, content: string, attachments?: ChatAttachment[]) => string;
-  /** 功能：草稿附件增删改清（Composer 上传三态管理；Day137b-2）。 */
+  /* 功能：草稿附件增删改清。 */
   addDraftAttachment: (item: PendingAttachment) => void;
   updateDraftAttachment: (uploadId: string, patch: Partial<PendingAttachment>) => void;
   removeDraftAttachment: (uploadId: string) => void;
@@ -516,7 +516,7 @@ interface ChatState {
     event: EmployeeProgressEvent,
   ) => void;
   finishEmployeeProgress: (projectId: string, threadId: string, roleId: string) => void;
-  /** 功能：取出并清空员工过程槽（回复到达时固化到该回复消息；Day137b-1）。 */
+  /* 功能：取出并清空员工过程槽。 */
   consumeEmployeeProgress: (projectId: string, threadId: string, roleId: string) => ProcessNode[];
   clearEmployeeProgress: (projectId: string, threadId: string, roleId: string) => void;
   /**
@@ -584,7 +584,7 @@ const NOTIFICATION_CAP = 100;
 
 // ── 纯函数 reducer（行为测试直接覆盖）──────────────────────────────────────
 
-/** 功能：解析条目 metadata 中的附件列表（JSON 字符串形态容错——Day137b-2）。 */
+/* 功能：解析条目 metadata 中的附件列表。 */
 export function parseEntryAttachments(metadata: unknown): ChatAttachment[] | undefined {
   let raw: unknown = metadata;
   if (typeof raw === "string") {
@@ -732,7 +732,7 @@ export function applyDelta(
   );
 }
 
-/** 功能：追加 CoT 思考增量——挂到最后一个进行中的 thought 节点，无则开新节点（Day137）。 */
+/* 功能：追加 CoT 思考增量——挂到最后一个进行中的 thought 节点，无则开新节点。 */
 export function applyThinking(
   messages: ChatMessage[],
   pendingId: string,
@@ -761,7 +761,7 @@ export function applyThinking(
   });
 }
 
-/** 功能：Skill 注入归并——合并技能名并累加次数；节点插过程块首位（Day137）。 */
+/* 功能：Skill 注入归并——合并技能名并累加次数；节点插过程块首位。 */
 export function applySkillInjected(
   messages: ChatMessage[],
   pendingId: string,
@@ -1047,7 +1047,7 @@ function applyChildProgress(
   }
 }
 
-/** 功能：工具进度回填——匹配最后一个同名 running 工具节点（Day137 tool_progress 帧）。 */ export function applyToolProgress(
+/** 功能：工具进度回填——匹配最后一个同名 running 工具节点。 */ export function applyToolProgress(
   messages: ChatMessage[],
   pendingId: string,
   event: { toolName: string; progressType: string; data: Record<string, unknown> },

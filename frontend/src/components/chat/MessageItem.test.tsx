@@ -82,7 +82,7 @@ describe("MessageItem · 引用文件（2026-10-12 用户拍板：右栏打开/�
   });
 
   it("引用文件渲染在回复气泡卡片内（不得落在卡片外）", () => {
-    // L1 真机回归：引用文件一度渲染在气泡 div 外（卡片外侧），用户报障要求收回卡片内。
+    // L1 回归：引用文件一度渲染在气泡 div 外（卡片外侧），用户报障要求收回卡片内。
     render(
       <MessageItem
         message={message({
@@ -418,7 +418,7 @@ describe("MessageItem", () => {
   });
 
   it("破坏者：assistant 操作条与卡片左缘对齐（随头像左缘对齐，无缩进）", () => {
-    // 2026-10-15 用户拍板：内容与头像左缘对齐（pl-5 姓名缩进移除）
+    // 内容与头像左缘对齐（pl-5 姓名缩进移除）
     render(<MessageItem message={message()} interactive />);
     expect(screen.getByTestId("message-actions").className).not.toContain("pl-5");
   });

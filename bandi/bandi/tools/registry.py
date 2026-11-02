@@ -167,7 +167,7 @@ class ToolRegistry:
         "enter_plan_mode",
         "exit_plan_mode",
         "todo_write",
-        # 计划语义下的补充放行（真机实测：全拦会让 plan 模式做不出计划）
+        # 计划语义下的补充放行
         # 1) 读 PDF 正文——pdf_structure 只给结构，出方案前要看内容
         "pdf_reader",
         # 2) 记忆写入——「A 依赖 B」这类关系事实是规划的输入，

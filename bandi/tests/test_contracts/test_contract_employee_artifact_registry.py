@@ -1,5 +1,5 @@
 # 功能：契约——员工链路产物登记（右栏「产物」数据源）
-# 背景（真机实证）：产物登记此前只挂在用户 chat 回合的 ProcessRecorder 上，
+# 背景：产物登记此前只挂在用户 chat 回合的 ProcessRecorder 上
 # 员工执行链路（EmployeeProgressHandler）从不登记 ⇒ session_artifacts 恒空、
 # 右栏产物永不出现。员工写类工具成功须登记到其执行会话（role-session），
 # 项目聚合面（project_artifacts 前缀扫描）据此可见。
