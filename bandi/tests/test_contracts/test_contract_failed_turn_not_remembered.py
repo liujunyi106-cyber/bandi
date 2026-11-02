@@ -1,6 +1,6 @@
 """契约：失败回合不得进入经历层（污染长期记忆的防线）。
 
-背景（L1 真机）：MODEL_ERROR 回合的 "all LLM candidates failed (capability +
+背景：MODEL_ERROR 回合的 "all LLM candidates failed
 config chain): Client error…" 被当作「回答」写入 episodic，随后被 consolidation
 当作高价值情节晋升进长期记忆，污染召回。
 """
@@ -41,7 +41,7 @@ def test_interrupted_answer_rejected() -> None:
 def test_long_term_ingest_rejects_failed_turn() -> None:
     """契约：长期记忆直写路径（agent_runner `turn:` 项）同样拒失败文本。
 
-    L1 真机实锤：long_term.db 里存在 id=`turn:sess-...:1`、content 为
+    L1 实锤：long_term.db 里存在 id=`turn:sess-...:1`、content 为
     "all LLM candidates failed…" 的条目——该路径走 review_ingest 而非
     review_episodic_ingest，两处必须都拦。
     """

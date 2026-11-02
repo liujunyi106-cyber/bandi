@@ -30,7 +30,6 @@ client.headers["Authorization"] = "Bearer test"
 
 @pytest.fixture()
 def _auth() -> Iterator[None]:
-    # 功能：测试凭证（常量时间 Bearer——对齐 test_api.py 先例）
     from unittest.mock import patch
 
     with patch("bandi.api.app._API_KEY", "test"):

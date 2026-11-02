@@ -2,7 +2,6 @@
 
 行为不变式：
 1. **A3+A4 补丁流水线**：项目交付反思产出 → 自进化补丁事件 → 组织经验档案
-   （event_id 幂等；strengths/adjustments/avoid_next_time/routing_notes 从反思映射；
    delta_profile 随之重算）；
 2. **7d 质量维度**：完成时从评审/返工/失败信号抽取 strengths/weaknesses 传入
    `record_work_item_completion`（规则抽取 + LLM 注入接口）——计数不再恒空；
@@ -77,7 +76,7 @@ def _save_task(
 
 class TestSelfEvolutionPatchPipeline:
     def test_reflection_applies_self_evolution_patch(self, tmp_path: Path) -> None:
-        """预期：反思产出映射为补丁事件并写入组织经验档案（delta 重算）。"""
+        """"""
         manager = _manager(tmp_path)
         store = WorkItemStore(str(tmp_path / "wi.db"))
         task = _save_task(store, item_id="wi-1", project_id="p-a")

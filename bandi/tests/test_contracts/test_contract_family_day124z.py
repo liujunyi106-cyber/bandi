@@ -505,7 +505,7 @@ def _make_ctx(
 ) -> Any:
     """构造最小可复现 _persist_memory 的 ctx（用真实字段，不依赖完整 ExecutionContext）。
 
-    默认 raw_input 含可记内容（数字）——记忆内容源只取用户输入（BC-004），
+    默认 raw_input 含可记内容（数字）——记忆内容源只取用户输入
     源为空则直写/暂存路径整体不成立。"""
     empty_msgs: list[Any] = []
     return SimpleNamespace(

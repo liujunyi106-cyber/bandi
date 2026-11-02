@@ -1,7 +1,7 @@
 """
 契约族：审批门判定与真实权限判定必须同语义（permissions_override="ask" 的审批暂停）。
 
-背景（本次全量审查发现）：
+背景
 - `tools/permissions_pipeline.py::PermissionsPipeline.check()` 在 Layer 1 之前先处理
   `tool.permissions_override`：`"deny"` → 拒；`"ask"` → `_check_override_ask()` → 末段
   `_check_ui()`（headless 无通道 → **拒绝**）。

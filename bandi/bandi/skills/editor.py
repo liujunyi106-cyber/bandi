@@ -509,7 +509,7 @@ def _merge_targets(current: SkillCard, candidate: SkillCard, target_paths: list[
 def _has_node_structure_change(
     current: SkillCard, candidate: SkillCard, target_paths: list[str]
 ) -> bool:
-    """功能：节点数量或顺序是否变化（需整段替换 nodes/edges 并重映射）。"""
+    """"""
     if not any(_is_node_target(path) for path in target_paths):
         return False
     current_nodes = [

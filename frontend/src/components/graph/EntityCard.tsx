@@ -17,7 +17,6 @@ export interface EntityCardProps {
   /** 无选中实体时展示的引导文案容器（由页面控制，这里只处理有选中）。 */
   onSelectNeighbor: (id: string) => void;
   onClose: () => void;
-  /** 类型 → 颜色映射（与画布/图例同源）。 */
   typeColors: ReadonlyMap<string, string>;
 }
 

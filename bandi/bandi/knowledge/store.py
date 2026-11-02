@@ -802,7 +802,6 @@ class KnowledgeStore:
             updated_at=row[14],
         )
 
-    # -- 行映射 --------------------------------------------------------------
 
     @staticmethod
     def _row_to_document(row: tuple) -> KnowledgeDocument:

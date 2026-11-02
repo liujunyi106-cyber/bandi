@@ -188,7 +188,7 @@ class TestProjectInbox:
         assert resp.status_code == 404
 
     def test_inbox_reads_project_messages(self, tmp_path: Path) -> None:
-        """真实消息读回：message_id 非空 + 中文 content（修正字段映射恒空缺陷）。"""
+        """"""
         from bandi.company.comms import send_message
 
         _create_project()

@@ -1,4 +1,4 @@
-"""只读查询适配：把消费方依赖的 `find_entities` / `get_entity` 最小面映射到三元组本体。
+"""
 
 enricher（记忆增强）、hallucination_checker（L1 实体锚定）、context_loader（@提及解析）
 都只消费「按名字/ID 找实体 → 读 name」这一最小只读面；本模块用同一适配覆盖三方。

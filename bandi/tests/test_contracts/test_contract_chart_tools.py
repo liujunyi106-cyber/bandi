@@ -1,4 +1,3 @@
-# 功能：chart 工具族契约族——SVG 产物结构/数据映射/主题/落盘/校验/路径安全/装配
 # 行为族级覆盖（DoD-10）：bar/line/pie/scatter 全部生产调用路径逐条有契约
 from __future__ import annotations
 

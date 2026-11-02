@@ -1,17 +1,17 @@
 """契约：整合去重（dedupe_key 合并 + consolidated 放开）+ 长期记忆衰减/遗忘。
 
-计划出处：`docs/记忆工程与本体升级计划-2026-10-13.md` §3.1/§3.3。
+计划出处：`docs/记忆工程与本体升级计划-.md` /。
 
 行为不变式（钉行为，不钉实现）：
 
-去重（§3.1）
+去重
   1. 同 structured key 的两条长期记忆写入后**只存一条**——证据合并、importance 取高
   2. 同 key 但内容确有差异时按冲突处理，不得静默覆盖成一条错的内容
   3. **弱 key 不得仅凭 kind+key 合并**——`preference`/`fact` 属性未知，须退回内容指纹
   4. `consolidated:` 与 `turn:` 同权参与合并（只 `compaction:` 排除）
   5. 不同内容保持 2 条（防过度合并）
 
-衰减/遗忘（§3.3）
+衰减/遗忘
   6. 持久化衰减 `importance *= 0.5^(Δdays/90)`，**Δ 从上次衰减或召回起算**——
      3 年前创建、昨天刚召回的条目不得被一次衰减打到地板
   7. 近 30 天被召回者跳过衰减
@@ -21,7 +21,7 @@
  11. 召回可回升 importance（用进废退闭环，否则衰减单向不可逆）
  12. importance 有 floor，归零后不可被 prune 误删
 
-参考源：LeAgent `maintenance.py:144-172`（衰减 floor + 召回保护）、
+`maintenance.py:144-172`（衰减 floor + 召回保护）
 Hermes `memory_tool_store.py:349`（拒绝清空）、`holographic/retrieval.py:52-71`
 （`score *= 0.5^(age/half_life)`）。
 """

@@ -45,7 +45,7 @@ _STATUS_TO_CODE: dict[int, AppErrorCode] = {
 
 
 def code_for_status(status_code: int) -> AppErrorCode:
-    """把 HTTP 状态码映射为语义错误码。"""
+    """"""
     return _STATUS_TO_CODE.get(int(status_code), AppErrorCode.INTERNAL_ERROR)
 
 

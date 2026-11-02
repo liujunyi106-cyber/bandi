@@ -158,7 +158,7 @@ class TestStepIdsUniqueNodeIds:
         assert any("补全" in w for w in warnings)
 
     def test_card_remap_start_terminal_edges(self) -> None:
-        """契约：整卡字典唯一化后 start/terminal/edges 引用随之重映射
+        """
         返回的 SkillCard 通过 闭环校验（唯一性 + 顶点存在 + reachable）。
         注意：Bandi SkillCard 构造即执行唯一性校验（超集），因此唯一化必须
         发生在 SkillCard 构造之前，契约输入为「模型原始字典」而非已构造的卡。"""
@@ -186,7 +186,7 @@ class TestStepIdsUniqueNodeIds:
         assert any("已修正" in w for w in warnings)
 
     def test_duplicate_node_ids_references_point_to_first_copy(self) -> None:
-        """契约（破坏者）：重复 node_id 时引用重映射必须指向「保留原名」的
+        """
         首个副本（首见优先）——不得被后写覆盖指向最后一个重命名副本。"""
         from bandi.skills.step_ids import skill_card_with_unique_step_ids
 

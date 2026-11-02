@@ -25,7 +25,7 @@ class TestTerminalPersist:
     def test_abnormal_terminal_persists_model_output_not_system_text(self) -> None:
         """功能：异常终态落库 current_content，不得把系统文案写进历史。
 
-        这是 BC-006 的核心不变式：模型已流式送达用户的回复必须留存。
+        这是 的核心不变式：模型已流式送达用户的回复必须留存。
         """
         system_text = "工具 read 在被暂停后仍被反复调用（第 5 次）——已中止本轮。"
         model_text = "好的老板，我已经记住了！"

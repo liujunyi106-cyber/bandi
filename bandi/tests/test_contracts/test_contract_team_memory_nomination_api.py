@@ -104,7 +104,7 @@ class TestNominationHook:
 
 class TestReflectingNominationGate:
     """`on_reflecting` 的提名门控——纯文本轮（无工具证据）不跑 judge；提名走
-    显著性门控（2026-10-16 重设计）：失败/返工/升级与多步成功才提名，
+    显著性门控：失败/返工/升级与多步成功才提名
     纯 pass 与非工作轮零提名（噪声闸门）。"""
 
     class _Verifier:

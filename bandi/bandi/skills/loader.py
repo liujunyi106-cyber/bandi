@@ -52,7 +52,7 @@ class SkillLoader:
         **只读 Bandi 自管的目录**，不扫其他 Agent 工具的用户级私有目录
         （`~/.config/opencode/skills`、`~/.claude/skills` 等）。那些目录是别的
         工具的实现细节：格式不保证、随对方升级变、且里面多半是本产品用不上的
-        技能（实测扫进来 38 个，其中 30+ 是 lark/obsidian 类，会污染员工技能的
+        技能
         检索与匹配）。
 
         想用别处的技能，走导入通道落进 `~/.bandi/skills` 即可——
@@ -245,8 +245,6 @@ class SkillLoader:
     def _parse_frontmatter_triggers(metadata: dict) -> list[str]:
         """功能：解析 frontmatter ``triggers``（opencode/Claude 风格）。
 
-        支持三种写法——字符串、字符串列表，或「分类: 词/词/词」映射（可顶层为字典，
-        也可**列表里逐条嵌套字典**，即 ``- search: 搜索/search``）。映射值内再按斜杠、
         逗号、顿号拆分。分类名本身不作触发词；**单字触发词丢弃**（「搜/查/找」拆成
         单字后会命中几乎任何输入）。``description`` 里的自然语言（"Triggers on…"）
         一律不解析：猜词即误匹配。

@@ -8,7 +8,7 @@
 （生成 SKILL.md 经 SkillImporter 导入 Bandi 技能库）。
 
 适配：
-- OpenOPC ``PreferenceManager``/``SkillLibrary`` → Bandi ``SkillImporter``
+``PreferenceManager``/``SkillLibrary`` → Bandi ``SkillImporter``
   （技能库写入）+ 无偏好写入（evolution 状态独立于 memory/*.md）；
 - ``projection_id_for_task`` 对齐 Bandi ``work_item_identity``；
 - ``employee_assignment`` metadata 语义保留（OrgEmployee 招募时写入）。
@@ -46,7 +46,7 @@ DEFAULT_ORGANIZATION_ID = "default"
 
 def _build_self_evolution_event(reflection: dict[str, Any]) -> dict[str, Any]:
     """功能：项目反思产出 → 自进化补丁事件——strengths/adjustments/avoid_next_time/
-    routing_notes 从反思字段映射；event_id 按「交付投影 + 员工」幂等（重交付不重复记）。"""
+    """
     employee_id = str(reflection.get("employee_id") or "").strip()
     if not employee_id:
         return {}
@@ -346,7 +346,6 @@ class EmployeeEvolutionManager:
         skill = str(skill_name or "").strip()
         if not employee or not pattern or not skill:
             return False
-        # 并发审批回写：读-改-写必须按 profile 路径串行化（复用全局库写锁先例）
         # 否则并发 approve 的两个技能引用互相覆盖（丢更新）
         with store_write_lock(path):
             if not path.is_file():

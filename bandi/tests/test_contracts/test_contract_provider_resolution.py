@@ -1,5 +1,4 @@
 # 功能：契约——provider 解析：显式 base_url 必须生效（含目录内模型）+ 缓存键含凭证。
-# 破坏者视角：① 目录内模型（deepseek-v4-flash 等）映射官方 provider 类，类内写死
 # 官方域名 → 用户显式 llm.base_url（私有网关）被静默忽略；② 缓存键不含 api_key →
 # 同模型同网关不同员工凭证串用实例（计费/权限事故）。
 from __future__ import annotations

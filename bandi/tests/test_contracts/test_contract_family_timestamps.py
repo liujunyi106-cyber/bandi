@@ -1,6 +1,6 @@
 """契约族：store 时间戳口径一致性。
 
-生产口径（2026-10-31 拍板，替代原「业务时间戳 = naive 本地」）：
+生产口径
 存储层统一 UTC 带偏移串；历史本地 naive 值由
 `utils/timefmt.migrate_naive_timestamps` 在 store 初始化时一次性归一（幂等）；
 接口层 `utils/timefmt.iso_local` 统一输出本地时区偏移；租约时效同为 UTC。

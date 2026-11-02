@@ -1,5 +1,4 @@
 # 功能：契约——槽位门答复解析：clarify 通道提交的是 JSON 字符串（前端 JSON.stringify(answers)），
-# 执行侧必须解析还原为 answers 映射并写回任务描述（否则答复被静默丢弃、口径丢失、
 # 门形同虚设——验证实锤：多问卡答完执行侧拿到的仍是空答复）。
 from __future__ import annotations
 
@@ -60,7 +59,7 @@ async def test_slot_answer_provider_unwraps_nested_answers(monkeypatch: pytest.M
 async def test_slot_answer_provider_rejects_garbage(
     monkeypatch: pytest.MonkeyPatch, decision: object
 ) -> None:
-    """空/坏/非映射输入一律 None（禁止把垃圾写进任务描述）。"""
+    """"""
     app_module = _app_module()
     monkeypatch.setattr(app_module, "_get_interaction_store", lambda: _FakeStore(decision))
     assert await app_module._slot_answer_provider("iid", 1.0) is None

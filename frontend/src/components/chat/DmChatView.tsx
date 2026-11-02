@@ -270,7 +270,6 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
     return socket.on("thread_message", (frame) => {
       const data =
         frame.data && typeof frame.data === "object" ? (frame.data as Record<string, unknown>) : {};
-      // 检查修复：项目过滤（company 空间映射 "company"）
       // 两侧统一走 normalizeProjectScope——原「帧侧 ?? "company"」与
       // 「视图侧 || "company"」是两套写法，空 project 帧会与写侧键错开
       const frameProject = normalizeProjectScope(String(data.project_id ?? ""));

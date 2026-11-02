@@ -361,7 +361,7 @@ class MemoryForgetTool(BaseTool):
 class MemoryAssertTool(BaseTool):
     """功能：结构化写入记忆三元组——Agent 给三元组，代码只校验（不解析散文）。
 
-    移植 dsh-ontology 的 `ontology_assert`（`src/tools.ts:285-333`）。该项目的核心
+    的 `ontology_assert`（`src/tools.ts:285-333`）。该项目的核心
     设计是 **validate, not parse**：不给代码一个正则去猜实体，而是让模型显式给
     `subject/predicate/object`，代码校验三元组是否落在已声明的关系词汇表上；违规
     时把**可操作的错误消息**回给模型，让它自己改——而不是自动改写、也不是悄悄放过。

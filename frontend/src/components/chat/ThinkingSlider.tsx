@@ -12,7 +12,6 @@ import { useT } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 export interface ThinkingDegree {
-  /** "" = 关闭（provider 侧映射为 disabled） */
   value: string;
   label: string;
   hint: string;

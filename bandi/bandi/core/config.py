@@ -275,7 +275,6 @@ class PermissionsConfig(
         default_factory=lambda: ["rm -rf /", "format *", "del /f /s", "rd /s /q"]
     )
     ask_risk_levels: list[str] = Field(default_factory=lambda: ["high", "critical"])
-    # 默认**空** = 不启用映射 → 所有角色保持「无权限档」，行为与改造前完全一致。
     # 目标值须是 admin/power_user/member/readonly 之一（非法值被忽略并告警
     # 见 core/permission/role_mapping.py）。
     role_map: dict[str, str] = Field(default_factory=dict)

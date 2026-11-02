@@ -1,6 +1,6 @@
 """契约：本体持久层（对照表 -3,4 / -5,7）。
 
-复刻 dsh-ontology `src/spec.ts`（122 行，三表）+ `src/store.ts`（296 行，写入语义）。
+复刻 `src/spec.ts`（122 行，三表）+ `src/store.ts`（296 行，写入语义）。
 
 行为不变式：
 
@@ -24,7 +24,7 @@
      / 有事实用它作谓词 / 别的关系声明它是 inverse），并给出点名依赖者的文案
  12. 撤回单条事实：派生态无存储键，前提消失后自然不成立
 
-dsh-ontology `src/spec.ts:109-119`、`src/store.ts:75-296`。
+`src/spec.ts:109-119`、`src/store.ts:75-296`。
 """
 
 from __future__ import annotations

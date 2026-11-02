@@ -4,8 +4,8 @@
 `CapabilityProfile` 描述一个后端（模型/Provider）能消费/产出的模态、可填充的任务角色
 与后端类别；`CapabilityContract` 是调用方的需求契约，profile 与之匹配。
 
-注意：`TaskType` 保留 LeAgent 完整枚举（含媒体生成/语音类）。当前 Bandi 是文本 Agent
-（ADR-33 无 RAG、无媒体管道），仅 CHAT/VISION/EMBEDDING 会被查询与注册；IMAGE_GEN/
+注意：`TaskType` 保留 完整枚举（含媒体生成/语音类）。当前 Bandi 是文本 Agent
+仅 CHAT/VISION/EMBEDDING 会被查询与注册；IMAGE_GEN/
 VIDEO_GEN/MESH_GEN/VFX_GEN/AUDIO_GEN/UPSCALE/TTS/ASR 为预留扩展，后续有对应管道时
 再注册对应能力。
 """

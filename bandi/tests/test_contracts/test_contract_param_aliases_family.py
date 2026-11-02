@@ -123,7 +123,7 @@ def test_doc_tool_classes_are_all_covered() -> None:
 
 
 def test_normalize_maps_alias_to_canonical() -> None:
-    """契约②：别名映射回正式键，且**别名键被移除**（下游不得再看到它）。"""
+    """"""
     tool = _file_path_tools()["csv_processor"]
     out = tool.normalize_params({"operation": "read", "path": "/tmp/a.csv"})
     assert out[CANONICAL] == "/tmp/a.csv"

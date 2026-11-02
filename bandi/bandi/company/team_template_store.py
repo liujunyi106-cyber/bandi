@@ -218,7 +218,6 @@ def build_org_from_template(
     reports_to 收敛回模板声明）；=A：每角色派生 1 员工（含 llm_config）。
     recruiter / profile_manager 缺省时跳过对应装配；profiles 技能绑定 best-effort
     （重复绑定跳过、缺失/非法进 warnings 不中断实例化）。
-    参考先例：package_loader.install（两遍注册）/ org_persistence.load_org（坏数据降级）。
     """
     team_id = str(template.team_id or "").strip() or template.template_id
     team_id = validate_path_segment(team_id, label="team_id", error_cls=TeamTemplateError)

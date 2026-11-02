@@ -1773,7 +1773,7 @@ def test_policy_engine_binding_paths_with_and_without_explicit_store(
 
 
 def test_policy_engine_unmapped_and_multiple_bindings(monkeypatch: pytest.MonkeyPatch) -> None:
-    """契约 5（破坏者视角）：绑定存在但 role_map 无映射 → 回落 agent_role，不得越权；
+    """
     多岗位绑定取最高档（既有语义不得被兜底改动破坏）。"""
     monkeypatch.setattr(
         factory_module,

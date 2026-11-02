@@ -1,6 +1,6 @@
 """契约：reasoning-only 空正文必须自动重试一次，不得直接判 MODEL_ERROR。
 
-真机 L1：74 条里 5 条终态 MODEL_ERROR，错误文案是
+74 条里 5 条终态 MODEL_ERROR，错误文案是
 「模型仅返回思维链、正文为空（reasoning 343 字符；答案疑似被上游放进
 reasoning 通道——可直接重试，或在输入框切换思考档位后重发）」。
 
@@ -189,7 +189,7 @@ class TestRetryResolvesCandidate:
 class TestChainSkipsCurrentModel:
     """候选链已删除：链配置被忽略——重试=同模型重发。
 
-    历史教训：链 ["hub-flash", ...] 全是坏凭证候选，
+    链 ["hub-flash", ...] 全是坏凭证候选
     换模型重试只会连败并掩盖主模型错因——候选通道整删后不存在"跳过当前"语义。
     """
 
@@ -284,7 +284,7 @@ class TestChainSkipsCurrentModel:
 class TestGateResetsAcrossTurns:
     """闸门是轮级：上一轮的重试标记不得让下一轮 reasoning-only 无重试可用。
 
-    真机实证（2026-10-15）：turn 2 重试后标记残留（ctx.meta 无清理点），
+    实证：turn 2 重试后标记残留（ctx.meta 无清理点）
     turn 3 的 reasoning-only 直接跳过重试落到 MODEL_ERROR（事件无 retry 记录）。
     """
 

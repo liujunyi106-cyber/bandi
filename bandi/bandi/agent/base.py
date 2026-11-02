@@ -470,7 +470,7 @@ class ExecutionContext:  # 功能：Agent 执行上下文，贯穿整个循环�
     @property
     def effective_context_window(self) -> int:
         """功能：有效上下文窗口 = context_window - 输出预留（下限 20K，上限窗口一半）。
-        RF-13：预留按窗口 50% 再钳——原 max(1, window-reserve) 在
+        预留按窗口 50% 再钳——原 max(1, window-reserve) 在
         reserve>=window（用户配小窗）时退化为 1 致全链 PROMPT_TOO_LONG。
         context_window=0 是「未显式配置」哨兵——直接构造 ExecutionContext
         （绕过 factory 装配）时必须回落 DEFAULT_CONTEXT_WINDOW，否则窗口算成 1

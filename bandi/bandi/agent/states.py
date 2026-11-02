@@ -1299,7 +1299,6 @@ async def _llm_call_with_reactive_compact(
         result = await _reactive_compact_retry(ctx, max_attempts=2)
         if result is None:
             # 重试耗尽已置 PROMPT_TOO_LONG——回填空响应对齐 TOKEN_BUDGET_EXHAUSTED
-            # 先例，让 on_thinking 正常消费、由 terminal_reason 驱动 transitions 终止
             return LLMResponse(content=ctx.final_message or "")
         return result
 
@@ -1500,7 +1499,7 @@ def _is_reasoning_only(response: LLMResponse, *, safety_finish: bool) -> bool:
     """功能：判定「模型只走 reasoning 通道、正文为空」。
 
     思考型模型偶发把答案整体写进 reasoning、content 留空。这是**可自愈**的输出
-    形态问题（换模型重问一次就能拿到答案），不是真的模型故障——真机 L1 74 条里
+    形态问题（换模型重问一次就能拿到答案），不是真的模型故障——L1 74 条里
     有 5 条栽在这里，等于白白作废一次交互，而系统只提示用户「可直接重试」。
     """
     if safety_finish:
@@ -1521,7 +1520,7 @@ async def _guard_reasoning_only(
 
     必须挂在**每个**返回 LLMResponse 的路径上（流式候选成功、非流式
     complete_with_fallback、直调回退），不是只挂一处：主路径走的是前两者，
-    只补直调那一处等于死代码——真机实测 reasoning-only 一条都没被重试过。
+    只补直调那一处等于死代码——reasoning-only 一条都没被重试过。
     """
     if not _is_reasoning_only(response, safety_finish=_safety_finish(response)):
         return response
@@ -1539,7 +1538,7 @@ async def _guard_reasoning_only(
 async def _emit_reasoning_only_retry(ctx: ExecutionContext, outcome: str, detail: str) -> None:
     """功能：把 reasoning-only 自愈结果落成事件。
 
-    不能只写日志：应用日志在生产部署里常被丢弃，而 §六 过程类指标要靠 events
+    不能只写日志：应用日志在生产部署里常被丢弃，而 过程类指标要靠 events
     自动统计「重试挽回率」。没有这条事件就既无法观测也无法纳入回归。
     """
     from bandi.core.events import Event, EventType

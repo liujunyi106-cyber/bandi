@@ -2,7 +2,7 @@
 """向进程级能力注册表填充全部模型能力。
 
 这是能力驱动路由 / fallback 的发现面：从 :class:`~bandi.llm.model_catalog.ModelCatalog`
-把每个模型规格提升为 :class:`CapabilityProfile` 并注册。媒体生成/语音类任务（ADR-33）
+把每个模型规格提升为 :class:`CapabilityProfile` 并注册。媒体生成/语音类任务
 由 :func:`register_generation_capabilities` 注册离线兜底画像（invoker 由
 class:`~bandi.generation.service.GenerationService` 挂载）。
 """

@@ -87,7 +87,6 @@ def _long_term_source_text(
     - 用户陈述了可记的事实/偏好（由下游 review_ingest 判价值）。
 
     助手回复永不直写：回复落进长期记忆会以 task_state 名义污染记忆库
-    （BC-004：一句寒暄把 241 字能力清单存成长期记忆，并被召回一次）。
 
     `final_message` 仅用于 `is_rememberable_user_input` 的自我介绍判定
     （回复是自我介绍时用户输入不作数），不参与内容源选择。
@@ -875,7 +874,7 @@ _PREVIEW_SKIP_MARKERS = ("你好", "您好", "老板", "我是", "帮你", "我�
 def memory_preview(content: str, memory_type: str, *, max_chars: int = 120) -> str:
     """功能：待审批记忆的**提炼预览**——人话类型标签 + 事实主体。
 
-    用户反馈（真机）：旧摘要直接截内容开头，展示的是「你好，老板！我是 Bandi 的助手…」这类
+    用户反馈：旧摘要直接截内容开头，展示的是「你好，老板！我是 Bandi 的助手…」这类
     回复的寒暄/自我介绍，看不出**要记住什么**。此处跳过引导句后取正文主体。
     """
     label = _MEMORY_TYPE_LABELS.get(str(memory_type), str(memory_type))
@@ -1425,7 +1424,6 @@ async def _persist_memory(
         fields = extract_memory_fields(episode_summary, user_input=raw_input, source="agent_turn")
         verdict = review_episodic_ingest(episode_summary)
         episode = Episode(
-            # 不重复记录（原 uuid4() 每次新 id 致重复经历），对齐 long_term 稳定键先例
             episode_id=f"ep:{session_id}:{turn_index}",
             # 4.10：句边界裁剪替代字符硬切（不句中断裂）
             summary=episode_summary,
@@ -1960,7 +1958,6 @@ async def run_agent_turn(
     # `default_model`，而 `build_provider` 内部会再解析一次档案 ⇒ 显式传入的
     # provider_config.default_model 被档案**静默吞掉**（注入不存在的模型 id 仍成功回复）。
     # 修法：显式覆盖场景先让档案落位、再把 provider_config 压在档案之上，并在建 provider
-    # 时走 `_build_provider_direct`（不再二次档案解析，与 judge/feedback 路径同先例）。
     _explicit_model = ""
     if provider_config:
         from bandi.llm.profiles import with_resolved_llm

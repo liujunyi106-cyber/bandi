@@ -1,7 +1,7 @@
 """
 契约族：群聊 @ 路由语义（Day 129）——已注册角色匹配 + 中文/大小写归一 + clean_message + 广播回退。
 
-背景（技术债 / 架构 §38.6 / ADR-24 决策一）：已实现 @角色 → QUEUED work_item
+背景：已实现 @角色 → QUEUED work_item
 但 `_MENTION_RE` 大小写敏感且不匹配中文角色名（`@Worker` 提取 "Worker" ≠ 注册 "worker"
 → 创建 assignee 悬空卡）。本契约钉 Day 129 强化后的行为族：
 

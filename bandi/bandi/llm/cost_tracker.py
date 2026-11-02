@@ -192,7 +192,6 @@ class CostTracker:  # 功能：成本追踪器（记录调用/聚合统计/预�
            USD 换算覆盖）；`source = "catalog"`。
         3. 都没有 ⇒ `(None, "unpriced")`（调用方按预算下限估计并记 unpriced）。
 
-        ⚠️ `openai_compat`（未知 OpenAI 兼容网关的兜底名）**不做别名映射**——猜错
         provider 会错价，宁可回落目录价。
         """
         from bandi.llm.model_catalog import ModelPricing

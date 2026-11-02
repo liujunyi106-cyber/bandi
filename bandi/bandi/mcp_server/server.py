@@ -91,7 +91,7 @@ def default_tools() -> dict[str, ToolSpec]:
     """功能：默认工具面（知识检索/技能列表/长期记忆检索）——name → (fn, schema, desc)。
 
     本体查询不在此暴露：Agent 面已有原生 `ontology_query`（六模式同源），
-    自桥接的 MCP 重复面只会制造同名工具噪音（真机曾见模型绕行调用）。
+    自桥接的 MCP 重复面只会制造同名工具噪音。
     """
     query_schema = {
         "type": "object",

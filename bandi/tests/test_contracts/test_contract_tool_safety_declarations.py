@@ -5,7 +5,7 @@
 契约 12），但同族的 todo_write/config_file/archive_manager/pdf_reader/request_user_input
 与纯只读族（read_document/entity_query/ontology_query/*_processor/skill_*）仍无声明——
 安全仅靠「失败走 _err dict → executor 标 non_retryable」的隐式兜底，一旦未来改成
-抛异常失败即落入默认重试重放（与协作工具修复前完全同构）。
+抛异常失败即落入默认重试重放。
 
 本契约钉的行为族（全部生产调用路径 = registry 注册的工具类元数据）：
 - 写/混合/交互工具：必须显式声明 retry_policy=RetryPolicy(retryable=False)（权威

@@ -117,7 +117,6 @@ async def _warn_subprocess_capability() -> None:
 
 @app.on_event("startup")
 async def _startup_role_map_selfcheck() -> None:
-    # 角色映射装配期自检：坏映射启动即告警（不等某次工具调用才静默失效）
     try:
         from bandi.core.config import BandiConfig
         from bandi.core.permission.role_mapping import check_role_map
@@ -378,7 +377,7 @@ def _bearer_token_ok(token: str) -> bool:
     """加固：恒定时间 Bearer 校验（HTTP 与 WS 同一实现）。
 
     用 **bytes** 比较——`hmac.compare_digest` 对含非 ASCII 的 str 会抛 TypeError
-    （未认证者可触发 500，审查实锤）；编码后比较支持任意字节且保持恒定时间。
+    编码后比较支持任意字节且保持恒定时间。
     """
     if not _API_KEY or not token:
         return False
@@ -495,7 +494,7 @@ async def local_origin_guard(request: Request, call_next):
     口径：Origin 只接受本机回环；`Sec-Fetch-Site: cross-site` 一律拒绝；
     未配置 API key 时**所有方法**的 Host 必须是回环（DNS rebinding 兜底）。
     `Origin: null`（file:// 页面 / 沙箱 iframe）默认拒绝——页面必须由 FastAPI 同源托管；
-    P5-6 若改用自定义协议，需在此登记允许来源。
+    若改用自定义协议，需在此登记允许来源。
     """
     if request.url.path in ("/health", "/ready"):
         return await call_next(request)
@@ -750,7 +749,7 @@ def _sweep_stale_ready_probes(base: Path) -> None:
 def _probe_storage_writable() -> bool:
     """.5 readiness：存储目录真实写探测。
 
-    唯一临时文件名——固定名 `.ready_probe` 在并发探针下互删致假 503（审查
+    唯一临时文件名——固定名 `.ready_probe` 在并发探针下互删致假 503
     2 线程 41% / 32 线程 99.97% 假阴性）。
     """
     try:
@@ -775,7 +774,7 @@ def _probe_storage_writable() -> bool:
 def _probe_db_readable() -> bool:
     """.5 readiness：会话库可读探测（库不存在=首次运行，不算故障）。
 
-    路径口径与 BANDI_HOME 对齐（ADR-42 sidecar 场景：壳与后端约定同一
+    路径口径与 BANDI_HOME 对齐
     BANDI_HOME；此前硬编码 Path.home() 在自定义 HOME 时探测错位置）。
     """
     db_path = (
@@ -798,7 +797,7 @@ def _probe_db_readable() -> bool:
 async def ready() -> JSONResponse:
     """.5：readiness 探针（依赖不可用 → 503；/health 保持 liveness 语义）。
 
-    同步探针经线程池执行——DB 锁等待不得冻结事件循环（审查可卡全 API 2s）。
+    同步探针经线程池执行——DB 锁等待不得冻结事件循环。
     """
     db_ok, storage_ok = await asyncio.gather(
         asyncio.to_thread(_probe_db_readable),
@@ -3095,7 +3094,7 @@ def _resource_kind(kind: str) -> str:
 
 
 def _resource_names() -> dict[str, str]:
-    """功能：员工 id → 姓名（归属展示用；组织不可读时返回空映射）。"""
+    """"""
     try:
         dispatcher = _org_api_dispatcher()
         return {
@@ -3437,7 +3436,6 @@ async def session_confirm(session_id: str, body: dict[str, Any]) -> dict[str, An
     orphaned = store.is_orphaned(item)
     # approval-decision 端点，而该端点只认 ApprovalStore 的 pending——生产 API 模式
     # 走 ask_permission 挂起 + 本端点，ApprovalStore 无 pending ⇒ 恒 409）。
-    # 现把三态映射到生产真实机制：allow_once=本轮放行；allow_session=放行并向
     # ApprovalStore 落**会话级**授权（executor._consume_approval_grant 在主执行
     # 路径消费它 ⇒ 本会话内同工具同参不再重复询问）。
     scope = str(body.get("scope") or "once").strip() or "once"
@@ -4851,8 +4849,8 @@ async def company_external_preflight(
     prepare_surfaces: bool = True,
 ) -> dict[str, Any]:
     """外部执行引擎预检——codex/claude_code/cursor/opencode 四 CLI 的
-    可用性/版本/隔离 home/写权限合约探测（真外聘设计 §8 前台登记数据源；
-    Day141 组织面板「执行引擎」下拉依赖此端点）。
+    可用性/版本/隔离 home/写权限合约探测
+    组织面板「执行引擎」下拉依赖此端点）。
     """
     from bandi.company.preflight import run_external_agent_preflight
 
@@ -6146,7 +6144,7 @@ def _attach_slot_gate(created: list[Any], *, message: str, session_id: str) -> N
 async def _slot_answer_provider(
     interaction_id: str, timeout: float = 1800.0
 ) -> dict[str, Any] | None:
-    """功能：等待系统槽位多问卡的答复（返回 answers 映射）。"""
+    """"""
     try:
         result = await _get_interaction_store().get_decision(interaction_id, timeout=timeout)
     except Exception:  # noqa: BLE001 — 等待失败按未答复处理
@@ -6156,7 +6154,7 @@ async def _slot_answer_provider(
 
 def _parse_slot_answers(result: Any) -> dict[str, Any] | None:
     """功能：槽位答复归一——clarify 通道 wire 为 JSON 字符串（前端 stringify 的 answers
-    映射），同一入口兼容 dict 直传与 {answers: {...}} 包裹形态；空/坏/非映射一律 None。"""
+    """
     if isinstance(result, str):
         try:
             result = json.loads(result)

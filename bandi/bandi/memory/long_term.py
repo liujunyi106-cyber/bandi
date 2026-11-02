@@ -712,7 +712,7 @@ class LongTermMemory:
     @staticmethod
     def _parse_metadata(raw: object) -> dict:
         """功能：metadata 反序列化——缺失给空 dict；损坏/非 dict 抛 ValueError
-        （拒绝覆盖未知数据，反馈端点据此映射 409）。"""
+        """
         if raw in (None, ""):
             return {}
         try:

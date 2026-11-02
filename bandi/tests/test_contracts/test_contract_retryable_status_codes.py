@@ -4,7 +4,7 @@
 **429 Too Many Requests** 和 **408 Request Timeout** 也算进去——两者恰是
 「等一会就好」的瞬时故障。
 
-后果（真机）：L1 `L1-G09-01` 中 verifier judge 撞 429 后直接失败，fail-closed
+后果：L1 `L1-G09-01` 中 verifier judge 撞 429 后直接失败，fail-closed
 把一条**本来正确**的跨轮记忆召回（「项目代号青龙 / 端口 7421」）判成 ESCALATED。
 """
 

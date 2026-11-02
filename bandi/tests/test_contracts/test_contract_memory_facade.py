@@ -2,7 +2,7 @@
   search_unified 统一出口：切词多候选聚合 + 维度过滤 + episodic note_recall
      ——memory_source 与 prefetch 的唯一数据源
   MemoryContextSource 委托门面（不再自查库——monkeypatch 断言同源）
-  fail-safe：底层存储异常 → 空结果降级不炸主链（LeAgent recall 先例）
+  fail-safe：底层存储异常 → 空结果降级不炸主链
 
 破坏者断言：同内容不得在同请求内双段出现；异常不得向上传播。
 """
@@ -550,7 +550,7 @@ async def test_provider_override_does_not_pollute_caller_config(tmp_path: Any) -
 def test_corrupted_org_json_llm_config_degrades_gracefully(tmp_path: Any) -> None:
     """契约（B-t2 破坏者）：损坏 org.json 中 llm_config 为非 dict 值（如字符串）时
     load_org 必须静默降级 llm_config=None——而非让 AttributeError 炸掉执行链。
-    对齐同函数内 metadata/domains 的 isinstance 防御先例。"""
+    """
     import json
     from pathlib import Path
 

@@ -372,7 +372,7 @@ def _serve_sidecar(fastapi_app: object, host: str) -> None:  # pragma: no cover
     与普通 `uvicorn.run` 的差异仅是端口回写；信号处理、优雅退出仍由
     uvicorn.Server 原生提供。端口文件清理挂 atexit + finally 双保险。
 
-    兼容：uvicorn >= 0.39 `Server.startup` 为 async（本仓 0.51 实测），早期为
+    兼容：uvicorn >= 0.39 `Server.startup` 为 async，早期为
     同步 def——运行时探测后注入对应 override，两种版本都能回写端口。
     """
     import inspect

@@ -647,7 +647,6 @@ class ToolExecutor:  # 功能：工具执行引擎（并发/串行分区执行 +
             if abort_seen:
                 aborted = True
 
-        # 按原始调用顺序重建结果——dedup 映射指向执行过的唯一调用，按 tool_call_id 定位
         ordered: list[ToolResult] = []
         try:
             for tc in tool_calls:
@@ -1561,7 +1560,7 @@ class ToolExecutor:  # 功能：工具执行引擎（并发/串行分区执行 +
         return await self._as_cache_hit(tc, cached)
 
     async def _as_cache_hit(self, tc: ToolCall, cached: ToolResult) -> ToolResult:
-        """功能：把缓存结果按「命中」语义落到本调用——重映射 tool_call_id + 补发事件。
+        """
 
         修复：等待者复用赢家结果时保留 meta（如 error_class）与 should_abort。
         修复：失败命中与赢家 `_fail_result` 同口径发 TOOL_ERROR（带 error_message）
@@ -1610,7 +1609,6 @@ class ToolExecutor:  # 功能：工具执行引擎（并发/串行分区执行 +
         """功能：缓存未命中时按 key 单飞执行——同 key 并发只真跑一次，等待者按命中复用。
 
         只给「可缓存」工具（result_cache 存在 + cache_ttl>0）接单飞；等待者拿到的是
-        赢家产物，须经 `_as_cache_hit` 重映射自己的 tool_call_id 后再落账（防串号）。
         receipt_key：审批回执键（空=非审批授权路径，不落回执）。
         """
         if self._result_cache is None or tool.cache_ttl <= 0:

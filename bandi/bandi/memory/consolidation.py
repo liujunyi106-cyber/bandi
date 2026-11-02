@@ -78,7 +78,7 @@ def _age_days(created_at: str | None, now: datetime) -> float:
 def _is_low_value_episode(summary: str) -> bool:
     """功能：判定情节摘要是否为寒暄/自我介绍/能力清单类低价值内容。
 
-    BC-004 同类问题在整合路径的体现：此类情节会被相似问句反复召回（recall_count
+    同类问题在整合路径的体现：此类情节会被相似问句反复召回
     虚高）触发晋升，进入暂存区变成噪音审批。只看「→ 回答:」之后的回复侧——
     用户问题里的寒暄不代表情节无价值（如「你好，帮我修个 bug」）。
     """

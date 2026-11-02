@@ -82,7 +82,7 @@ class UserInputTool(BaseTool):
         self._input_fn = input_fn
 
     def bind_ui(self, ui: UserInteraction) -> None:
-        """运行时装配交互通道（registry 内工具由 factory 构建后 bind，沿 SubAgentTool.bind_registry 先例）。
+        """
 
         registry 中工具实例化时无注入通道，须在 ExecutionContext 装配时把
         run_agent_turn 收到的 user_interaction（CLI/HTTP UI）bind 到本工具
@@ -134,7 +134,6 @@ class UserInputTool(BaseTool):
     ) -> dict[str, Any]:
         reason = params.get("reason", "")
         raw_questions = params.get("questions", [])
-        # 模型常把问题数组序列化成 JSON 字符串提交——宽容解析（同 emit_ui_tree 先例）
         if isinstance(raw_questions, str):
             try:
                 raw_questions = json.loads(raw_questions)

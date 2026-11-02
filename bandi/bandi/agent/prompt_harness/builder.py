@@ -86,7 +86,7 @@ def _user_desktop() -> Path | None:
 def _accessible_paths_section() -> str:
     """功能：可访问路径清单（动态段）——告诉模型工作区的真实绝对路径。
 
-    缺这段时模型只能猜用户目录：实测会猜出 `C:/Users/Administrator/Desktop`
+    缺这段时模型只能猜用户目录：会猜出 `C:/Users/Administrator/Desktop`
     这类不存在的路径，然后把自己的臆测当成访问失败的事实报给用户。
     路径逐机器/逐项目可变（workspace_root 受 BANDI_WORKSPACE_ROOT 与 project_root
     影响），故归动态段，不进 static 前缀。
@@ -140,7 +140,7 @@ class PromptSections:
 def prompt_harness_from_config(bandi_config: object) -> PromptHarness:
     """功能：按 BandiConfig 装配 PromptHarness（preferred_language 的单一透传点）。
 
-    历史缺陷（全量审查发现）：生产两处构造（`core/agent_runner.py` 主链
+    历史缺陷：生产两处构造
     `agent/subagent.py` 子代理）此前均为 `PromptHarness()` 裸调用 → `BandiConfig.
     preferred_language` 零消费者，用户配 `en` 仍按 zh-CN 作答。集中于此便于单点验证。
     """

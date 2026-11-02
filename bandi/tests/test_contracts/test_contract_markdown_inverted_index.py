@@ -2,7 +2,7 @@
 """
   倒排完备性：search_entries 的返回结果必须与「全表 title+hook+body 子串
      匹配」的朴素实现逐条一致（score + 排序顺序）——倒排只做候选剪枝
-     不得改变检索语义（审查项 #11/#9，#9 倒排索引 + 稳定 ranking）
+     不得改变检索语义
   规模加速：候选剪枝成立——含查询 token 的 entry 才被评分，不含的
   稳定 ranking：同 relevantce 的 entry 按 created/entry_id 稳定序（与
      _build_index 排序一致），不因倒排引入随机序

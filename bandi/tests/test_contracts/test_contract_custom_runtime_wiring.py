@@ -1,5 +1,5 @@
 """
-契约族：CustomRuntimeRunner 生产接线（Day125-/ ）。
+契约族：CustomRuntimeRunner 生产接线。
 
 背景：CustomRuntimeRunner（自定义 org 会话入口，承载 Recruiter/Secretary 链/
 org_work_item_planner 三引擎）此前生产零实例化——招募/秘书/规划引擎主链不可达。

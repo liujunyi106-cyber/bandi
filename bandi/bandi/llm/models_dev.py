@@ -124,8 +124,6 @@ def merge_remote_specs(
 # **丢失了 provider 维度**，故此处另建 provider 维度索引。
 
 # 我们的 provider 名 → models.dev 的 provider key（仅补差异项）
-# ⚠️ 只映射**确定同义**的名字。`openai_compat` 是「未知 OpenAI 兼容网关」的兜底名
-# 不等于 openrouter ⇒ 不映射（宁可取不到实时价回落目录价，也不能猜错 provider 价）。
 _PROVIDER_ALIASES: dict[str, str] = {
     "mimo": "xiaomi",
     "gemini": "google",
@@ -264,7 +262,6 @@ def lookup_model_capabilities(
 
 
 def resolve_provider_key(provider: str) -> str:
-    # 功能：我们的 provider 名 → models.dev provider key（别名映射；未映射原样返回）
     key = (provider or "").strip().lower()
     return _PROVIDER_ALIASES.get(key, key)
 

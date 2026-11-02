@@ -199,7 +199,7 @@ _CONCLUSION_SIGNALS = (
 def is_self_intro_reply(reply: str) -> bool:
     """功能：判断助手回复是否为自我介绍/能力清单——这类内容没有可记事实。
 
-    BC-004：一句「你好呀，你能帮我做什么？」的回复（241 字能力清单）被当成
+    一句「你好呀，你能帮我做什么？」的回复（241 字能力清单）被当成
     task_state 写入长期记忆并被召回一次。判据看正文是否以自我指涉或能力
     清单开头，且不含结论类信号。
     """
@@ -247,7 +247,7 @@ def is_conversational_prose(text: str) -> str | None:
     """功能：判定候选是否只是助手的话术而非事实陈述，返回拒绝理由或 None。
 
     助手结论回落进长期记忆时（用户只给指令、事实由助手查出），必须挡住下面
-    几类「读起来像内容、实际不是事实」的输出。L1 真机实测 72 条曾把 19 条
+    几类「读起来像内容、实际不是事实」的输出。L1 72 条曾把 19 条
     助手原话整段入库——拒绝话术、目录清单、执行计划、能力清单、故障说明。
 
     这些不是「价值低」，是**根本不是事实**：入库后会在后续召回里冒充用户的
@@ -431,9 +431,9 @@ def review_ingest(
 def review_episodic_ingest(candidate: str) -> IngestVerdict:
     """功能：经历层入库判断——拒「不该存的内容」+ 空/寒暄，业务句才记录。
 
-    移植 cc-haha `WHAT_NOT_TO_SAVE_SECTION`（`src/memdir/memoryTypes.ts:183-195`）：
+    `WHAT_NOT_TO_SAVE_SECTION`（`src/memdir/memoryTypes.ts:183-195`）
     那一版的负面清单是唯一**显式覆盖用户显式指令**的记忆门槛——用户说「保存这个」
-    也不能把可从代码/git 推导的内容写成记忆，只留真正反直觉的部分。本移植把同一
+    也不能把可从代码/git 推导的内容写成记忆，只留真正反直觉的部分。本把同一
     思路落到经历层，适配我们的四类噪音：
 
     1. 助手自我介绍/能力清单——可由提示词推导，不是经历事实
@@ -443,7 +443,7 @@ def review_episodic_ingest(candidate: str) -> IngestVerdict:
     5. 瞬时任务细节——当前对话上下文本身
 
     第 1 类同时堵住 recall_count 虚高：这类情节会被相似问句反复召回，把自己顶成
-    高价值候选（实测自我介绍 recall_count 达8），进而生成噪音晋升审批。
+    高价值候选，进而生成噪音晋升审批。
     """
     text = str(candidate or "")
     body = text.strip()

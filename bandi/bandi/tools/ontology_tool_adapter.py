@@ -1,6 +1,6 @@
 """本体工具的框架适配层：把 `ontology.tools` 的四工具包成 `BaseTool` 实例。
 
-`ontology/tools.py` 保持与参考源同构的纯函数形态（不依赖 agent 框架），适配层
+`ontology/tools.py` 保持与的纯函数形态（不依赖 agent 框架），适配层
 负责：拼参数 schema、标只读/破坏性、渲染人读输出。
 
 只读性：`ontology_query` 只读；`ontology_retract` 破坏性（会删事实与实体）；
@@ -57,7 +57,7 @@ def _to_json_schema(props: dict[str, Any]) -> dict[str, Any]:
 def _coerce_json_strings(schema: dict[str, Any], value: Any) -> Any:
     """功能：按 schema 递归把字符串化的参数还原为真实类型。
 
-    覆盖两类真机形态：①数组/对象被双重编码成 JSON 字符串（`entities:
+    覆盖两类形态：①数组/对象被双重编码成 JSON 字符串
     "[{...}]"`）；②标量被字符串化（`includeInferred="True"`、`depth="3"`）。
     若不在校验前还原，这些参数永远过不了类型校验。解析失败保持原值，让
     校验器报出真实错误。
@@ -124,7 +124,6 @@ class _OntologyToolAdapter(BaseTool):
     def bind_ui(self, ui: Any) -> None:
         """功能：绑定确认通道（UserInteraction 协议）——孤立实体守卫的人机协同入口。
 
-        与 `request_user_input.bind_ui` 同一装配先例：registry 实例化时无 UI，
         由工厂在装配完成后回填；不绑定 = headless，守卫按 fail-closed 回滚。
         """
         self._ui = ui
@@ -184,7 +183,7 @@ class _OntologyToolAdapter(BaseTool):
         （`executor.py:1220`：`tool.execute(tc.arguments, **kwargs)`）。
 
         签名必须与 `BaseTool.execute` 一致（`(params, context=None)`）；
-        曾用 `**kwargs` 导致真机报 `takes 1 positional argument but 2 were given`。
+        曾用 `**kwargs` 导致报 `takes 1 positional argument but 2 were given`。
         """
         try:
             value = self._tool.execute(dict(params or {}))

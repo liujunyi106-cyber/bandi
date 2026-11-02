@@ -84,7 +84,7 @@ def is_explicit(item: MemoryItem) -> bool:
     """功能：显式条目判定——用户明说「记住/记下/别忘了」的内容永不删除。
 
     写入侧由 `ingest_review._EXPLICIT_REMEMBER_WORDS` 判定并落 `metadata.is_explicit`；
-    LeAgent 的对应语义（`EXPLICIT_REMEMBER`）只作 FormationTarget 触发器、不落库，
+    的对应语义（`EXPLICIT_REMEMBER`）只作 FormationTarget 触发器、不落库
     导致 decay/forget 对显式与普通条目一视同仁——本项目要求显式豁免删除，
     故必须有可持久化的标记。
     """

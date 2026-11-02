@@ -701,7 +701,6 @@ _DENY_TOKENS = frozenset(
 
 
 def parse_approval_decision(content: str | None) -> ApprovalDecision | None:
-    # 功能：把用户审批卡回复映射为决策（中英文 token + JSON 形态）
     raw = (content or "").strip()
     if not raw:
         return None

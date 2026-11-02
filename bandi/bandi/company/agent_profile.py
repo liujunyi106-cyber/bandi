@@ -109,7 +109,7 @@ class AgentProfile(BaseModel):
 class CapabilityContext:
     """功能：能力调用上下文（裁剪版——=A）。
 
-    裁掉参考源的 tenant_id/channel/turn_id/deadline_at（ADR-34 单机 MVP 无消费方）
+    裁掉的 tenant_id/channel/turn_id/deadline_at
     保留 agent/session/request/trace/attempt 五字段；必填字段非空 + attempt 正整数。
     """
 

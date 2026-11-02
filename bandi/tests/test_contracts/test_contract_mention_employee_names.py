@@ -1,4 +1,3 @@
-# 功能：契约测试——@ 支持带空格显示名与员工名解析（员工名映射到岗位）。
 from __future__ import annotations
 
 from bandi.api.company_chat import (

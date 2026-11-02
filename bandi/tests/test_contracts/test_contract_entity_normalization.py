@@ -1,6 +1,6 @@
 """契约：实体归一两阶段（粗筛 + LLM 精判）。
 
-移植 datafoundry DataLink 的两阶段归一（`llm_mapper.py:594-609`）：廉价粗筛把
+datafoundry DataLink 的两阶段归一（`llm_mapper.py:594-609`）：廉价粗筛把
 O(n²) 压到 O(k)，LLM 逐对精判，**相似度只决定「值不值得问」，不下合并结论**
 （datafoundry prompt 原文第 6 条："High similarity does NOT guarantee they
 should be merged"）。

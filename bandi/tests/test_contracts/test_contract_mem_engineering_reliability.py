@@ -121,7 +121,7 @@ def test_note_feedback_missing_item_returns_false(tmp_path: Any) -> None:
 
 
 def test_note_feedback_corrupt_metadata_raises_without_clobber(tmp_path: Any) -> None:
-    """契约（破坏者）：metadata 损坏时拒绝反馈（ValueError，端点映射 409）
+    """
     原值不得被覆盖。"""
     lt = LongTermMemory(str(tmp_path / "lt.db"))
     lt.store(MemoryItem("corrupt", "元数据损坏条目"))

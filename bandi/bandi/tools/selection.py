@@ -221,7 +221,7 @@ def query_terms(query: str) -> list[str]:
     意图词表再对原文做一次子串命中，覆盖「查一下」这类 3 字词（2-gram 覆盖不到）。
 
     成本护栏：输入截断 + 词元去重 + 数量上限——超长输入（粘贴大段文本）不截断时
-    会生成与输入同量级的 2-gram，再乘工具数（真机实证：3000 字 x 111 工具把轮次
+    会生成与输入同量级的 2-gram，再乘工具数
     拖入超时；意图表达通常在前段，截断不损失检索质量）。
     """
     text = str(query or "").lower()[:_QUERY_MAX_CHARS]
@@ -330,7 +330,7 @@ def select_relevant_schemas(
     - **能力询问 → 原样返回全量**（问的是产品实际能做什么，裁剪会让模型只能
       看见挑剩的工具，进而如实却错误地回答「暂不支持写文件/图表/团队」——
       对用户谎报能力，rubric capability-honesty-1 直接判负）；
-    - **纯闲聊轮 → 只留 `_CHITCHAT_TOOL_NAMES`**（真机台账：这类轮次工具
+    **纯闲聊轮 → 只留 `_CHITCHAT_TOOL_NAMES`**
       schema 占 input 的 61%、对话内容仅占 1%——模型直接作答，不需要工具面）；
     - **MCP 懒暴露**：普通对话不注入 MCP schema；只有显式 MCP 意图、工具名
       命中或关键词得分命中时，才最多注入 `mcp_max_tools` 个；

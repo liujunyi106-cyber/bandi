@@ -2068,11 +2068,11 @@ class CompanyDispatcher:
     ) -> list[tuple[str, str, str, str, bool, str, float]]:
         """并行执行已认领的工作项，返回 `(item_id, role_id, claimed_role, old_phase, ok, err)`。
 
-        语义逐条对齐参考源：
-          * 并发闸门 `Semaphore(max_concurrent)` —— LeAgent workflow/engine/executor.py:326；
+        语义逐条对齐
+          * 并发闸门 `Semaphore(max_concurrent)` —— workflow/engine/executor.py:326
           * `gather(return_exceptions=True)` 且每项内部再兜一层——**单点失败绝不取消
-            其余项**（LeAgent rules/engine.py:522、dsh workflow runtime.ts:400）；
-          * **每项独立 `wait_for`** —— LeAgent cron/executor.py:186。刻意避开其
+            其余项**
+          * **每项独立 `wait_for`** —— cron/executor.py:186。刻意避开其
             executor.py:338 的批次级超时：那会在任一项超时时 `cancel()` 整批。
         """
         sem = asyncio.Semaphore(max(1, self.config.max_concurrent))

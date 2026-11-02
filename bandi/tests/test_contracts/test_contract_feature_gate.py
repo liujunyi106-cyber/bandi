@@ -213,7 +213,7 @@ def test_feature_gate_rejects_non_bool() -> None:
 
 
 def test_feature_flags_config_loads_tool_groups() -> None:
-    """FeatureFlagsConfig 从 config 读入 tool_groups 映射（默认空=全开）。"""
+    """"""
     cfg = FeatureFlagsConfig(tool_groups={"workflow": False, "doc": True})
     gate = FeatureGate(cfg.tool_groups)
     assert gate.is_enabled("workflow") is False

@@ -2,7 +2,7 @@
 
 这一版的由来：第一版实现写成 `engine.execute(...)`，而 `FallbackEngine` 的方法
 其实叫 `call_with_fallback` —— AttributeError 被自己写的 `except Exception`
-吞掉，静默返回 None。于是**重试代码从未执行过**，真机 Pass^N 里 reasoning-only
+吞掉，静默返回 None。于是**重试代码从未执行过**，Pass^N 里 reasoning-only
 依旧以 MODEL_ERROR 出现（日志里连 debug 都看不到，因为异常被吃了）。
 
 教训两条，都在本文件钉死：
@@ -30,7 +30,7 @@ class TestGuardOnEveryReturnPath:
     前两版都只把重试挂在 `_do_llm_call_inner` 的**直调**返回点（1295 行附近），
     但主路径根本不经过那里——流式候选成功（`return response`）与非流式
     `complete_with_fallback`（`return response`）各自提前 return。重试代码因此
-    是死代码，真机 events 里 `reasoning_only_retry` 事件数恒为 0。
+    是死代码，events 里 `reasoning_only_retry` 事件数恒为 0。
 
     本类用 AST 静态核对：函数内所有 `return <LLMResponse 类表达式>` 的返回点，
     除经 `_guard_reasoning_only` 包裹的以外不得裸返回响应。
@@ -83,7 +83,7 @@ class TestNoChainDoesNotShortCircuit:
     """空 `fallback_chain` 时不得早退。
 
     第二版实现写了 `if not chain: return None`，于是**每次都早退**，
-    reasoning-only 一次都没重试过，真机 5 条用例照旧 MODEL_ERROR。
+    reasoning-only 一次都没重试过，5 条用例照旧 MODEL_ERROR。
 
     注意本类**不**断言 config 里没有 `fallback_chain` 键——那是配置项，
     加不加与实现无关；该钉的是「链为空也照样重发一次」。

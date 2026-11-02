@@ -1133,7 +1133,6 @@ class TestReopenCasUnderConcurrency:
 # ==================== day137b_employee_progress ====================
 # 功能：插队批契约——员工执行过程流式（thread_progress 帧数据源）
 # 钉行为族（员工单聊/群聊/团队会话的实时过程块）：
-# ① EmployeeProgressHandler 帧映射族（run_agent_turn 过程帧 → thread_progress 事件：
 # content/thinking/tool_start/tool_progress/tool_result/skill/note/memory/task_ledger/done/error）；
 # ② 归属字段（project_id/thread_id/role_id）逐帧携带（前端按项目/员工过滤依据）；
 # ③ 破坏者：广播回调异常不得中断员工执行（帧转发 best-effort）；
@@ -1157,7 +1156,6 @@ def _event_types(frames: list[dict[str, Any]]) -> list[str]:
     return [f["data"]["event"]["type"] for f in frames]
 
 
-# ── ① 帧映射族（方法 → event.type/data 结构；② 归属断言合并覆盖）────────────
 async def test_handler_frame_family_with_scope() -> None:
     frames, callback = _collector()
     handler = EmployeeProgressHandler(callback, project_id="p1", thread_id="t1", role_id="r1")
@@ -2428,7 +2426,6 @@ def test_builtin_reasoning_efforts_offline_fallback() -> None:
             f"{name}（{BUILTIN_MODELS[name].provider}）适配层尚未接线 thinking ⇒ 不得进入兜底表"
         )
 
-    # -C 加固：新接线四家的挡位必须落在**各自适配层映射表值域内**——
     # 防「滑杆给了档位但适配层不认（或静默丢弃）」，与 deepseek/openai 同款断言
     from bandi.llm.adapters.anthropic import _ANTHROPIC_EFFORT
     from bandi.llm.adapters.google import _GEMINI_LEVEL

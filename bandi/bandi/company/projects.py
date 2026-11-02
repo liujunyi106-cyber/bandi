@@ -1,7 +1,6 @@
 # 功能：项目归属记录（~/.bandi/company/projects/<pid>.json）——ProjectRecord + ProjectStore
 # （CRUD / 原子写 / 路径安全）+ 团队拉入校验（已组建口径）+ 成员动态解析（
 # 共享跨项目引用，员工不复制；org 变更即时反映，不落盘快照）。
-# 内部先例：team_template_store.py（store 模式）/ org_persistence.py（原子写）。
 from __future__ import annotations
 
 import json

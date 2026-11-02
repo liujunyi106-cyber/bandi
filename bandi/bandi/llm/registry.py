@@ -16,7 +16,7 @@ _COMPAT_DEFAULT_BASE_URLS: dict[str, str] = {
 }
 
 
-class ProviderRegistry:  # 功能：Provider 注册与工厂，模型/供应商→Provider 映射 + 按需实例化
+class ProviderRegistry:
     def __init__(self, config: BandiConfig | None = None):
         self._providers: dict[str, type[BaseProvider]] = {}
         self._instances: dict[str, BaseProvider] = {}
@@ -61,7 +61,6 @@ class ProviderRegistry:  # 功能：Provider 注册与工厂，模型/供应商�
         # 思考挡位经顶层 reasoning_effort（专属适配：x-opencode-session 自动注入）
         self.register("opencode-go", OpenCodeGoProvider)
 
-        # 单一来源——从 ModelCatalog 自动构建模型→provider 映射
         for model_name, spec in BUILTIN_MODELS.items():
             if spec.provider != "mock":
                 self.register_model(model_name, spec.provider)

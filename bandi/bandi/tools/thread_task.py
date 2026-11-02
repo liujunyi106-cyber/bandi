@@ -170,7 +170,7 @@ class SpawnThreadTaskTool(BaseTool):
         org_engine: Any | None = None,
         work_item: Any | None = None,
     ) -> None:
-        """后绑定依赖——沿 subagent.bind_registry/UserInputTool.bind_ui 先例。
+        """
 
         build_tool_registry 以裸构造注册全部工具（无公司上下文），公司链路装配点
         （EngineSeatExecutor→run_agent→run_agent_turn）在 registry 建成后注入

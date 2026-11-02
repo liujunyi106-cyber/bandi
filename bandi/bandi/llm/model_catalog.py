@@ -41,7 +41,6 @@ class ModelSpec:  # 功能：模型规格元数据（上下文窗口/能力标�
 #
 # 已接线（可列挡位）：
 # DeepSeek /.1（官方 change log）：reasoning_effort = low/high/max（medium/xhigh 是兼容
-# 映射值，直传与 high 同档 ⇒ 不列）；thinking 默认**关闭**（opt-in）。
 # OpenAI GPT-5.x/GPT-6（官方 Help Center + models.dev）：reasoning.effort =
 # none/low/medium/high/xhigh/max；GPT-5.6 三件套全六档、gpt-6-astra 五档（low..max）
 # GPT-5.2 五档、gpt-5.2-pro 三档；**默认 medium（思考开）**，故「关闭」由适配层显式发 none 落实。
@@ -78,7 +77,6 @@ _BUILTIN_REASONING_EFFORTS: dict[str, list[str]] = {
     "claude-sonnet-4-6": ["low", "medium", "high"],
     "claude-haiku-4-5": ["low", "medium", "high"],
     # Gemini 3.x：thinkingLevel 枚举（原整数 thinkingBudget 已弃用；官方「不再建议」）
-    # 3.x 不能真正关闭（minimal 为最近似「不思考」，见适配层空档映射）
     "gemini-3.8-flash": ["low", "medium", "high"],
     "gemini-3.6-flash": ["low", "medium", "high"],
     "gemini-3.5-flash": ["low", "medium", "high"],

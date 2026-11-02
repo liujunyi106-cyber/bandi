@@ -97,7 +97,6 @@ export function GraphCanvas({
   const dragRef = useRef<DragState | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { width, height, bounds, positions, nodeRadius } = layout;
-  // 类型 → 灰阶映射（按实体首次出现顺序；画布/图例/实体卡同源）
   const typeColors = useMemo(
     () => buildTypeColorMap(snapshot.entities.map((entity) => entity.type)),
     [snapshot.entities],
@@ -559,7 +558,6 @@ interface GraphNodeGlyphProps {
   onSelect: () => void;
   /** 按下即进入拖拽重排（同时订阅容器接管指针，避免与平移冲突）。 */
   onPointerDownNode: (event: ReactPointerEvent<SVGGElement>, id: string) => void;
-  /** 类型 → 颜色映射（与图例/缩略图/实体卡同源）。 */
   typeColors: ReadonlyMap<string, string>;
 }
 
@@ -627,7 +625,6 @@ function GraphNodeGlyph({
   );
 }
 
-/** 功能：类型图例（含各类计数，灰阶与节点填充同源——同一 typeColors 映射）。 */
 function GraphLegend({
   summary,
   typeColors,

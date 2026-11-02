@@ -1,7 +1,5 @@
 # 功能：契约——Skill Card 局部改写器（SkillEditor：patch 式局部改写 + 越界忽略 +
-# 合并回原卡 + 引用重映射 + 再走反思校验 + 可选落盘回写）。
 # 钉行为不钉实现：契约断言「最终产物」——目标区域被改写而无关区域逐字保持、越界 patch
-# 被忽略并出 warning、节点改名后图引用同步重映射（SkillCard 图校验通过即证）
 # 模型失败保留原卡、改写结果不得绕过工具白名单/动作白名单（破坏者）
 # rewrite_and_persist 落盘读回等于改写后卡（DoD-12）。
 # 生产路径族：SkillEditor.rewrite（纯函数，调用方持卡）+ rewrite_and_persist
@@ -195,8 +193,7 @@ async def test_node_field_patch_reports_changed_path() -> None:
 @pytest.mark.asyncio
 async def test_node_rename_remaps_graph_references() -> None:
     """契约（破坏者）：节点改名（返回整卡 draft_skill，node_id 变）→ start/edges
-    引用必须同步重映射——**SkillCard 构造即图校验，缺引用映射则构造直接失败**，故产物可构造
-    即证映射成功；且旧 id 不得残留在任何引用位。"""
+    """
     renamed = dict(_current_card()["nodes"][0], node_id="collect_order_v2")
     draft = _current_card()
     draft["nodes"][0] = renamed

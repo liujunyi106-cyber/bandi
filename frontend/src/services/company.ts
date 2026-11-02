@@ -312,7 +312,6 @@ export const companyApi = {
       `/company/projects/${encodeURIComponent(projectId)}/teams`,
       { team_id: teamId },
     ),
-  /** 功能：组织角色列表（工作项岗位 id → 展示名映射）。 */
   roles: () => api.get<{ roles: Array<{ id: string; name: string }> }>("/company/roles"),
   /** 功能：WorkItem 查询（hideChat=false 时连纯对话卡一起返回）。 */
   workItems: (role = "", hideChat = true) => {

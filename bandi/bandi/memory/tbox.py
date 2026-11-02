@@ -18,7 +18,7 @@ from dataclasses import dataclass
 class RelationTerm:
     """功能：一个可声明的关系词条——谓词 + 适用主体/客体 + 逻辑特征。
 
-    字段对齐 dsh-ontology `RelationTerm`（`src/types.ts:47-66`）的子集，
+    字段对齐 `RelationTerm`（`src/types.ts:47-66`）的子集
     我们不需要 domain/range 全套描述逻辑，够用即可。
     """
 
@@ -148,7 +148,7 @@ def suggest_relations(predicate: str) -> list[str]:
 class Violation:
     """功能：一条校验失败原因。
 
-    措辞面向**必须修复它的那个模型**，不是给人看的日志——移植 dsh-ontology
+    措辞面向**必须修复它的那个模型**，不是给人看的日志
     `src/types.ts:120-126`：错误消息要能直接驱动下一轮自我修正。
     """
 
@@ -167,7 +167,7 @@ def validate_fact(
     """功能：校验一个三元组是否落在已声明词汇上——validate, not parse。
 
     返回违规列表（空 = 通过）。调用方遇到非空必须**拒绝写入并把消息回给模型**，
-    不允许绕过、不允许自动改写——这是 dsh-ontology 的核心纪律。
+    不允许绕过、不允许自动改写——这是 的核心纪律。
     """
     violations: list[Violation] = []
     term = relation_for(predicate)
@@ -209,7 +209,7 @@ def entailed_edges(
 ) -> list[tuple[str, str, str]]:
     """功能：按对称/传递/逆关系特征推导隐含边——只读推导，永不落库。
 
-    移植 dsh-ontology `entail()`（`src/ontology.ts:481-519`）的核心：推论是
+    `entail`（`src/ontology.ts:481-519`）的核心：推论是
     read-time 的派生物，撤回前提即自动消失，不留过期推理残留。
     """
     known = {tuple(e) for e in edges}

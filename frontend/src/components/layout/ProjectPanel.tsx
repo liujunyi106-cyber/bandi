@@ -156,7 +156,6 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
   const showFeatureMenu =
     activeSession?.origin !== "secretary" &&
     (activeSession === null || !isEmployeeDmSession(activeSession));
-  /** 功能：群聊行显示名（单团队且模板库有 team_id→name 映射时跟随团队名；命名由团队组建落地）。 */
   const [teamName, setTeamName] = useState("");
   const groupEntryName =
     project?.team_ids?.length === 1 && teamName ? teamName : t("chat.panel.groupEntry");
@@ -341,7 +340,6 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
     };
   }, [projectId]);
 
-  // 团队名解析（预留）：单团队时尝试从团队模板库的 team_id→name 映射取名——
   // 现无实例化记录（命名在「团队组建」落地），匹配不到即回落通用名「项目总群聊」
   useEffect(() => {
     const firstTeam = project?.team_ids?.[0] ?? "";

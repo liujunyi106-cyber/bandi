@@ -1,5 +1,5 @@
 """
-契约族：peer wait 解析接入 tick（Day125-/ AR-13 死链激活）。
+契约族：peer wait 解析接入 tick。
 
 背景：CommunicationManager.refresh_waiting_tasks / resolve_task_peer_wait
 （回复到达解除 / 超时升级 manager / 超时升级 meeting）生产零调用——

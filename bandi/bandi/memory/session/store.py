@@ -609,7 +609,7 @@ class SessionStore:
         self, session_id: str, turn_index: int, nodes: list[dict[str, Any]]
     ) -> str:
         """-3c：轮末过程节点落一条（entry_type="process"；content 空，节点在
-        metadata.process——与前端 ProcessNode 同构）。非 message 条目不进对话链
+        metadata.process——与前端 ProcessNode）。非 message 条目不进对话链
         （_get_latest_leaf 只取 message），fork/恢复语义不受影响。"""
         entry_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()

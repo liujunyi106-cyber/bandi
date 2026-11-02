@@ -134,7 +134,7 @@ def test_missing_or_broken_cache_is_safe(tmp_path: Path) -> None:
 
 
 def test_provider_alias_does_not_guess_openai_compat() -> None:
-    """契约①：`openai_compat` 是「未知 OpenAI 兼容网关」兜底名，**不得**映射到 openrouter
+    """
     （猜错 provider 会错价 ⇒ 宁可回落目录价/未定价）。"""
     assert models_dev.resolve_provider_key("openai_compat") == "openai_compat"
     assert models_dev.resolve_provider_key("MiMo") == "xiaomi"

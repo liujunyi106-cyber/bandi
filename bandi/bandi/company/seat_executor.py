@@ -258,7 +258,7 @@ class EngineSeatExecutor:
 
     def bind_abort_provider(self, provider: Any) -> None:
         """功能：绑定工作项级 AbortController 查询器——run_turn 透传给 run_agent
-        实现员工执行链可中断（dispatcher 装配点调用，对齐 bind_registry 先例）。"""
+        """
         self._abort_provider = provider
 
     def _artifact_summary(self, runtime: CompanyRuntime) -> str:
@@ -497,7 +497,6 @@ class EngineSeatExecutor:
 
         返回 (provider_config, preflight_error)。查询失败/无配置/非法类型 → (None, "")
         （跟随全局模型，零影响现状——llm_config 非权限语义，不沿用 tool_tags 的
-        fail-closed 空名单先例）；模型无法解析 provider → 预检错误 fail-closed。
         """
         if self._org_engine is None or not employee_id:
             return None, ""

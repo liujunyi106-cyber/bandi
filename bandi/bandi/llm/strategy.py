@@ -108,7 +108,6 @@ class FallbackEngine:
         raise ProviderChainExhaustedError(last_error)
 
     def _classify(self, exception: Exception) -> RecoveryAction:
-        # 超长优先于类型映射：compact 动作由 states 层统一接管（重试压缩），此处不外切 provider
         if is_prompt_too_long_error(exception):
             return RECOVERY_STRATEGIES["LLM_PROMPT_TOO_LONG"]
         # 真实异常族（httpx——生产 provider 的实际抛出类型）

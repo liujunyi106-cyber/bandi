@@ -1,6 +1,6 @@
 """契约：**纯闲聊**轮不注入完整工具面（能力询问见 capability_honesty 契约）。
 
-真机台账（`sess-93a6c77d`，3 轮）：闲聊轮 tool_schema=5524 tokens，占单轮 input
+台账（`sess-93a6c77d`，3 轮）：闲聊轮 tool_schema=5524 tokens，占单轮 input
 的 61%，而 history 仅 16 tokens——对话内容几乎不占预算，工具面却是最大头。
 3 轮累计 33.1k tokens 里，工具面占约 50%。
 

@@ -1,6 +1,6 @@
 """契约：本体四工具（对照表 -5 / -3,6）。
 
-复刻 dsh-ontology `src/tools.ts`（727 行全读）。行为不变式：
+复刻 `src/tools.ts`（727 行全读）。行为不变式
 
 **ontology_define（TBox）**
   1. **重复遍解析**——同一调用内的定义按「反复重试直到无进展」应用，
@@ -27,7 +27,7 @@
  15. 撤回词表被依赖时进 `refused`（不是 missing）；不存在进 `missing`
  16. 撤回不存在的事实进 `missing`
 
-dsh-ontology `src/tools.ts:145-727`。
+`src/tools.ts:145-727`。
 """
 
 from __future__ import annotations

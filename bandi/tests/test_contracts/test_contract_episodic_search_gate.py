@@ -123,7 +123,7 @@ class TestRecallWriteback:
 class TestFunctionWordGramGate:
     """中文 2-gram 跨词切分会产出「高的 / 的代 / 有哪」这类只含虚词的 gram。
 
-    真机证据（recall 分布复验）：查询「梵高的代表作有哪些？」的 gram 集合为
+    证据：查询「梵高的代表作有哪些？」的 gram 集合为
     ['梵高','高的','的代','代表','表作','作有','有哪','哪些？']，整词停用表一个都
     滤不掉，于是「世界上**高的**山峰」只凭 1 个 gram「高的」即被召回，
     recall_count 被顶到 15；「彩虹**有哪**几种颜色」同理。
@@ -204,7 +204,7 @@ class TestFunctionWordGramGate:
     def test_no_single_gram_bridge_raises_recall(self, gram_store: EpisodicStore) -> None:
         """端到端：虚词搭桥的跨条目召回为 0——别条目的 recall 不被顶高。
 
-        真机证据（recall_queries 反查）：修复前「梵高的代表作有哪些？」曾召回
+        证据（recall_queries 反查）：修复前「梵高的代表作有哪些？」曾召回
         「世界上最高的山峰叫什么？」（recall 顶到 15）；「莫比乌斯环有几个面？」
         曾召回「太阳系一共有几颗行星？」——两侧共享「的有」「有几」这类
         虚词 gram 即被判相关。修复后只有真相关条目被召回。
@@ -227,7 +227,7 @@ class TestFunctionWordGramGate:
 class TestLikeFallbackFunctionWordGate:
     """FTS 主链是全 gram AND（精确）；LIKE 兜底是 OR 语义——单个虚词 gram 即可命中。
 
-    真机证据：episodic 与 long_term/working 同库，FTS5 方言异常时回落 LIKE
+    证据：episodic 与 long_term/working 同库，FTS5 方言异常时回落 LIKE
     （bandi.log 里 long_term/working 已在刷「FTS5 search failed, falling back」）。
     兜底路径若不过滤虚词 gram，「梵高的代表作有哪些？」会因「高的」命中
     「世界上最高的山峰叫什么？」——即修复前 recall 顶到 15 的那条路径。

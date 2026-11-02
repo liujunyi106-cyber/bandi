@@ -1,7 +1,6 @@
 /**
   * 功能：主题辅助（@base docs/前端设计规划.md 视觉 token / 主题范围）。
  * 色板与会话区子色板全部以 CSS 变量落在 `src/index.css`（Tailwind v4 `@theme`）
- * 这里只放需要在 TS 里做映射的少量派生值（员工 tone、危险级配色）。
  */
 import type { DangerLevel, EmployeeTone } from "@/types";
 

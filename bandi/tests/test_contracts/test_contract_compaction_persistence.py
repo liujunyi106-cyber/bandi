@@ -93,7 +93,6 @@ def test_summary_persisted_to_long_term_with_high_importance(tmp_path: Any) -> N
     )
 
     hits = manager.long_term.retrieve("seed 参数", limit=5)
-    # item_id 键取 session_id 前 8 字符（与既有 turn: 键截断先例一致）
     compaction = [h for h in hits if h.id.startswith("compaction:sess-abc")]
     assert compaction, f"必须落库 compaction 条目（实际 {[h.id for h in hits]}）"
     entry = compaction[0]

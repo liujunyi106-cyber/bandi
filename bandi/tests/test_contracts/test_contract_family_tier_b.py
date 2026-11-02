@@ -1421,14 +1421,10 @@ def test_approval_engine_public_surface_and_single_entry_point() -> None:
 
 
 # ==================== t4_role_mapping ====================
-# 功能：契约——组织角色 → 内置权限档 映射层（方案 A）
 #
-# **可配映射**：
 # * `core/permission/roles.py` 的内置权限档（admin/power_user/member/readonly）
 # 经 `PolicyEngine` 在工具执行面生效；
-# 缺口 = 二者之间没有映射 → 「界面上绑了岗位，执行面完全不看」。
 #
-# 本契约钉死两件事：① 映射语义；② **默认零破坏**（空映射时行为与改造前完全一致）。
 
 
 def _decision_for(role: str, role_map: dict[str, str] | None, action: str = "execute"):
@@ -1441,11 +1437,10 @@ def _decision_for(role: str, role_map: dict[str, str] | None, action: str = "exe
     return engine.check(resource, PermissionContext(user_id="u", role=role))
 
 
-# ---------------------------------------------------------------- 映射语义
 
 
 def test_resolve_role_passthrough_mapping_invalid_and_case_normalized() -> None:
-    """契约：无映射/未覆盖/非法目标原样返回；有效目标解析为内置档且大小写归一。"""
+    """"""
     from bandi.core.permission.role_mapping import resolve_role
 
     for role in ("engineer", "user", "member", "随便什么岗位"):
@@ -1483,7 +1478,7 @@ def test_validate_and_builtin_names_match_roles_module() -> None:
 
 
 def test_mapped_role_enforces_execute_and_readonly_denies_write() -> None:
-    """契约（本方案的核心价值）：岗位经映射后权限档真的在执行面生效（execute/write 分支）。"""
+    """"""
     from bandi.core.permission.models import Decision
 
     decision = _decision_for("engineer", {"engineer": "member"})
@@ -1496,7 +1491,7 @@ def test_mapped_role_enforces_execute_and_readonly_denies_write() -> None:
 
 
 def test_default_empty_map_and_unmapped_role_do_not_change_behaviour() -> None:
-    """破坏者契约（零破坏核心）：默认空映射/未覆盖角色下，engine 不得注册任何角色策略。"""
+    """"""
     from bandi.core.permission.models import Decision
 
     before_style = _decision_for("user", None)
@@ -1914,7 +1909,6 @@ async def test_run_agent_turn_forwards_identity_end_to_end(
 # ---------------------------------------------------------------- 绑定读取失败策略（fail-closed）
 #
 # 背景：`effective_role_for` 在岗位绑定读取失败时静默回落 `agent_role`——若
-# `agent_role` 恰为 admin（或经 role_map 映射为高权限档），一次 DB 故障即等于**提权**。
 # 契约：
 # 1. 失败必发 warning，且包含 user_id 与异常内容（可观测）；
 # 2. 默认（strict=False / 未配置）行为与现状一致：告警后回落 agent_role；
@@ -2220,7 +2214,7 @@ def _api_module():
 
 
 def _client_with_isolation(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, api_key: str = "test"):
-    """生产形态 client：隔离 home + 固定 API key + 重置单例（既有测试先例）。"""
+    """"""
     from fastapi.testclient import TestClient
 
     api_mod = _api_module()

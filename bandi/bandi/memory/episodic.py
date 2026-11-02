@@ -1,8 +1,7 @@
 """Episode = 一次用户/Agent 交互的经历摘要（区别于 long_term 的知识事实层）。
 
-与 LeAgent episodic.py 的映射：record/note_recall best-effort/空 summary 跳过
-语义一一对应；Milvus 向量检索以「n-gram LIKE 命中比评分」替代（ADR-33 无 RAG）；
-重要性加权与时间衰减（LeAgent 仅存字段）在本 store 的 search 排序中真正生效：
+语义一一对应；Milvus 向量检索以「n-gram LIKE 命中比评分」替代
+重要性加权与时间衰减在本 store 的 search 排序中真正生效
 
     score = 命中相关度 × importance × 0.5 ** (age_days / half_life_days)
 """
@@ -25,7 +24,6 @@ from bandi.utils.db import connect_app_db
 logger = logging.getLogger(__name__)
 
 _DEFAULT_HALF_LIFE_DAYS = 90.0
-# 部分命中相关度线性映射下限（0.3~1.0）——保区分度，防长查询多 gram 场景分数近零
 _MIN_HIT_RELEVANCE = 0.3
 _MIN_TOKEN_LEN = 2
 _MAX_TOKEN_LEN = 4
@@ -112,7 +110,7 @@ def _effective_query_terms(terms: list[str]) -> list[str]:
 
 
 def hit_relevance(hit_count: int, total: int) -> float:
-    """功能：命中相关度线性映射 [0.3, 1.0]——部分命中不再封顶 0.6（低区分度）
+    """
     或随查询 gram 数放大趋近于零；全中=1.0，零命中=0.0。"""
     if total <= 0 or hit_count <= 0:
         return 0.0
