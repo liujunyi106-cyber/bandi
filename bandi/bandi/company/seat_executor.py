@@ -257,8 +257,7 @@ class EngineSeatExecutor:
         self._team_memory_store = team_memory_store
 
     def bind_abort_provider(self, provider: Any) -> None:
-        """功能：绑定工作项级 AbortController 查询器——run_turn 透传给 run_agent
-        """
+        """功能：绑定工作项级 AbortController 查询器——run_turn 透传给 run_agent"""
         self._abort_provider = provider
 
     def _artifact_summary(self, runtime: CompanyRuntime) -> str:

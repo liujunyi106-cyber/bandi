@@ -79,7 +79,7 @@ def main() -> int:
 
     # 解释器优先级：venv python（干净 sys.path，产物最小）> 父解释器 -S + PYTHONPATH
     # -S：跳过 base 解释器的 site-packages——否则 PyInstaller 会扫进本机全部无关包
-    #（paddle/modelscope 等 ML 大件），既拖慢构建（20min+）又可能因 import 探测
+    # （paddle/modelscope 等 ML 大件），既拖慢构建（20min+）又可能因 import 探测
     # 崩溃，产物也虚胖数百 MB。
     venv_python = REPO_ROOT / ".venv" / "Scripts" / "python.exe"
     if os.name != "nt":

@@ -3701,8 +3701,7 @@ def test_fusion_weight_priority_and_soft_quota_rules() -> None:
 
 @pytest.mark.asyncio
 async def test_half_life_relevance_and_freshness_note(tmp_path: Path) -> None:
-    """契约（4.8）：episodic 默认半衰期 90 天（90 天龄 decay≈0.5）；部分命中
-    """
+    """契约（4.8）：episodic 默认半衰期 90 天（90 天龄 decay≈0.5）；部分命中"""
     from bandi.context.sources.memory_source import MemoryContextSource
     from bandi.memory.episodic import hit_relevance
 

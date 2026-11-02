@@ -124,8 +124,7 @@ def test_same_provider_reuses_cache():
 
 
 def test_compat_family_providers_resolve_without_base_url_arg():
-    """回归：compat 家族（moonshot/zhipu/minimax/mimo）按名实例化——
-    """
+    """回归：compat 家族（moonshot/zhipu/minimax/mimo）按名实例化——"""
     from bandi.llm.providers.openai import OpenAICompatProvider
 
     config = BandiConfig()

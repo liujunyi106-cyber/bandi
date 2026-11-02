@@ -235,8 +235,7 @@ class TestSerializerSafety:
         assert entries == ["sk_order_flow.card.json"]
 
     def test_save_overwrites_atomically(self, tmp_path: Path) -> None:
-        """契约（幂等覆盖）：同一 skill_id 重复 save → 覆盖为最新
-        """
+        """契约（幂等覆盖）：同一 skill_id 重复 save → 覆盖为最新"""
         card_a = SkillCard(**_full_card())
         save_card(card_a, tmp_path)
         card_b = SkillCard(

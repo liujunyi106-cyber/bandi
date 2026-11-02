@@ -360,7 +360,9 @@ def put_content(node_id: str, body: ContentPut) -> dict[str, Any]:
 
 
 @router.post("/nodes/{node_id}/ingest")
-def ingest_node(node_id: str) -> dict[str, Any]:    # 功能：按需重建节点索引——编辑停手/切换文件时调用，避免每次自动保存都重建。
+def ingest_node(
+    node_id: str,
+) -> dict[str, Any]:  # 功能：按需重建节点索引——编辑停手/切换文件时调用，避免每次自动保存都重建。
     service = get_service()
     node = service.nodes.get_node(node_id)
     if node is None:

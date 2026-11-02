@@ -491,8 +491,6 @@ def _record(node_id, output, next_node, node_started: float) -> dict[str, Any]:
         "status": "completed",
         "output": output,
         "error": None,
-        "duration_ms": int(
-            round((time.perf_counter() - node_started) * 1000)
-        ),  # 节点耗时
+        "duration_ms": int(round((time.perf_counter() - node_started) * 1000)),  # 节点耗时
         "next_node": next_node,
     }

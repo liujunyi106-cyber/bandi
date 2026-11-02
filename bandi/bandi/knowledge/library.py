@@ -131,7 +131,9 @@ class KnowledgeLibraryService:
             return None
         return path.read_text(encoding="utf-8", errors="replace"), path.stat().st_mtime
 
-    def refresh_document_name(self, node: KnowledgeNode) -> None:        # 功能：节点改名后同步索引里的文件名/标题——同名冲突时保留带后缀的唯一名。
+    def refresh_document_name(
+        self, node: KnowledgeNode
+    ) -> None:  # 功能：节点改名后同步索引里的文件名/标题——同名冲突时保留带后缀的唯一名。
         document_id = self._documents.document_id_for_node(node.id)
         if not document_id:
             return

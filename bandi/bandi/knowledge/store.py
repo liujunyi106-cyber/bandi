@@ -46,8 +46,11 @@ def _split_sections(text: str) -> list[tuple[str, str]]:
     第一个标题之前的内容作为无标题首节保留；正文为空的小节丢弃。
     """
     lines = text.splitlines()
-    headings = [(index, _HEADING_RE.sub("", line, count=1).strip())
-                for index, line in enumerate(lines) if _HEADING_RE.match(line)]
+    headings = [
+        (index, _HEADING_RE.sub("", line, count=1).strip())
+        for index, line in enumerate(lines)
+        if _HEADING_RE.match(line)
+    ]
 
     if not headings:
         body = "\n".join(lines).strip()
@@ -801,7 +804,6 @@ class KnowledgeStore:
             created_at=row[13],
             updated_at=row[14],
         )
-
 
     @staticmethod
     def _row_to_document(row: tuple) -> KnowledgeDocument:

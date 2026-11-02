@@ -89,9 +89,7 @@ _checked_role_maps_lock = threading.Lock()
 
 
 def check_role_map(role_map: Mapping[str, str] | None) -> list[str]:
-    """装配期自检：validate 逐条告警 + describe 入日志（进程内按指纹去重）。
-
-    """
+    """装配期自检：validate 逐条告警 + describe 入日志（进程内按指纹去重）。"""
     fingerprint = (
         repr(sorted((role_map or {}).items())) if isinstance(role_map, Mapping) else repr(role_map)
     )

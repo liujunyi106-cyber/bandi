@@ -753,9 +753,7 @@ def _probe_storage_writable() -> bool:
     2 线程 41% / 32 线程 99.97% 假阴性）。
     """
     try:
-        base = (
-            Path(os.environ.get("BANDI_HOME", os.path.expanduser("~/.bandi"))) / "data"
-        )
+        base = Path(os.environ.get("BANDI_HOME", os.path.expanduser("~/.bandi"))) / "data"
         base.mkdir(parents=True, exist_ok=True)
         _sweep_stale_ready_probes(base)
         probe = base / f".ready_probe.{uuid.uuid4().hex}"
@@ -6153,8 +6151,7 @@ async def _slot_answer_provider(
 
 
 def _parse_slot_answers(result: Any) -> dict[str, Any] | None:
-    """功能：槽位答复归一——clarify 通道 wire 为 JSON 字符串（前端 stringify 的 answers
-    """
+    """功能：槽位答复归一——clarify 通道 wire 为 JSON 字符串（前端 stringify 的 answers"""
     if isinstance(result, str):
         try:
             result = json.loads(result)

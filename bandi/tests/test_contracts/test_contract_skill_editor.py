@@ -192,8 +192,7 @@ async def test_node_field_patch_reports_changed_path() -> None:
 
 @pytest.mark.asyncio
 async def test_node_rename_remaps_graph_references() -> None:
-    """契约（破坏者）：节点改名（返回整卡 draft_skill，node_id 变）→ start/edges
-    """
+    """契约（破坏者）：节点改名（返回整卡 draft_skill，node_id 变）→ start/edges"""
     renamed = dict(_current_card()["nodes"][0], node_id="collect_order_v2")
     draft = _current_card()
     draft["nodes"][0] = renamed

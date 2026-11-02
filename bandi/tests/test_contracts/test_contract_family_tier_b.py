@@ -1437,8 +1437,6 @@ def _decision_for(role: str, role_map: dict[str, str] | None, action: str = "exe
     return engine.check(resource, PermissionContext(user_id="u", role=role))
 
 
-
-
 def test_resolve_role_passthrough_mapping_invalid_and_case_normalized() -> None:
     """"""
     from bandi.core.permission.role_mapping import resolve_role

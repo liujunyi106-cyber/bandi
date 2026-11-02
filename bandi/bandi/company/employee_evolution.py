@@ -45,8 +45,7 @@ DEFAULT_ORGANIZATION_ID = "default"
 
 
 def _build_self_evolution_event(reflection: dict[str, Any]) -> dict[str, Any]:
-    """功能：项目反思产出 → 自进化补丁事件——strengths/adjustments/avoid_next_time/
-    """
+    """功能：项目反思产出 → 自进化补丁事件——strengths/adjustments/avoid_next_time/"""
     employee_id = str(reflection.get("employee_id") or "").strip()
     if not employee_id:
         return {}

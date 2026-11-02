@@ -243,8 +243,7 @@ def strip_generated_citation_block(content: str) -> str:
         return content
 
     if not _STRICT_SOURCE_HEADING.match(lines[heading]) and (
-        not _looks_like_list_block(lines[heading + 1 :])
-        and len(_LABEL_PATTERN.findall(block)) < 2
+        not _looks_like_list_block(lines[heading + 1 :]) and len(_LABEL_PATTERN.findall(block)) < 2
     ):
         return content
 

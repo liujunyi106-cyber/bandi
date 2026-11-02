@@ -252,8 +252,7 @@ def test_assemble_first_system_identical_across_domains() -> None:
 
 
 def test_static_prompt_identical_across_modes() -> None:
-    """契约：mode 提示词不得占用可缓存前缀——不同
-    """
+    """契约：mode 提示词不得占用可缓存前缀——不同"""
     harness = PromptHarness()
     execute_static = harness._static_prompt("execute", "")
     plan_static = harness._static_prompt("plan", "")
