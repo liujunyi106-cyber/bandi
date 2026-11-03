@@ -1,10 +1,8 @@
-# 功能：HTTPUserInteraction 契约——真挂起闭环（register→推帧→await→resolve 唤醒同一 turn 续跑）
-# 背景：API 场景（uvicorn）装配 HTTPUserInteraction 到 PermissionsPipeline/UserInputTool。
-# （同一 turn 真挂起，事件循环释放）→ 用户 POST /confirm|/clarify → resolve/reject 唤醒恢复。
-# 契约钉行为：ask_permission/ask_input 挂起→唤醒闭环、超时 fail-closed、reject、会话隔离。
+﻿# 功能：HTTPUserInteraction 契约——真挂起闭环（register→推帧→await→resolve 唤醒同一 turn 续跑）。
 from __future__ import annotations
 
 import asyncio
+import contextlib
 
 import pytest
 
@@ -24,6 +22,27 @@ def _collector() -> tuple[list[PendingInteraction], object]:
     return seen, _on
 
 
+async def _wait_frames(
+    seen: list[PendingInteraction], count: int = 1, timeout: float = 5.0
+) -> None:
+    # 功能：等交互帧落到收集器——回调在事件循环下一轮才执行，单次 sleep(0) 在慢机器上不够
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
+    while len(seen) < count:
+        if loop.time() > deadline:
+            raise AssertionError(f"等待交互帧超时：期望 {count} 帧，实际 {len(seen)}")
+        await asyncio.sleep(0.005)
+
+
+async def _cancel(task: asyncio.Task) -> None:
+    # 功能：收尾取消未完成的挂起任务，避免残留等待把后续用例或进程拖住
+    if task.done():
+        return
+    task.cancel()
+    with contextlib.suppress(asyncio.CancelledError, Exception):
+        await task
+
+
 @pytest.mark.asyncio
 async def test_ask_permission_suspend_then_resolve_true() -> None:
     """真挂起闭环：ask_permission 挂起 → 用户批准 resolve(True) → 同一调用返回 True。"""
@@ -32,19 +51,18 @@ async def test_ask_permission_suspend_then_resolve_true() -> None:
     ui = HTTPUserInteraction(store, session_id="s1", on_interaction=on_interaction)
 
     task = asyncio.create_task(ui.ask_permission("bash", {"command": "rm x"}, "high"))
-    # 回调在事件循环下一轮才落地，慢机器上单次 sleep(0) 不够——轮询等到帧出现
-    for _ in range(100):
-        if seen:
-            break
-        await asyncio.sleep(0.01)
-    assert task.done() is False, "用户决策前 ask_permission 必须保持挂起"
-    assert len(seen) == 1, "交互帧已推送"
-    assert seen[0].kind == "permission"
-    assert seen[0].payload["tool_name"] == "bash"
-    assert seen[0].session_id == "s1"
+    try:
+        await _wait_frames(seen)
+        assert task.done() is False, "用户决策前 ask_permission 必须保持挂起"
+        assert len(seen) == 1, "交互帧已推送"
+        assert seen[0].kind == "permission"
+        assert seen[0].payload["tool_name"] == "bash"
+        assert seen[0].session_id == "s1"
 
-    store.resolve(seen[0].interaction_id, True)
-    assert await task is True
+        store.resolve(seen[0].interaction_id, True)
+        assert await task is True
+    finally:
+        await _cancel(task)
 
 
 @pytest.mark.asyncio
@@ -53,9 +71,12 @@ async def test_ask_permission_reject_returns_false() -> None:
     seen, on_interaction = _collector()
     ui = HTTPUserInteraction(store, session_id="s1", on_interaction=on_interaction)
     task = asyncio.create_task(ui.ask_permission("bash", {}, "medium"))
-    await asyncio.sleep(0)
-    store.reject(seen[0].interaction_id)
-    assert await task is False
+    try:
+        await _wait_frames(seen)
+        store.reject(seen[0].interaction_id)
+        assert await task is False
+    finally:
+        await _cancel(task)
 
 
 @pytest.mark.asyncio
@@ -78,10 +99,13 @@ async def test_ask_input_returns_text_answer() -> None:
     seen, on_interaction = _collector()
     ui = HTTPUserInteraction(store, session_id="s1", on_interaction=on_interaction)
     task = asyncio.create_task(ui.ask_input("仓库地址?", secret=False))
-    await asyncio.sleep(0)
-    assert seen[0].kind == "input"
-    store.resolve(seen[0].interaction_id, "https://example.com/repo.git")
-    assert await task == "https://example.com/repo.git"
+    try:
+        await _wait_frames(seen)
+        assert seen[0].kind == "input"
+        store.resolve(seen[0].interaction_id, "https://example.com/repo.git")
+        assert await task == "https://example.com/repo.git"
+    finally:
+        await _cancel(task)
 
 
 @pytest.mark.asyncio
@@ -101,10 +125,13 @@ async def test_ask_confirmation_resolve_roundtrip() -> None:
     seen, on_interaction = _collector()
     ui = HTTPUserInteraction(store, session_id="s1", on_interaction=on_interaction)
     task = asyncio.create_task(ui.ask_confirmation("确认删除？"))
-    await asyncio.sleep(0)
-    assert seen[0].kind == "confirm"
-    store.resolve(seen[0].interaction_id, True)
-    assert await task is True
+    try:
+        await _wait_frames(seen)
+        assert seen[0].kind == "confirm"
+        store.resolve(seen[0].interaction_id, True)
+        assert await task is True
+    finally:
+        await _cancel(task)
 
 
 @pytest.mark.asyncio
@@ -125,11 +152,14 @@ async def test_default_input_ttl_matches_long_human_window() -> None:
     seen, on_interaction = _collector()
     ui = HTTPUserInteraction(store, session_id="s1", on_interaction=on_interaction)
     task = asyncio.create_task(ui.ask_input("目标市场？"))
-    await asyncio.sleep(0)
-    item = seen[0]
-    assert item.ttl_seconds >= 1800.0, "提问挂起窗口必须 ≥1800s（与 permission 同口径）"
-    store.reject(item.interaction_id)
-    assert await task == ""
+    try:
+        await _wait_frames(seen)
+        item = seen[0]
+        assert item.ttl_seconds >= 1800.0, "提问挂起窗口必须 ≥1800s（与 permission 同口径）"
+        store.reject(item.interaction_id)
+        assert await task == ""
+    finally:
+        await _cancel(task)
 
 
 @pytest.mark.asyncio
@@ -142,11 +172,16 @@ async def test_session_isolation() -> None:
     ui2 = HTTPUserInteraction(store, session_id="sB", on_interaction=on2)
     t1 = asyncio.create_task(ui1.ask_permission("bash", {}, "high"))
     t2 = asyncio.create_task(ui2.ask_permission("write", {}, "high"))
-    await asyncio.sleep(0)
-    assert seen1[0].session_id == "sA"
-    assert seen2[0].session_id == "sB"
-    store.resolve(seen1[0].interaction_id, True)
-    assert await t1 is True
-    assert t2.done() is False, "sB 的挂起不受 sA 决策影响"
-    store.reject(seen2[0].interaction_id)
-    assert await t2 is False
+    try:
+        await _wait_frames(seen1)
+        await _wait_frames(seen2)
+        assert seen1[0].session_id == "sA"
+        assert seen2[0].session_id == "sB"
+        store.resolve(seen1[0].interaction_id, True)
+        assert await t1 is True
+        assert t2.done() is False, "sB 的挂起不受 sA 决策影响"
+        store.reject(seen2[0].interaction_id)
+        assert await t2 is False
+    finally:
+        await _cancel(t1)
+        await _cancel(t2)
