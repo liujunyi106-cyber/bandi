@@ -58,9 +58,7 @@ jobs:
             "tests/test_contracts/test_contract_edit_match_chain.py::TestEditToolConcurrencyAndAtomicity::test_concurrent_edits_are_serialized",
             "tests/test_contracts/test_contract_family_p_batches.py::test_failure_payload_bounded_global_and_per_tool"
           ) | ForEach-Object { "--deselect"; $_ }
-          # 3.11 上有用例长时间不返回，用 -v 打名字 + 线程超时定位
-          $verbose = if ("${{ matrix.python }}" -eq "3.11") { @("-v") } else { @("-q") }
-          pytest tests @verbose -m "not heavy and not external_tool and not timing" --timeout=90 --timeout-method=thread @deselect
+          pytest tests -q -m "not heavy and not external_tool and not timing" --timeout=90 --timeout-method=thread @deselect
           exit $LASTEXITCODE
 
   frontend:
