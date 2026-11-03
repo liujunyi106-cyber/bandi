@@ -13,6 +13,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/liujunyi106-cyber/bandi/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/liujunyi106-cyber/bandi/actions/workflows/ci.yml/badge.svg" /></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat" /></a>
   <a href="bandi/pyproject.toml"><img alt="python" src="https://img.shields.io/badge/python-3.11%2B-3776AB?style=flat&logo=python&logoColor=white" /></a>
   <a href="frontend/package.json"><img alt="node" src="https://img.shields.io/badge/node-20%2B-339933?style=flat&logo=node.js&logoColor=white" /></a>
