@@ -1,5 +1,4 @@
-# 功能：pnpm 工程设置（@base docs/ADR.md ADR-42 / 本机 npm EPERM 口径见交付文档 Day135 §六.6）。
-# pnpm 11 起 onlyBuiltDependencies 不再从 package.json 的 pnpm 字段读取，迁到本文件。
+# 功能：pnpm 工程设置。
 # 这两个包的构建脚本必须放行：electron 靠它下载运行时二进制，esbuild 靠它校验平台包。
 onlyBuiltDependencies:
   - electron
