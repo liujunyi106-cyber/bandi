@@ -2265,7 +2265,9 @@ def test_profile_crud_and_activation(tmp_path: Path) -> None:
 def test_resolve_llm_config_applies_profile_and_keeps_base_blanks(tmp_path: Path) -> None:
     """resolve 覆盖语义：无档案原样返回；有档案覆盖模型/凭证/白名单高级项且不改原对象；
     档案字段为空白不得把 base 里的值清掉（破坏者视角反面）。"""
-    r8xday137b2b_store = ProfileStore(tmp_path / "llm_profiles.json")
+    # 用单例本身（与 resolve_llm_config 同一实例）：两个实例共享同一文件但各有内存缓存，
+    # 快速执行时 deactivate() 的写入与缓存键落在同一 mtime 刻度，读侧仍会看到旧档案
+    r8xday137b2b_store = reset_store_singleton(tmp_path / "llm_profiles.json")
     base = LLMConfig(api_key="base-key", default_model="deepseek-v4-flash", timeout=60)
 
     # 无档案 → 原样返回（零迁移：跟随 config.yaml）
