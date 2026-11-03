@@ -46,8 +46,8 @@ jobs:
         run: ruff format --check .
 
       - name: Tests (fast track)
-        # 依赖按 pyproject 的版本范围全新安装，个别断言依赖具体库的报错文案长度。
-        # 该用例在本地固定环境下通过，CI 上因依赖版本差异会差 3 个字符，暂跳过并跟踪。
+        # 该用例断言错误载荷的字符上限，依赖库报错文案长度不同会差几个字符（本地通过，CI 上 167 vs 164）。
+        # 先跳过并在本地追踪，避免用改断言的方式掩盖真实差异。
         run: >
           pytest tests -q
           -m "not heavy and not external_tool and not timing"
@@ -65,14 +65,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-
-      - name: Enable pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@10 --activate
 
       - name: Install
         run: pnpm install --no-frozen-lockfile
@@ -85,3 +85,12 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t bandi-kernel:ci .

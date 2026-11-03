@@ -84,7 +84,8 @@ def test_company_reorg_help() -> None:
     from bandi.cli.app import app
 
     runner = CliRunner()
-    result = runner.invoke(app, ["company", "reorg", "--help"])
+    # 帮助输出的宽度由终端决定，显式给足宽度，避免窄终端把选项截断
+    result = runner.invoke(app, ["company", "reorg", "--help"], terminal_width=200)
     assert result.exit_code == 0
     assert "--replace" in result.stdout
 

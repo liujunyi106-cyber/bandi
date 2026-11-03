@@ -1,0 +1,15 @@
+# 功能：只跑后端内核的容器编排。前端仍在本机 `pnpm run dev`，容器不承载桌面壳。
+services:
+  bandi:
+    build:
+      context: .
+    image: bandi-kernel:local
+    ports:
+      # 只发布到回环地址，和直跑时的绑定口径一致
+      - "127.0.0.1:8766:8766"
+    volumes:
+      - bandi-data:/data
+    restart: unless-stopped
+
+volumes:
+  bandi-data:

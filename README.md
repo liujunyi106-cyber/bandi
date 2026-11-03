@@ -1,4 +1,6 @@
-<h1 align="center">Bandi · 个人多 Agent 数字员工组织</h1>
+<h1 align="center">Bandi</h1>
+
+<p align="center"><strong>个人多 Agent 数字员工组织</strong></p>
 
 <p align="center"><i>像运营一家公司一样组织你的 AI 员工：角色、SOP、技能、模型，按项目派活。</i></p>
 
@@ -174,6 +176,15 @@ pnpm run dev:desktop        # vite + uvicorn + Electron 三进程
 
 Electron 打包配置在 `frontend/electron-builder.yml`，需要出安装包时自行 `electron-builder`。
 
+### Docker（只跑后端内核）
+
+```bash
+docker compose up --build
+```
+
+容器只承载 FastAPI 内核（`127.0.0.1:8766`），数据落在具名卷 `bandi-data`；前端和桌面壳仍在本机运行，
+连过去就是同一套 API。
+
 ### macOS / Linux 用户
 
 自动拉起内核用的是 Windows 路径（`bandi/.venv/Scripts/python.exe`）。非 Windows 请手动起后端：
@@ -277,19 +288,16 @@ frontend/              # 前端
 
 ---
 
-## 常见问题
+## 致谢
 
-**一定要用命令行吗？**
-不用。日常使用全部在页面里完成——建团队、配员工、派活、审批、看轨迹。命令只是启动服务用的。
+Bandi 是独立产品。开发过程中参考了下列项目的设计思路，部分实现改编自其中若干项目：
 
-**我的数据和密钥会被上传吗？**
-不会。数据在 `~/.bandi/`，密钥在 `~/.bandi/llm_profiles.json`（本机），模型请求直接从你机器发往你配置的供应商。
+- **LeAgent**（Apache-2.0）——文件 / JSON / 规则 / 日期等工具的实现方式，记忆衰减与工具选择的评分权重，情景记忆与工作记忆的语义划分。
+- **OpenOPC**（MIT）——公司调度中的工作项流转、用户修正（rework）与组织工作项规划的行为约定。
+- **opencode**（MIT）——上下文预算与工具输出修剪的策略取舍、编辑匹配的回退链设计。
+- **StaffDeck**（AGPL-3.0）——知识库三层实体、OKF 概念框架与引用链的设计思路；相关模块已按本项目自身实现重写，未包含其代码。
 
-**仓库里有作者自己的团队和数据吗？**
-没有。仓库只带团队模板与示例配置，个人团队、会话、记忆一个都不带。
-
-**可以接本地模型吗？**
-可以。Ollama 走 OpenAI 兼容协议，provider 选 `ollama`，或在设置里填本地 `base_url`。
+此外受益于 Agent Skills、Model Context Protocol 等社区规范。完整版权与许可证说明见 [NOTICE.md](NOTICE.md)。
 
 ---
 

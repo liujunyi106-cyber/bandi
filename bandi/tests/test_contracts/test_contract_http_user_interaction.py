@@ -32,7 +32,11 @@ async def test_ask_permission_suspend_then_resolve_true() -> None:
     ui = HTTPUserInteraction(store, session_id="s1", on_interaction=on_interaction)
 
     task = asyncio.create_task(ui.ask_permission("bash", {"command": "rm x"}, "high"))
-    await asyncio.sleep(0)
+    # 回调在事件循环下一轮才落地，慢机器上单次 sleep(0) 不够——轮询等到帧出现
+    for _ in range(100):
+        if seen:
+            break
+        await asyncio.sleep(0.01)
     assert task.done() is False, "用户决策前 ask_permission 必须保持挂起"
     assert len(seen) == 1, "交互帧已推送"
     assert seen[0].kind == "permission"

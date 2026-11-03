@@ -1,4 +1,6 @@
-<h1 align="center">Bandi · Your Personal Multi-Agent Digital-Employee Org</h1>
+<h1 align="center">Bandi</h1>
+
+<p align="center"><strong>Your Personal Multi-Agent Digital-Employee Org</strong></p>
 
 <p align="center"><i>Run your AI employees like a company: roles, SOPs, skills, models — assigned by project.</i></p>
 
@@ -175,6 +177,15 @@ pnpm run dev:desktop        # vite + uvicorn + Electron
 
 Packaging config lives in `frontend/electron-builder.yml`; run `electron-builder` when you want an installer.
 
+### Docker (backend kernel only)
+
+```bash
+docker compose up --build
+```
+
+The container serves the FastAPI kernel on `127.0.0.1:8766` with data in the `bandi-data` volume; the
+frontend and the desktop shell still run on the host and talk to that same API.
+
 ### macOS / Linux
 
 The auto-launcher uses the Windows interpreter path (`bandi/.venv/Scripts/python.exe`).
@@ -281,19 +292,20 @@ frontend/              # frontend
 
 ---
 
-## FAQ
+## Acknowledgements
 
-**Do I have to use the CLI?**
-No. Day-to-day work happens in the UI — build teams, configure employees, assign work, approve, inspect traces. The commands only start the services.
+Bandi is an independent product. Its design borrows from the projects below, and parts of the
+implementation are adapted from a few of them:
 
-**Are my data and keys uploaded anywhere?**
-No. Data lives in `~/.bandi/`, keys in `~/.bandi/llm_profiles.json` on your machine, and model requests go from your machine straight to the provider you configured.
+- **LeAgent** (Apache-2.0) — implementations of the file / JSON / rules / date tools, the scoring
+  weights used by memory decay and tool selection, and the episodic-vs-working memory split.
+- **OpenOPC** (MIT) — behaviour contracts for work-item flow, user rework and org work-item planning.
+- **opencode** (MIT) — context-budget and tool-output pruning trade-offs, and the edit-match fallback chain.
+- **StaffDeck** (AGPL-3.0) — the three-layer knowledge model, the OKF concept framework and the citation
+  chain; those modules were rewritten on our own implementation and contain none of its code.
 
-**Does the repo ship the author's own teams or data?**
-No. Only team templates and example configuration — no personal teams, sessions or memories.
-
-**Can I use a local model?**
-Yes. Ollama speaks the OpenAI-compatible protocol: pick the `ollama` provider, or point a local `base_url` in Settings.
+It also benefits from community conventions such as Agent Skills and the Model Context Protocol.
+Full copyright and license notices live in [NOTICE.md](NOTICE.md).
 
 ---
 
