@@ -1,4 +1,4 @@
-﻿# 功能：HTTPUserInteraction 契约——真挂起闭环（register→推帧→await→resolve 唤醒同一 turn 续跑）。
+# 功能：HTTPUserInteraction 契约——真挂起闭环（register→推帧→await→resolve 唤醒同一 turn 续跑）。
 from __future__ import annotations
 
 import asyncio
