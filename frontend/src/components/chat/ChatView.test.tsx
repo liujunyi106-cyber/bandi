@@ -3,7 +3,7 @@
  * 语义：员工线程回复（thread_message 帧）只注入「团队会话 / 项目会话」；
  * 秘书会话（origin=secretary）是通用助理对话，不承载项目员工工作流。
  */
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -58,6 +58,7 @@ vi.mock("@/services/sessions", async (importOriginal) => {
       ...actual.sessionsApi,
       detail: vi.fn(async () => ({ messages: [] })),
       appendSystemNote: vi.fn(async () => ({ created: true, entry_id: "note-1" })),
+      steer: vi.fn(async () => ({ queued: true, session_id: "s1" })),
       abort: abortMock,
       processSkip: vi.fn(async () => ({ ok: true })),
       regenerate: vi.fn(async () => ({
@@ -998,5 +999,70 @@ describe("ChatView 重新生成（A1-B：服务端保留 user/附件）", () => 
     expect(sessionsApi.revertStage).not.toHaveBeenCalled();
     expect(sessionsApi.revertCommit).not.toHaveBeenCalled();
     expect(sessionSocket.send).not.toHaveBeenCalled();
+  });
+});
+
+describe("ChatView 执行中待发送条目", () => {
+  beforeEach(() => {
+    vi.mocked(sessionSocket.send).mockClear();
+    vi.mocked(sessionsApi.steer).mockClear();
+    useChatStore.setState({
+      activeSessionId: "s1",
+      activeProjectId: "p1",
+      sessions: [session("s1", "")],
+      messagesBySession: { s1: [] },
+      pendingSendsBySession: {},
+      streams: { s1: { sessionId: "s1", pendingId: "m1" } },
+    });
+  });
+
+  it("文本执行中入队，不自动发送；点立即发送才走 steer", async () => {
+    render(
+      <MemoryRouter>
+        <ChatView />
+      </MemoryRouter>,
+    );
+    const textarea = await screen.findByRole("textbox");
+    fireEvent.change(textarea, { target: { value: "排队这句" } });
+    fireEvent.keyDown(textarea, { key: "Enter" });
+
+    await waitFor(() => expect(useChatStore.getState().pendingSendsBySession.s1).toHaveLength(1));
+    expect(sessionSocket.send).not.toHaveBeenCalled();
+    expect(sessionsApi.steer).not.toHaveBeenCalled();
+    expect(screen.getByTestId("pending-send-text")).toHaveTextContent("排队这句");
+
+    fireEvent.click(screen.getByTestId("pending-send-now"));
+    await waitFor(() => expect(sessionsApi.steer).toHaveBeenCalledWith("s1", "排队这句"));
+    await waitFor(() => expect(useChatStore.getState().pendingSendsBySession.s1).toBeUndefined());
+  });
+
+  it("附件条目在本轮结束后自动发送并移除", async () => {
+    useChatStore.setState({
+      pendingSendsBySession: {
+        s1: [
+          {
+            id: "p-att",
+            text: "看附件",
+            attachments: [{ upload_id: "u1", name: "a.md", size: 3 }],
+            createdAt: "2026-11-02T00:00:00",
+          },
+        ],
+      },
+    });
+    render(
+      <MemoryRouter>
+        <ChatView />
+      </MemoryRouter>,
+    );
+    expect(sessionSocket.send).not.toHaveBeenCalled();
+
+    act(() => useChatStore.setState({ streams: {} }));
+
+    await waitFor(() => expect(sessionSocket.send).toHaveBeenCalled());
+    const payload = vi.mocked(sessionSocket.send).mock.calls.at(-1)?.[0] as {
+      attachments?: Array<{ upload_id: string }>;
+    };
+    expect(payload.attachments?.[0]?.upload_id).toBe("u1");
+    await waitFor(() => expect(useChatStore.getState().pendingSendsBySession.s1).toBeUndefined());
   });
 });

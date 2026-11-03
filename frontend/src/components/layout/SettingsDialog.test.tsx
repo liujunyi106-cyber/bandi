@@ -130,7 +130,7 @@ describe("SettingsDialog 模型档案（137c-A1）", () => {
     expect(activeMark.querySelector("svg")).not.toBeNull();
     expect(activeMark.querySelector("svg")?.getAttribute("class")).toContain("text-primary");
     expect(screen.getByTestId("profile-activate-p-a")).toBeDisabled();
-    // 拍板：「使用中」按钮 = 卡片底色 + 同色边缘线（原 disabled 黑按钮灰饼感太重）
+    // 「使用中」按钮 = 卡片底色 + 同色边缘线（原 disabled 黑按钮灰饼感太重）
     const activeBtn = screen.getByTestId("profile-activate-p-a");
     expect(activeBtn.className).toContain("bg-primary/5");
     expect(activeBtn.className).toContain("border-primary/5");

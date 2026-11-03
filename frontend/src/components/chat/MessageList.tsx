@@ -53,7 +53,7 @@ interface MessageListProps {
   /** 功能：交付物点击 → 右栏产物预览。 */
   onArtifactOpen?: (artifactId: string, name: string, path: string) => void;
   /** 功能：消息流尾部插槽——进行中员工过程等实时内容随消息滚动，
-   *  不固定挂在消息区下方挤占空间。 */
+   * 不固定挂在消息区下方挤占空间。 */
   children?: React.ReactNode;
 }
 

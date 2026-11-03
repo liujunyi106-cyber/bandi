@@ -18,6 +18,7 @@ from bandi.memory.long_term import LongTermMemory, MemoryItem
 from bandi.memory.markdown_memory import MarkdownMemoryStore
 from bandi.memory.memory_manager import MemoryHierarchyManager
 from bandi.memory.memory_provider import MemoryManager
+from bandi.memory.working import ScratchpadStore
 
 
 def _stores(tmp_path: Path) -> tuple[MemoryManager, LongTermMemory, EpisodicStore]:
@@ -91,7 +92,7 @@ def test_group_search_isolated_from_other_group_and_employee_private(tmp_path: P
     assert not any("员工私有" in value for value in values)
 
 
-def test_group_memory_snapshot_freezes_per_session(tmp_path: Path) -> None:
+def test_group_memory_context_refreshes_within_session(tmp_path: Path) -> None:
     global_store = GlobalMemoryStore(tmp_path / "global.db")
     markdown = MarkdownMemoryStore(tmp_path / "md")
     work_items = WorkItemStore(str(tmp_path / "snap.db"))
@@ -119,7 +120,7 @@ def test_group_memory_snapshot_freezes_per_session(tmp_path: Path) -> None:
         group_conversation_id="conv-a",
     )
     assert "条目A" in second
-    assert "条目B" not in second
+    assert "条目B" in second
     fresh = hierarchy.collect_memory_context(
         project_id="",
         session_id="s2",
@@ -180,3 +181,29 @@ def test_group_pass_does_not_write_memory(tmp_path: Path) -> None:
     scope = group_scope_id("conv-pass")
     assert long_term.search_fts_ranked("项目", project_id=scope, employee_id=None) == []
     assert episodic.search("项目", project_id=scope, employee_id=None) == []
+
+
+def test_group_turn_writes_working_memory(tmp_path: Path) -> None:
+    manager, _long_term, _episodic = _stores(tmp_path)
+    manager.working = ScratchpadStore(str(tmp_path / "working.db"))
+    asyncio.run(_persist_memory(_ctx("conv-working"), manager, "s-working", project_id="p1"))
+
+    assert "turn:1" in manager.working.all("s-working")
+
+
+def test_dm_turn_writes_working_memory(tmp_path: Path) -> None:
+    manager, _long_term, _episodic = _stores(tmp_path)
+    manager.working = ScratchpadStore(str(tmp_path / "working.db"))
+    ctx = _ctx("")
+    ctx.meta = {"dm_conversation_id": "dm-working"}
+    asyncio.run(
+        _persist_memory(
+            ctx,
+            manager,
+            "s-dm",
+            project_id="p1",
+            employee_id="emp-1",
+        )
+    )
+
+    assert "turn:1" in manager.working.all("s-dm")

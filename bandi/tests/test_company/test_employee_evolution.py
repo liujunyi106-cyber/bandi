@@ -111,66 +111,6 @@ class TestExperienceScore:
         assert score == 0.0
 
 
-class TestProjectReflections:
-    def test_records_reflection_and_skips_nonterminal(
-        self, manager: EmployeeEvolutionManager
-    ) -> None:
-        delivery = SimpleNamespace(
-            id="del-1", project_id="p1", phase="done", status="done", metadata={}
-        )
-        done_task = _task("wi-1", summary="did A")
-        running_task = _task("wi-2", phase="running", summary="in progress")
-
-        results = manager.record_project_reflections(delivery, [done_task, running_task])
-        assert len(results) == 1
-        reflection = results[0]["reflection"]
-        assert reflection["employee_id"] == "e1"
-        assert reflection["delivery_task_id"] == "del-1"
-        assert reflection["project_id"] == "p1"
-        assert "what_worked" in reflection
-        assert reflection["source_task_ids"] == ["wi-1"]
-
-    def test_delta_context_built(self, manager: EmployeeEvolutionManager) -> None:
-        delivery = SimpleNamespace(
-            id="del-1", project_id="p1", phase="done", status="done", metadata={}
-        )
-        task = _task("wi-1", summary="did A")
-        manager.record_project_reflections(delivery, [task])
-        ctx = manager.build_employee_delta_context("e1", project_id="p1")
-        assert "Reflected projects: 1" in ctx
-
-
-class TestLearnedSkill:
-    def test_promotes_after_threshold_into_staging(self, manager: EmployeeEvolutionManager) -> None:
-        # 两次反思达阈值（LEARNED_SKILL_THRESHOLD=2），重复模式触发晋升——进暂存区待批准
-        results: list[dict] = []
-        for i in range(2):
-            delivery = SimpleNamespace(
-                id=f"del-{i}", project_id="p1", phase="done", status="done", metadata={}
-            )
-            task = _task(f"wi-{i}", summary=f"implemented feature {i}")
-            results = manager.record_project_reflections(delivery, [task])
-
-        learned = results[0].get("learned_skill_ref", "")
-        assert learned.startswith("pending:"), "达阈值必须产生待批准技能引用"
-
-        skill_dir = manager.home / "skills"
-        assert not skill_dir.exists(), "审批前技能库必须零直写"
-
-        from bandi.memory.staging import get_skill_pending_store
-
-        records = get_skill_pending_store().list_pending()
-        assert len(records) == 1
-        assert records[0].origin == "background"
-        assert records[0].subsystem == "skills"
-        assert learned == f"pending:{records[0].id8}"
-
-        # 审批前档案不得假装已学技能
-        record = manager.load_evolution_profile()["employees"]["e1"]
-        assert not record.get("learned_skill_refs"), "待批准技能不得记入档案引用"
-        assert not record["patterns"]["engineer|general"].get("learned_skill_ref")
-
-
 class TestSelfEvolutionPatch:
     def test_records_experience_event(self, manager: EmployeeEvolutionManager) -> None:
         recorded = manager.apply_employee_evolution_patch(

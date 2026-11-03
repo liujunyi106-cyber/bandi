@@ -157,32 +157,6 @@ def test_employee_context_uses_window_scope() -> None:
     assert "::staff::tech::tech" in legacy
 
 
-def test_team_memory_survives_session_delete(tmp_path: Path) -> None:
-    from bandi.memory.episodic import Episode, EpisodicStore
-
-    memory = EpisodicStore(tmp_path / "episodic.db")
-    memory.record(
-        Episode(
-            summary="团队约定：咖啡店先做单店模型",
-            project_id="p1",
-            team_id="aid",
-            importance=0.8,
-        )
-    )
-    _ensure_role()
-    from bandi.api.app import _bind_session_thread, _get_store
-
-    store = _get_store()
-    store.create_session(session_id="sess-mem", title="群聊")
-    created = _chat("@tech 记忆", session_id="sess-mem")
-    _bind_session_thread("sess-mem", created[0].metadata["thread_id"])
-    assert client.delete("/api/sessions/sess-mem").status_code == 200
-
-    hits = memory.search("咖啡店", project_id="p1", team_id="aid")
-    assert hits, "删除会话不得清团队记忆"
-    assert "单店" in hits[0][0].summary
-
-
 def test_thread_list_exposes_window_fields() -> None:
     _ensure_role()
     _chat("@tech 列表", session_id="sess-list")

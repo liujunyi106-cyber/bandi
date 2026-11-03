@@ -1,5 +1,5 @@
 /**
-  * 功能：会话右栏 v5 外壳（数字员工工作台；@base docs/前端设计规划.md）——通高第四栏。
+  * 功能：会话右栏 v5 外壳（数字员工工作台；）——通高第四栏。
  * 顶部条：[标题字段 ▾（作用域视图集 + 已打开的文件）] [文件页签 ×…] … [⛶全屏] [⇥收起]；
  * 内容区：基础视图（会话=概览/员工/文件/详情；员工单聊=概览/文件）或激活页签的只读预览；
  * 宽度可拖拽（按作用域持久化，双击重置）。
@@ -67,7 +67,7 @@ export function SessionPanel({ scope }: { scope: PanelScope }) {
   const setWidth = usePanelStore((state) => state.setWidth);
   const resetWidth = usePanelStore((state) => state.resetWidth);
   const windowWidth = useWindowWidth();
-  // 拍板：无手动覆盖时随窗口自适应（1024→260 / 1920→400）
+  // 无手动覆盖时随窗口自适应（1024→260 / 1920→400）
   const width = widthOverride ?? adaptiveRightPanelWidth(windowWidth);
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const sessionId = scope.kind === "session" ? scope.sessionId : "";
@@ -122,7 +122,7 @@ export function SessionPanel({ scope }: { scope: PanelScope }) {
         />
       ) : null}
 
-      {/* 顶部条（h-14 与 AppHeader 同高——2026-09-26 用户真机拍板：右栏顶部与对话面板顶部对齐） */}
+      {/* 顶部条 */}
       <div className="border-chat-hairline flex h-14 shrink-0 items-center gap-1 border-b px-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

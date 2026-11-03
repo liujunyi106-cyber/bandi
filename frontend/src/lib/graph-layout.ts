@@ -4,7 +4,7 @@
   * 因后端全图上限 10000 实体、且 要「过滤后重排」的交互式探索）。
  * 确定性：种子化随机源 + 手算初始摆位 + 固定 ticks（`stop()` 后手动 tick，无 rAF/定时器）
  * → 同输入必得同布局，可写坐标级断言。
-  * @base docs/前端设计规划.md 「知识 · 图谱」；技法对齐 datafoundry `TraceDagCanvas`。
+  *
  */
 import {
   forceCenter,

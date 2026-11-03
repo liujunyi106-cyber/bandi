@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import threading
 from dataclasses import dataclass
 from datetime import datetime
@@ -242,6 +243,22 @@ class MarkdownMemoryStore:
         )
         match = pattern.search(content)
         return "" if match is None else match.group(0).strip()
+
+    def delete_all(self) -> None:
+        """功能：清空该 Markdown 记忆域（入口文件 + entries + FTS 索引）。"""
+        with self._lock:
+            self.close()
+            for path in (self._memory_file, self._fts_path):
+                try:
+                    path.unlink(missing_ok=True)
+                except OSError as exc:
+                    logger.warning("markdown_memory_delete_failed [%s]: %s", path, exc)
+            try:
+                shutil.rmtree(self._entries_dir, ignore_errors=True)
+            except OSError as exc:
+                logger.warning("markdown_entries_delete_failed [%s]: %s", self._entries_dir, exc)
+            self._index_cache = None
+            self._fts_stale = True
 
     @property
     def memory_file_path(self) -> Path:

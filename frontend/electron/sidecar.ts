@@ -6,9 +6,9 @@
  * （含调度器等子进程），崩溃时自动重启（有限次），彻底失败降级 loadFile。
  *
  * 端口获取（双通道，与 bandi/cli/app.py 的回写口径对齐）：
- *   ① stdout 结构化行 `BANDI_SIDECAR_READY port=<N> pid=<P>`（首选，零轮询）；
- *   ② `{BANDI_HOME}/sidecar.port` JSON 轮询兜底（pid 必须等于本次 spawn 的 pid，
- *      排除上一轮壳/硬杀留下的陈旧文件）。
+ * ① stdout 结构化行 `BANDI_SIDECAR_READY port=<N> pid=<P>`（首选，零轮询）；
+ * ② `{BANDI_HOME}/sidecar.port` JSON 轮询兜底（pid 必须等于本次 spawn 的 pid，
+ * 排除上一轮壳/硬杀留下的陈旧文件）。
  * 就绪判定：`GET /ready` 返回 200（依赖探针，/health 是 liveness 口径）。
  */
 import { spawn, type ChildProcess } from "node:child_process";
@@ -39,12 +39,12 @@ export interface SidecarCommand {
   * 功能：sidecar 启动命令解析。
  *
  * 优先级：
- *   ① `BANDI_SIDECAR_CMD` 显式覆盖（PyInstaller onedir exe 完整路径）；
- *   ② 打包态：`<resources>/sidecar/bandi-sidecar/bandi-sidecar.exe`
- *      （electron-builder resources 布局，随安装包分发）；
- *   ③ `~/.bandi/sidecar/bandi-sidecar/bandi-sidecar.exe`
- *      （外部替换目录——与 frontend dist 外部替换同风格，发版只换 sidecar）；
- *   ④ 开发态：仓库 .venv python + `python -m bandi serve`。
+ * ① `BANDI_SIDECAR_CMD` 显式覆盖（PyInstaller onedir exe 完整路径）；
+ * ② 打包态：`<resources>/sidecar/bandi-sidecar/bandi-sidecar.exe`
+ * （electron-builder resources 布局，随安装包分发）；
+ * ③ `~/.bandi/sidecar/bandi-sidecar/bandi-sidecar.exe`
+ * （外部替换目录——与 frontend dist 外部替换同风格，发版只换 sidecar）；
+ * ④ 开发态：仓库 .venv python + `python -m bandi serve`。
  * 都不可得 → null（壳降级 loadFile）。
  */
 export function resolveSidecarCommand(): SidecarCommand | null {

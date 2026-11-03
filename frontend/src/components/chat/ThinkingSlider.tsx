@@ -131,7 +131,7 @@ export function ThinkingSlider({
             if (event.key === "Escape") close();
           }}
         >
-          {/* 2026-09-26 用户反馈：弹层信息不如「上传文件列表」（ComposerMentions 条目 text-sm）
+          {/* 用户反馈：弹层信息不如「上传文件列表」（ComposerMentions 条目 text-sm）
               大气 → 字号向它对齐：档位名 text-xs→text-sm、说明 11px→text-xs，行高同步放大 */}
           <div className="px-2.5 pt-2.5">
             <div className="text-chat-ink text-sm font-medium" data-testid="thinking-degree-name">
@@ -146,7 +146,7 @@ export function ThinkingSlider({
           </div>
           <div className="px-2.5 pt-2 pb-1">
             {/* 胶囊（shell 背景 + 已滑过部分填充变色）+ 透明 range（白钮 thumb）+
-                灰色竖条刻度层（首尾不放，与胶囊垂直居中；2026-09-24 二轮真机反馈）。
+ 灰色竖条刻度层。
                 刻度 left 按 range thumb 中心公式对齐（thumb 14px）。
                 填充宽度：关闭档 = 0；**最大档 = 100%（必须填满——否则白钮右侧留 7px 缺口，
                 2026-09-24 三轮反馈）**；中间档 = thumb 中心对齐。 */}

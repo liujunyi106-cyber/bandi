@@ -1,5 +1,5 @@
 ﻿/**
- * 功能：右栏概览视图（v5，@base docs/前端设计规划.md §8）——数字员工工作台首页：
+ * 功能：右栏概览视图（v5，）——数字员工工作台首页：
  * 会话作用域 = 摘要卡（会什么/花了多少/在干什么/产出了什么）+ 计划树（SOP 流程节点 /
  * 团队工作项[带领取者] / 普通 Todo 分流）+ 产出列表（删除独立
  * 「项目团队」板块——团队信息只保留计划段工作项与员工卡数据面）；
@@ -411,7 +411,7 @@ function SessionOverview({ sessionId }: { sessionId: string }) {
         <p className="text-chat-muted px-1 pb-1 text-[11px] font-medium">
           {t("chat.panel.planTitle")}
         </p>
-        {/* 2026-10-02 用户拍板合并：任务只在一处呈现——SOP > 团队工作项（含领取者）> 会话 Todo */}
+        {/* 用户拍板合并：任务只在一处呈现——SOP > 团队工作项（含领取者）> 会话 Todo */}
         {sop ? (
           <SopSection sop={sop} />
         ) : !isSecretary && workItems && workItems.length > 0 ? (

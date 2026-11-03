@@ -1,14 +1,12 @@
-"""契约族：自进化链（B6-A3/A4/A5/A6/7d）。
+"""契约族：自进化链（B6-A4/A5/A6/7d）。
 
 行为不变式：
-1. **A3+A4 补丁流水线**：项目交付反思产出 → 自进化补丁事件 → 组织经验档案
-   delta_profile 随之重算）；
-2. **7d 质量维度**：完成时从评审/返工/失败信号抽取 strengths/weaknesses 传入
+1. **7d 质量维度**：完成时从评审/返工/失败信号抽取 strengths/weaknesses 传入
    `record_work_item_completion`（规则抽取 + LLM 注入接口）——计数不再恒空；
-3. **A5+A6 桥接**：经验分与学到的技能写回组织员工 metadata——招募读取
+2. **A5+A6 桥接**：经验分与学到的技能写回组织员工 metadata——招募读取
    （`_metadata_experience_score` / `learned_skill_refs`）与前端档案
    （`employee.to_dict()["metadata"]`）同源可见；
-4. **破坏者**：无员工/空档案/异常 → 桥接失败静默不炸链。
+3. **破坏者**：无员工/空档案/异常 → 桥接失败静默不炸链。
 """
 
 from __future__ import annotations
@@ -16,10 +14,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import pytest
-
 from bandi.company.employee_evolution import (
-    DEFAULT_ORGANIZATION_ID,
     EmployeeEvolutionManager,
     extract_quality_dimensions,
 )
@@ -72,51 +67,6 @@ def _save_task(
     item.id = item_id
     store.save(item)
     return item
-
-
-class TestSelfEvolutionPatchPipeline:
-    def test_reflection_applies_self_evolution_patch(self, tmp_path: Path) -> None:
-        """"""
-        manager = _manager(tmp_path)
-        store = WorkItemStore(str(tmp_path / "wi.db"))
-        task = _save_task(store, item_id="wi-1", project_id="p-a")
-        delivery = create_work_item(
-            title="交付",
-            turn_type=WorkItemTurnType.DELIVER,
-            metadata={"project_id": "p-a"},
-            phase=Phase.APPROVED,
-        )
-
-        reflections = manager.record_project_reflections(delivery, [task])
-        assert len(reflections) == 1
-
-        profile = manager.load_employee_experience(DEFAULT_ORGANIZATION_ID, "e1")
-        events = profile.get("events") or []
-        assert len(events) == 1, f"补丁事件应写入组织经验档案：{profile}"
-        event = events[0]
-        assert event["employee_id"] == "e1"
-        assert event["strengths"], "strengths 应映射自 what_worked"
-        assert event["avoid_next_time"], "avoid_next_time 应映射自 mistakes_to_avoid"
-        assert event["source"].get("kind") == "project_reflection"
-        assert event["evidence_task_ids"] == ["wi-1"]
-        assert (profile.get("delta_profile") or {}).get("strengths"), "delta_profile 应重算"
-
-    def test_patch_idempotent_on_repeat(self, tmp_path: Path) -> None:
-        """幂等：同一交付同一员工重复反思——补丁事件只记一次（event_id 去重）。"""
-        manager = _manager(tmp_path)
-        store = WorkItemStore(str(tmp_path / "wi.db"))
-        task = _save_task(store, item_id="wi-1", project_id="p-a")
-        delivery = create_work_item(
-            title="交付",
-            turn_type=WorkItemTurnType.DELIVER,
-            metadata={"project_id": "p-a"},
-            phase=Phase.APPROVED,
-        )
-
-        manager.record_project_reflections(delivery, [task])
-        manager.record_project_reflections(delivery, [task])
-        profile = manager.load_employee_experience(DEFAULT_ORGANIZATION_ID, "e1")
-        assert len(profile.get("events") or []) == 1, "重复反思不得重复记补丁"
 
 
 class TestQualityDimensions:
@@ -207,13 +157,7 @@ class TestOrgMetadataBridge:
         org = _org_with_employee()
         store = WorkItemStore(str(tmp_path / "wi.db"))
         task = _save_task(store, item_id="wi-1", project_id="p-a", phase=Phase.APPROVED)
-        delivery = create_work_item(
-            title="交付",
-            turn_type=WorkItemTurnType.DELIVER,
-            metadata={"project_id": "p-a"},
-            phase=Phase.APPROVED,
-        )
-        manager.record_project_reflections(delivery, [task])
+        manager.record_work_item_completion(task, "done", outcome="success")
 
         assert manager.sync_org_employee_metadata(org, "e1") is True
         employee = org.get_employee("e1")
@@ -235,83 +179,3 @@ class TestOrgMetadataBridge:
         manager = _manager(tmp_path)
         org = _org_with_employee()
         assert manager.sync_org_employee_metadata(org, "no-such") is False
-
-
-class TestApprovalChainSync:
-    def test_approved_skill_syncs_to_org_metadata(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """预期（批准闭环尾段）：技能批准回写档案后同步组织 metadata（前端可见）。"""
-        import importlib
-        from types import SimpleNamespace
-
-        manager = _manager(tmp_path)
-        store = WorkItemStore(str(tmp_path / "wi.db"))
-        task = _save_task(store, item_id="wi-1", project_id="p-a", phase=Phase.APPROVED)
-        delivery = create_work_item(
-            title="交付",
-            turn_type=WorkItemTurnType.DELIVER,
-            metadata={"project_id": "p-a"},
-            phase=Phase.APPROVED,
-        )
-        manager.record_project_reflections(delivery, [task])
-        pattern_key = "engineer|general"
-
-        org = _org_with_employee()
-        app_mod = importlib.import_module("bandi.api.app")
-        monkeypatch.setattr(app_mod, "_org_api_dispatcher", lambda: SimpleNamespace(org_engine=org))
-        record = SimpleNamespace(
-            payload={
-                "profile_path": str(manager.evolution_profile_path()),
-                "employee_id": "e1",
-                "pattern_key": pattern_key,
-                "skill_name": "交付规范",
-            }
-        )
-        assert app_mod._write_back_approved_skill(record) is True
-
-        employee = org.get_employee("e1")
-        refs = list((employee.metadata or {}).get("learned_skill_refs") or [])
-        assert "交付规范" in refs, f"批准后技能应同步进组织 metadata：{employee.metadata}"
-
-    def test_write_back_syncs_from_payload_home(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """破坏者：批准回写的 metadata 同步必须读 payload 定位的档案（同源）——
-        而不是进程默认 home（否则读空档案 → 经验分 0、技能引用空）。"""
-        import importlib
-        from types import SimpleNamespace
-
-        manager_home = tmp_path / "evohome"
-        manager = EmployeeEvolutionManager(home_dir=manager_home)
-        store = WorkItemStore(str(tmp_path / "wi.db"))
-        task = _save_task(store, item_id="wi-1", project_id="p-a", phase=Phase.APPROVED)
-        delivery = create_work_item(
-            title="交付",
-            turn_type=WorkItemTurnType.DELIVER,
-            metadata={"project_id": "p-a"},
-            phase=Phase.APPROVED,
-        )
-        manager.record_project_reflections(delivery, [task])
-
-        org = _org_with_employee()
-        app_mod = importlib.import_module("bandi.api.app")
-        monkeypatch.setattr(app_mod, "_org_api_dispatcher", lambda: SimpleNamespace(org_engine=org))
-        record = SimpleNamespace(
-            payload={
-                "profile_path": str(manager.evolution_profile_path()),
-                "employee_id": "e1",
-                "pattern_key": "engineer|general",
-                "skill_name": "交付规范X",
-            }
-        )
-        assert app_mod._write_back_approved_skill(record) is True
-
-        employee = org.get_employee("e1")
-        meta = dict(employee.metadata or {})
-        assert float(meta.get("experience_score") or 0.0) > 0, (
-            f"经验分应从 payload 定位档案计算（修复前默认 home 读空档案得 0）：{meta}"
-        )
-        assert "交付规范X" in list(meta.get("learned_skill_refs") or []), (
-            f"技能引用应从 payload 定位档案同步：{meta}"
-        )

@@ -1,5 +1,5 @@
 /**
-  * 功能：Composer（@base docs/前端设计规划.md 交互规范）。
+  * 功能：Composer（）。
  * 布局：附件 chips（输入上方）→ 输入栏（可增高至 240px）→ 功能栏
  * （⊕ 聚合菜单 / 模式圆圈 / 模型·思考控制条 / 发送·停止）。
  * textarea：Enter 发送、Shift+Enter 换行（IME 保护）；/ 触发斜杠面板、@ 触发引用菜单（键盘导航）。
@@ -80,7 +80,14 @@ interface ComposerProps {
   projectId?: string;
   /** 功能：员工独立模型（单聊/员工视角）——非空时控制条显示该员工实际模型并锁定切换。 */
   employeeModel?: string;
+  /** 功能：执行中（本会话回复或团队任务）——发送改为入待发送队列。 */
+  executing?: boolean;
+  /** 功能：编辑待发送条目时回填输入框（token 变化触发一次）。 */
+  prefill?: { token: number; text: string; attachments: ChatAttachment[] } | null;
+  onPrefillConsumed?: () => void;
   onSend: (text: string, attachments?: ChatAttachment[]) => void;
+  /** 功能：执行中发送入队（文本需手动立即发送，附件回合结束自动发送）。 */
+  onQueue?: (text: string, attachments?: ChatAttachment[]) => void;
   onSteer: (text: string) => void;
   onStop: () => void;
   /** 功能：决策区（统一决策卡/恢复提示）内容——包含模式：与输入框同壳（输入框在上、决策在下的
@@ -108,7 +115,11 @@ export function Composer({
   allowEmployeePicker = false,
   projectId = "",
   employeeModel = "",
+  executing,
+  prefill = null,
+  onPrefillConsumed,
   onSend,
+  onQueue,
   onSteer,
   onStop,
   above,
@@ -210,6 +221,19 @@ export function Composer({
     if (textareaRef.current) textareaRef.current.style.height = "auto";
   };
 
+  useEffect(() => {
+    if (!prefill) return;
+    setText(prefill.text);
+    const store = useChatStore.getState();
+    const existing = new Set(store.draftAttachments.map((item) => item.upload_id));
+    for (const attachment of prefill.attachments) {
+      if (existing.has(attachment.upload_id)) continue;
+      store.addDraftAttachment({ ...attachment, status: "done" });
+    }
+    requestAnimationFrame(() => textareaRef.current?.focus());
+    onPrefillConsumed?.();
+  }, [prefill, onPrefillConsumed]);
+
   const submit = () => {
     const value = text.trim();
     if (!value) return;
@@ -225,13 +249,18 @@ export function Composer({
       return;
     }
     // 流槽按会话隔离——别的会话回复中不再阻塞本会话发送
-    if (busy) {
-      // 转向通道只支持文本：带附件时本轮不发送，并保留附件草稿给下一条消息
-      if (attachments.length > 0) {
-        toast.info(t("chat.composer.attachmentBusy"));
-        return;
+    const executingNow = executing ?? busy;
+    if (executingNow) {
+      if (onQueue) {
+        onQueue(payload, attachments);
+      } else {
+        // 兼容旧调用方：无队列通道时保留文本转向，带附件不丢草稿
+        if (attachments.length > 0) {
+          toast.info(t("chat.composer.attachmentBusy"));
+          return;
+        }
+        onSteer(payload);
       }
-      onSteer(payload);
       setText("");
       if (references.length) useChatStore.getState().clearDraftReferences();
       resetHeight();
@@ -841,7 +870,7 @@ export function Composer({
               onRemove={(uploadId) => useChatStore.getState().removeDraftAttachment(uploadId)}
             />
           ) : null}
-          {/* 2026-09-29：引用文件 chips（@ 选项目文件——与上传附件同款视觉；发送时转 @路径 文本） */}
+          {/* 引用文件 chips（@ 选项目文件——与上传附件同款视觉；发送时转 @路径 文本） */}
           {draftReferences.length ? (
             <div className="mb-1.5 flex flex-wrap gap-1.5 px-2" data-testid="composer-references">
               {draftReferences.map((ref) => (
@@ -1035,7 +1064,7 @@ export function Composer({
                   title={t("chat.composer.stop")}
                   onClick={armStop}
                 >
-                  {/* 2026-09-24 用户拍板：中断 icon 用方形（lucide Square 自带 rx=2 小圆角）实心 */}
+                  {/* 用户拍板：中断 icon 用方形（lucide Square 自带 rx=2 小圆角）实心 */}
                   <Square className="size-3.5 fill-current" />
                 </Button>
               ) : (
@@ -1046,14 +1075,14 @@ export function Composer({
                   title={t("chat.composer.send")}
                   onClick={submit}
                 >
-                  {/* 2026-09-22 用户拍板：纸飞机右移 1px 视觉居中（原 -2px 过左） */}
+                  {/* 用户拍板：纸飞机右移 1px 视觉居中（原 -2px 过左） */}
                   <Send className="size-3.5 -translate-x-[1px] translate-y-[1px] fill-current" />
                 </Button>
               )}
             </div>
           </div>
         </div>
-        {/* 2026-09-29：输入框下方附加区（项目空间卡片）——与决策区对称，同在外壳内 */}
+        {/* 输入框下方附加区（项目空间卡片）——与决策区对称，同在外壳内 */}
         {below ? (
           <div
             data-testid="composer-below"

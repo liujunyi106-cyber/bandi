@@ -128,28 +128,6 @@ class TestDissolveCompensation:
         assert "qa-dissolve-team" in project["dissolved_team_ids"]
 
 
-class TestMemoryIsolation:
-    def test_team_blackboard_and_dm_do_not_leak(self, tmp_path: Path) -> None:
-        from bandi.company.comms import write_team_memory
-        from bandi.company.discussion_thread import ThreadManager
-
-        workspace = str(tmp_path / "workspace")
-        write_team_memory(workspace, "qa-p", "qa-s", "BLACKBOARD-ONLY", team_id="qa-team")
-        manager = ThreadManager(workspace=workspace, project_id="qa-p", session_id="qa-s")
-        thread = manager.create_thread(participants=["user", "qa-role"])
-        manager.add_message(thread.thread_id, "user", "DM-ONLY")
-        manager.add_message(thread.thread_id, "qa-role", "DM-REPLY")
-
-        root = Path(workspace) / ".bandi-comms" / "qa-p" / "qa-s"
-        blackboard = root / "_shared" / "teams" / "qa-team" / "TEAM_MEMORY.md"
-        thread_file = root / "threads" / f"{thread.thread_id}.md"
-        assert blackboard.read_text(encoding="utf-8") == "BLACKBOARD-ONLY"
-        assert thread_file.is_file()
-        thread_text = thread_file.read_text(encoding="utf-8")
-        assert "DM-ONLY" in thread_text
-        assert "BLACKBOARD-ONLY" not in thread_text
-
-
 class TestProfileDeleteFailure:
     def test_profile_failure_keeps_employee_and_marks_operation_failed(self) -> None:
         from bandi.api.app import _company_operations

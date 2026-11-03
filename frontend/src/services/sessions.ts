@@ -1,5 +1,5 @@
 /**
- * 功能：会话域 API（@base docs/API契约.md / 后端 api/app.py sessions 端点）。
+ * 功能：会话域 API（）。
  * 覆盖：列表（含 project_id 项目维度）/ 详情（消息条目）/ 重命名 / 删除 /
  * fork / revert 三级（stage·commit·clear）/ 分享 + 共享查看 / 转向（steer·inject）/
  * 中断（abort）/ 挂起交互应答（confirm·clarify）。
@@ -95,7 +95,10 @@ export const sessionsApi = {
     ),
   rename: (sessionId: string, title: string) =>
     api.patch<{ ok: boolean; title: string }>(`/sessions/${sessionId}`, { title }),
-  remove: (sessionId: string) => api.del<{ ok: boolean }>(`/sessions/${sessionId}`),
+  remove: (sessionId: string) =>
+    api.del<{ ok: boolean; thread_deleted?: boolean; group_memory_purged?: boolean }>(
+      `/sessions/${sessionId}`,
+    ),
   revertStage: (sessionId: string, entryId: string) =>
     api.post<{ staged: boolean }>(`/sessions/${sessionId}/revert/stage`, { entry_id: entryId }),
   revertCommit: (sessionId: string) =>

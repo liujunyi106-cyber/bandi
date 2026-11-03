@@ -8,9 +8,7 @@ from bandi.company.comms import (
     create_meeting,
     list_inbox,
     mark_read,
-    read_team_memory,
     send_message,
-    write_team_memory,
 )
 from bandi.company.communication import CommunicationManager
 from bandi.company.company_runtime import CompanyRuntime
@@ -153,7 +151,7 @@ class TestCommunicationCollaborationPipeline:
         assert cm.mark_as_read("worker", msg_id)
         assert len(cm.read_inbox("worker")) == 0
 
-    def test_broadcast_and_team_memory(self, tmp_path):
+    def test_broadcast(self, tmp_path):
         workspace = str(tmp_path)
         cm = CommunicationManager(workspace, "proj1", "sess1")
 
@@ -168,13 +166,6 @@ class TestCommunicationCollaborationPipeline:
         inbox_1 = cm.read_inbox("worker_1")
         assert len(inbox_1) == 1
         assert inbox_1[0].sender_role == "ceo"
-
-        write_team_memory(
-            workspace, "proj1", "sess1", "# Decision Log\n\n- Sprint goal: deliver feature X"
-        )
-        content = read_team_memory(workspace, "proj1", "sess1")
-        assert "Sprint goal" in content
-        assert "feature X" in content
 
     def test_meeting_and_transcript(self, tmp_path):
         workspace = str(tmp_path)

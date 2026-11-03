@@ -1,5 +1,5 @@
 ﻿/**
- * 功能：员工单聊视图（@base docs/前端设计规划.md §6 / ——Day137 完整增强）。
+ * 功能：员工单聊视图。
  * 对话容器 = 与目标员工的讨论线程（participants=[user, target]）：
  * 历史/实时经线程通道（GET threads + thread_message 帧），发送经 /ws/company target_role
  * （触发员工执行，产出经 回写路由流入同一线程）。
@@ -43,7 +43,7 @@ const EMPTY_PROGRESS: ProcessNode[] = [];
 const ACTIVE_EXECUTION_PHASES = new Set(["running", "claimed", "executing"]);
 
 /** 功能：历史过程快照结算——消息已到达即该轮结束；历史事件无真实时间戳，
- *  去掉回放瞬间生成的 `startedAt`，避免显示「已完成 · 1ms」这类假耗时。 */
+ * 去掉回放瞬间生成的 `startedAt`，避免显示「已完成 · 1ms」这类假耗时。 */
 function settleHistoryProcess(events: unknown[]): ProcessNode[] {
   return settleRunningNodes(
     nodesFromEvents(events).map((node) => ({
@@ -471,7 +471,7 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
         />
         <span className="text-chat-ink text-sm font-medium">{displayName}</span>
         <span className="text-chat-muted text-xs">· {t("chat.dm.hint")}</span>
-        {/* 2026-09-23 MEM-SCOPE-4 前端入口：选择已通过任务 → 对话修正其执行细节 */}
+        {/* MEM-SCOPE-4 前端入口：选择已通过任务 → 对话修正其执行细节 */}
         <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
           <PopoverTrigger asChild>
             <button
@@ -570,7 +570,7 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
                     data-chat-anchor-key={message.message_id}
                     className={cn("flex w-full flex-col", isUser ? "items-end" : "items-start")}
                   >
-                    {/* 2026-09-23 用户拍板：用户消息不带「我」标签；员工行 = 头像 + 姓名 + 时间戳 */}
+                    {/* 用户拍板：用户消息不带「我」标签；员工行 = 头像 + 姓名 + 时间戳 */}
                     {!isUser ? (
                       <span
                         data-testid="dm-message-meta"
@@ -627,7 +627,7 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
                 );
               })
             )}
-            {/* 2026-09-23 用户拍板：正在执行显示在员工头像下方、与头像左缘对齐；
+            {/* 用户拍板：正在执行显示在员工头像下方、与头像左缘对齐；
               插队批：thread_progress 帧到达即展示实时过程块（有过程帧优先于静态提示） */}
             {progressNodes.length > 0 || awaitingReply ? (
               <div className="flex flex-col gap-0.5" data-testid="dm-running">
@@ -711,9 +711,9 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
           </div>
         </div>
       ) : null}
-      {/* 2026-09-23 用户拍板：对话框与其它会话统一（公共 Composer）；单聊不显示模式控件。
-          2026-09-24：busy 从过程槽派生 ⇒ 中断按钮出现；onStop 走 E-6 abort（原 noop 失效）。
-          2026-09-30 用户拍板：开 enhanced 拿到控制条（模型/思考模式）+ ⊕ 的上传与@引用文件；
+      {/* 用户拍板：对话框与其它会话统一（公共 Composer）；单聊不显示模式控件。
+busy 从过程槽派生 ⇒ 中断按钮出现；onStop 走 E-6 abort（原 noop 失效）。
+用户拍板：开 enhanced 拿到控制条（模型/思考模式）+ ⊕ 的上传与@引用文件；
           2026-10-02：单聊不消费「选择员工」（@团队成员仅项目群聊会话提供）——allowTeamPicker=false。 */}
       <Composer
         busy={employeeBusy}

@@ -1,5 +1,5 @@
 /**
-  * 功能：i18n 极简实现（zh 默认 + en 兜底，@base docs/前端设计规划.md）。
+  * 功能：i18n 极简实现（zh 默认 + en 兜底，）。
  * 不引 i18next——单页壳只需要「点路径查表 + 缺 key 回落」，复杂化无收益。
  * key 漂移由 `npm run i18n:check`（scripts/check-i18n.cjs）守门。
  */

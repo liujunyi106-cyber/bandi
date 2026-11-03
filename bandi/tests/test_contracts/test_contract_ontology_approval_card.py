@@ -124,9 +124,9 @@ def test_memory_assert_in_ask_tools_single_source() -> None:
 def test_plan_mode_still_gates_ask_listed_memory_assert() -> None:
     """契约（破坏者）：plan 模式不得静默放行 ask 名单成员——
 
-    memory_assert 在 plan 白名单（计划要记依赖关系，既有拍板），但它同时在
-    ask 名单：plan 下必须仍返回 ask_user=True（弹权限卡），不得借 plan 跳过
-    询问层直写长期记忆。"""
+    memory_assert 在 plan 白名单，但它同时在
+       ask 名单：plan 下必须仍返回 ask_user=True（弹权限卡），不得借 plan 跳过
+       询问层直写长期记忆。"""
     from bandi.core.message import ToolCall
     from bandi.tools.permissions_pipeline import PermissionsPipeline, plan_mode_tool_violations
     from bandi.tools.registry import ToolRegistry

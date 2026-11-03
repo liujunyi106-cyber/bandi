@@ -1,16 +1,13 @@
-# 功能：员工演进——经验追踪 / 项目反思 / learned skill 自动晋升
+# 功能：员工演进——经验追踪 / 经验评分 / 自演进事件档案
 
-"""Employee experience tracking, project reflections, and learned-skill distillation.
+"""Employee experience tracking and scoring.
 
-部分成功/失败计数 + 角色/领域/模式维度），项目交付后汇总项目反思
-（what_worked / reusable_checklist / reviewer_preferences / risks）
-反思达阈值（LEARNED_SKILL_THRESHOLD）自动晋升为 learned skill
-（生成 SKILL.md 经 SkillImporter 导入 Bandi 技能库）。
+部分成功/失败计数 + 角色/领域/模式维度，提供经验评分与自演进事件档案；
+技能沉淀走手动导入（``SkillImporter``），不再从项目反思自动晋升。
 
 适配：
 ``PreferenceManager``/``SkillLibrary`` → Bandi ``SkillImporter``
   （技能库写入）+ 无偏好写入（evolution 状态独立于 memory/*.md）；
-- ``projection_id_for_task`` 对齐 Bandi ``work_item_identity``；
 - ``employee_assignment`` metadata 语义保留（OrgEmployee 招募时写入）。
 """
 
@@ -27,49 +24,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from bandi.company.work_item_identity import projection_id_for_task
-from bandi.memory.global_store import store_write_lock
-from bandi.memory.staging import ORIGIN_BACKGROUND, stage_skill_write
-
 logger = logging.getLogger(__name__)
 
-_LEARNED_SKILL_THRESHOLD = 2
-_PENDING_SKILL_PREFIX = "pending:"
 _EXPERIENCE_SCHEMA_VERSION = 1
 _EVENTS_LIMIT = 100
-_TERMINAL_STATUSES = ("done", "approved", "failed", "cancelled", "rejected")
+
 
 # 组织经验档案的缺省组织 id——本地单组织产品口径（与 session_scoping 的
 # "default" 归属约定一致）；多组织部署时由调用方显式传入。
 DEFAULT_ORGANIZATION_ID = "default"
-
-
-def _build_self_evolution_event(reflection: dict[str, Any]) -> dict[str, Any]:
-    """功能：项目反思产出 → 自进化补丁事件——strengths/adjustments/avoid_next_time/"""
-    employee_id = str(reflection.get("employee_id") or "").strip()
-    if not employee_id:
-        return {}
-    delivery_key = str(
-        reflection.get("delivery_projection_id") or reflection.get("delivery_task_id") or ""
-    ).strip()
-    if not delivery_key:
-        return {}
-    summary = (
-        f"{str(reflection.get('pattern_key') or '').strip()} "
-        f"交付反思（{str(reflection.get('employee_outcome') or '').strip()}）"
-    ).strip()
-    return {
-        "event_id": f"reflection:{delivery_key}:{employee_id}",
-        "employee_id": employee_id,
-        "role_id": str(reflection.get("role_id") or "").strip(),
-        "summary": summary,
-        "strengths": list(reflection.get("what_worked") or [])[:8],
-        "adjustments": list(reflection.get("reviewer_preferences") or [])[:8],
-        "avoid_next_time": list(reflection.get("mistakes_to_avoid") or [])[:8],
-        "routing_notes": list(reflection.get("tool_preferences") or [])[:8],
-        "evidence_task_ids": list(reflection.get("source_task_ids") or [])[:12],
-        "confidence": float(reflection.get("confidence") or 0.7),
-    }
 
 
 def _quality_dimensions_prompt(*, verdict: str, reason: str, rework: str, failure: str) -> str:
@@ -167,25 +130,13 @@ def _resolve_task_project_id(task: Any) -> str:
     """功能：解析任务的项目归属——属性优先，回落 `metadata["project_id"]`。
 
     注意：`WorkItem` **没有** `project_id` 属性（项目归属由 `metadata["project_id"]`
-    承载，见 `company/work_item.py`），只用 `getattr` 会让生产调用恒空转
-    （`record_project_reflections` 曾在真实对象上直接 `return []`）。
+    承载，见 `company/work_item.py`），只用 `getattr` 会恒空转。
     """
     direct = str(getattr(task, "project_id", "") or "").strip()
     if direct:
         return direct
     metadata = dict(getattr(task, "metadata", None) or {})
     return str(metadata.get("project_id") or "").strip()
-
-
-def _task_status(task: Any) -> str:
-    """功能：解析任务状态串——兼容 `Phase` 枚举（`Phase.` → `"approved"`）。
-
-    `WorkItem.phase` 是枚举，直接 `str()` 得 `"Phase."`，会让终态过滤
-    失败判定全部失配（假对象契约传字符串 `"done"`，故长期未暴露）。
-    """
-    raw = getattr(task, "phase", None) or getattr(task, "status", None)
-    value = getattr(raw, "value", raw)
-    return str(value or "").strip().lower()
 
 
 def _utc_now() -> str:
@@ -204,13 +155,6 @@ def _normalize_outcome(outcome: str) -> str:
 def _safe_employee_filename(value: str) -> str:
     safe = re.sub(r"[^A-Za-z0-9._-]+", "-", str(value or "").strip()).strip("-")
     return safe or "employee"
-
-
-def _normalize_skill_name(raw: str) -> str:
-    normalized = str(raw or "").strip().lower()
-    normalized = re.sub(r"[^a-z0-9]+", "-", normalized).strip("-")
-    normalized = re.sub(r"-{2,}", "-", normalized)
-    return normalized[:64]
 
 
 def _bounded_float(value: Any, *, default: float = 0.0) -> float:
@@ -259,9 +203,7 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
 
 
 class EmployeeEvolutionManager:
-    """追踪员工经验、项目反思与 learned skill 晋升。"""
-
-    LEARNED_SKILL_THRESHOLD = _LEARNED_SKILL_THRESHOLD
+    """追踪员工经验与经验评分。"""
 
     def __init__(self, home_dir: str | Path | None = None, skills_dir: str | None = None) -> None:
         self.home = Path(home_dir) if home_dir is not None else Path.home()
@@ -324,39 +266,6 @@ class EmployeeEvolutionManager:
         self, organization_id: str, employee_id: str, profile: dict[str, Any]
     ) -> None:
         self._save_json(self.employee_experience_path(organization_id, employee_id), profile)
-
-    @classmethod
-    def attach_approved_skill(
-        cls,
-        profile_path: str | Path,
-        *,
-        employee_id: str,
-        pattern_key: str,
-        skill_name: str,
-    ) -> bool:
-        """功能：审批通过后把待批准技能回写档案为真实技能名（幂等）。
-
-        只更新档案中已存在的员工记录；档案缺失/损坏或员工不在档案时返回
-        False（审批端点据此保留待批准记录，防技能已落盘而档案永久失联）。
-        """
-        path = Path(profile_path)
-        employee = str(employee_id or "").strip()
-        pattern = str(pattern_key or "").strip()
-        skill = str(skill_name or "").strip()
-        if not employee or not pattern or not skill:
-            return False
-        # 否则并发 approve 的两个技能引用互相覆盖（丢更新）
-        with store_write_lock(path):
-            if not path.is_file():
-                return False
-            manager = cls(home_dir=path.parent)
-            profile = manager._load_json(path)
-            existing = (profile.get("employees") or {}).get(employee)
-            if not isinstance(existing, dict) or not existing:
-                return False
-            manager._attach_learned_skill(profile, employee, pattern, skill)
-            manager._save_json(path, profile)
-        return True
 
     def get_employee_profile(
         self, employee_id: str, project_id: str | None = None
@@ -607,112 +516,6 @@ class EmployeeEvolutionManager:
             "outcome": normalized_outcome,
         }
 
-    # -- 项目反思 --
-
-    def record_project_reflections(
-        self,
-        delivery_task: Any,
-        work_item_tasks: list[Any],
-        partial: bool = False,
-        *,
-        feedback: dict[str, Any] | None = None,
-        evaluation: dict[str, Any] | None = None,
-    ) -> list[dict[str, Any]]:
-        """项目交付后按员工聚合反思，达阈值自动晋升 learned skill。"""
-        project_id = _resolve_task_project_id(delivery_task)
-        delivery_task_id = str(getattr(delivery_task, "id", "") or "").strip()
-        if not project_id or not delivery_task_id:
-            return []
-
-        tasks = self._normalize_work_item_tasks(work_item_tasks, delivery_task)
-        employee_groups: dict[str, list[Any]] = {}
-        for task in tasks:
-            status = _task_status(task)
-            if status not in _TERMINAL_STATUSES:
-                continue
-            assignment = (
-                dict(getattr(task, "metadata", {}) or {}).get("employee_assignment", {}) or {}
-            )
-            employee_id = str(assignment.get("employee_id", "")).strip()
-            if not employee_id:
-                continue
-            employee_groups.setdefault(employee_id, []).append(task)
-
-        results: list[dict[str, Any]] = []
-        for employee_id, employee_tasks in employee_groups.items():
-            reflection = self._build_project_reflection(
-                delivery_task=delivery_task,
-                employee_tasks=employee_tasks,
-                project_id=project_id,
-                partial=partial,
-                feedback=feedback,
-                evaluation=evaluation,
-            )
-            reflection_path = self.evolution_profile_path(project_id)
-
-            global_profile = self.load_evolution_profile()
-            self._record_project_reflection_in_profile(
-                global_profile, reflection=reflection, reflection_path=reflection_path
-            )
-            learned_skill_ref = self._maybe_promote_reflection_skill(
-                global_profile,
-                reflection,
-                project_id=project_id,
-                profile_path=self.evolution_profile_path(),
-            )
-            self.save_evolution_profile(global_profile)
-
-            project_profile = self.load_evolution_profile(project_id)
-            self._record_project_reflection_in_profile(
-                project_profile, reflection=reflection, reflection_path=reflection_path
-            )
-            if not learned_skill_ref:
-                learned_skill_ref = self._maybe_promote_reflection_skill(
-                    project_profile,
-                    reflection,
-                    project_id=project_id,
-                    profile_path=self.evolution_profile_path(project_id),
-                )
-            if learned_skill_ref and not learned_skill_ref.startswith(_PENDING_SKILL_PREFIX):
-                # 待批准技能不记入档案引用——技能尚未落盘，批准后由审批链路接管
-                self._attach_learned_skill(
-                    project_profile,
-                    reflection["employee_id"],
-                    reflection["pattern_key"],
-                    learned_skill_ref,
-                )
-            self.save_evolution_profile(project_profile, project_id)
-
-            # 自进化补丁流水线（A3+A4）：反思产出 → 补丁事件 → 组织经验档案
-            # （event_id 按交付+员工幂等；失败不阻断反思主链）
-            event = _build_self_evolution_event(reflection)
-            if event:
-                try:
-                    self.apply_employee_evolution_patch(
-                        organization_id=DEFAULT_ORGANIZATION_ID,
-                        patch={"patches": [event]},
-                        source={
-                            "kind": "project_reflection",
-                            "project_id": project_id,
-                            "delivery_task_id": str(reflection.get("delivery_task_id") or ""),
-                        },
-                        allowed_employee_ids={employee_id},
-                    )
-                except Exception:
-                    logger.debug("self evolution patch failed", exc_info=True)
-
-            results.append(
-                {
-                    "employee_id": employee_id,
-                    "reflection_path": str(reflection_path),
-                    "learned_skill_ref": learned_skill_ref,
-                    "status": "recorded",
-                    "reflection": reflection,
-                }
-            )
-
-        return results
-
     # -- 自演进事件 --
 
     def apply_employee_evolution_patch(
@@ -905,371 +708,6 @@ class EmployeeEvolutionManager:
         record["delta_profile"] = self._build_delta_profile(record)
         record.setdefault("learned_skill_refs", [])
 
-    def _record_project_reflection_in_profile(
-        self,
-        profile: dict[str, Any],
-        *,
-        reflection: dict[str, Any],
-        reflection_path: Path,
-    ) -> None:
-        employees = profile.setdefault("employees", {})
-        employee_id = str(reflection.get("employee_id", "")).strip()
-        if not employee_id:
-            return
-        record = employees.setdefault(employee_id, {})
-        record.update(
-            {
-                "employee_name": reflection.get("employee_name", ""),
-                "role_id": reflection.get("role_id", ""),
-                "template_id": reflection.get("template_id", ""),
-                "category": reflection.get("category", ""),
-                "updated_at": _utc_now(),
-                "last_reflection_at": _utc_now(),
-            }
-        )
-        reflection_ids = record.setdefault("project_reflection_ids", [])
-        if reflection["delivery_task_id"] in reflection_ids:
-            return
-        reflection_ids.append(reflection["delivery_task_id"])
-        reflection_paths = record.setdefault("reflection_paths", [])
-        reflection_paths.append(str(reflection_path))
-        project_ids = record.setdefault("project_ids", [])
-        if reflection["project_id"] not in project_ids:
-            project_ids.append(reflection["project_id"])
-        record["projects_reflected"] = len(project_ids)
-
-        patterns = record.setdefault("patterns", {})
-        pattern_key = str(reflection.get("pattern_key", ""))
-        pattern = patterns.setdefault(
-            pattern_key,
-            self._base_pattern_record(
-                str(reflection.get("role_id", "")).strip(),
-                list(reflection.get("domains", [])),
-            ),
-        )
-        pattern["role_id"] = reflection.get("role_id", "")
-        pattern["domains"] = list(reflection.get("domains", []))
-        pattern["reflection_count"] = int(pattern.get("reflection_count", 0)) + 1
-        pattern["latest_project_summary"] = str(reflection.get("project_summary", ""))
-        pattern["last_reflection_at"] = _utc_now()
-        pattern_reflection_paths = pattern.setdefault("reflection_paths", [])
-        pattern_reflection_paths.append(str(reflection_path))
-
-        for key, reflection_key in (
-            ("working_pattern_counts", "what_worked"),
-            ("checklist_counts", "reusable_checklist"),
-            ("reviewer_preference_counts", "reviewer_preferences"),
-            ("tool_preference_counts", "tool_preferences"),
-            ("risk_watchout_counts", "mistakes_to_avoid"),
-            ("fit_domain_counts", "suitable_for"),
-            ("avoid_domain_counts", "avoid_for"),
-        ):
-            self._increment_counts(pattern, key, reflection.get(reflection_key, []))
-            self._increment_counts(record, key, reflection.get(reflection_key, []))
-        record["delta_profile"] = self._build_delta_profile(record)
-        record.setdefault("learned_skill_refs", [])
-
-    def _build_project_reflection(
-        self,
-        *,
-        delivery_task: Any,
-        employee_tasks: list[Any],
-        project_id: str,
-        partial: bool = False,
-        feedback: dict[str, Any] | None = None,
-        evaluation: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        first_assignment = (
-            dict(getattr(employee_tasks[0], "metadata", {}) or {}).get("employee_assignment", {})
-            or {}
-        )
-        employee_id = str(first_assignment.get("employee_id", "")).strip()
-        role_id = str(
-            first_assignment.get("role_id") or getattr(employee_tasks[0], "assignee_role", "") or ""
-        ).strip()
-        domains = self._collect_domains(
-            employee_tasks, fallback=list(first_assignment.get("domains", []))
-        )
-        pattern_key = self._pattern_key(role_id, domains)
-        task_summaries = self._collect_task_summaries(employee_tasks)
-        artifacts = self._collect_items(employee_tasks, "artifacts")
-        decisions = self._collect_items(employee_tasks, "decisions")
-        risks = self._collect_items(employee_tasks, "risks")
-        open_questions = self._collect_items(employee_tasks, "open_questions")
-        preferred_agents = self._collect_preferred_agents(employee_tasks, first_assignment)
-        employee_feedback = self._find_employee_feedback(employee_id, evaluation)
-        historical_context = self.build_employee_delta_context(employee_id, project_id=project_id)
-        feedback_summary = str(
-            (evaluation or {}).get("summary", "") or (feedback or {}).get("raw_feedback", "")
-        ).strip()
-
-        what_worked = [
-            "Break work into explicit deliverables and leave concise handoff summaries.",
-            "Preserve reviewer-friendly artifacts so downstream validation is faster.",
-        ]
-        if decisions:
-            what_worked.append(
-                "Capture explicit implementation decisions that downstream reviewers can verify."
-            )
-        if artifacts:
-            what_worked.append("Reference exact artifact paths or outputs in every handoff.")
-
-        reusable_checklist = [
-            "State the objective and completion summary explicitly in the handoff.",
-            "Leave reviewer-friendly artifacts for the next work item.",
-        ]
-        if decisions:
-            reusable_checklist.append("Record key decisions that affect downstream execution.")
-        if artifacts:
-            reusable_checklist.append("List concrete artifact references for changed outputs.")
-        if any(domain in {"coding", "api", "backend", "frontend", "devops"} for domain in domains):
-            reusable_checklist.append(
-                "Include validation or test evidence before requesting review."
-            )
-
-        reviewer_preferences = [
-            "Make decisions, risks, and artifact references explicit for review."
-        ]
-        if risks or open_questions:
-            reviewer_preferences.append(
-                "Flag unresolved risks and open questions before requesting approval."
-            )
-        if artifacts:
-            reviewer_preferences.append("Point reviewers to exact changed files or deliverables.")
-
-        tool_preferences = [
-            f"Prefer external agent `{agent}` for similar `{role_id}` work."
-            for agent in preferred_agents
-        ]
-
-        mistakes_to_avoid = list(risks[:4])
-        if open_questions:
-            mistakes_to_avoid.extend(
-                item for item in open_questions[:2] if item not in mistakes_to_avoid
-            )
-        if not mistakes_to_avoid:
-            mistakes_to_avoid.append(
-                "Avoid handoffs that omit concrete artifacts, risks, or validation notes."
-            )
-        what_worked.extend(
-            str(item).strip()
-            for item in list(employee_feedback.get("strengths", []))
-            if str(item).strip()
-        )
-        mistakes_to_avoid.extend(
-            str(item).strip()
-            for item in list(employee_feedback.get("weaknesses", []))
-            if str(item).strip()
-        )
-        if feedback_summary:
-            reviewer_preferences.append(f"Carry forward user feedback themes: {feedback_summary}")
-
-        suitable_for = list(domains or [role_id])
-        avoid_for = self._infer_avoid_domains(mistakes_to_avoid)
-        confidence = round(min(0.95, 0.55 + (0.08 * len(employee_tasks))), 2)
-
-        failures: list[dict[str, str]] = []
-        for t in employee_tasks:
-            status = _task_status(t)
-            if status == "done" or status == "approved":
-                continue
-            reason = str(getattr(t, "metadata", {}) or {}).get("failure_reason", "")
-            failures.append(
-                {
-                    "task": str(getattr(t, "title", "") or ""),
-                    "status": status,
-                    "reason": reason,
-                }
-            )
-            if reason:
-                mistakes_to_avoid.append(reason)
-
-        if partial:
-            confidence = round(min(confidence, 0.4), 2)
-
-        result: dict[str, Any] = {
-            "employee_id": employee_id,
-            "employee_name": first_assignment.get("name", ""),
-            "template_id": first_assignment.get("template_id", ""),
-            "category": first_assignment.get("category", ""),
-            "project_id": project_id,
-            "delivery_task_id": str(getattr(delivery_task, "id", "") or ""),
-            "delivery_projection_id": projection_id_for_task(delivery_task),
-            "role_id": role_id,
-            "domains": domains,
-            "pattern_key": pattern_key,
-            "project_summary": " ".join(task_summaries[:3]),
-            "what_worked": _dedupe_preserve_order(what_worked),
-            "mistakes_to_avoid": _dedupe_preserve_order(mistakes_to_avoid),
-            "reusable_checklist": _dedupe_preserve_order(reusable_checklist),
-            "reviewer_preferences": _dedupe_preserve_order(reviewer_preferences),
-            "tool_preferences": _dedupe_preserve_order(tool_preferences),
-            "suitable_for": _dedupe_preserve_order(suitable_for),
-            "avoid_for": _dedupe_preserve_order(avoid_for),
-            "confidence": confidence,
-            "source_task_ids": [str(getattr(task, "id", "")) for task in employee_tasks],
-            "created_at": _utc_now(),
-            "employee_outcome": _normalize_outcome(
-                str(employee_feedback.get("outcome", "partial_success") or "partial_success")
-            ),
-            "feedback_summary": feedback_summary,
-            "feedback_rationale": str(employee_feedback.get("reason", "")).strip(),
-        }
-        if historical_context:
-            result["historical_context"] = historical_context
-        if feedback:
-            result["user_feedback"] = {
-                "label": str(feedback.get("label", "")).strip(),
-                "raw_feedback": str(feedback.get("raw_feedback", "")).strip(),
-                "scope": str(feedback.get("scope", "")).strip(),
-            }
-        if evaluation:
-            result["runtime_feedback_evaluation"] = {
-                "overall_outcome": str(evaluation.get("overall_outcome", "")).strip(),
-                "summary": str(evaluation.get("summary", "")).strip(),
-                "strengths": [
-                    str(item).strip()
-                    for item in list(evaluation.get("strengths", []))
-                    if str(item).strip()
-                ][:6],
-                "weaknesses": [
-                    str(item).strip()
-                    for item in list(evaluation.get("weaknesses", []))
-                    if str(item).strip()
-                ][:6],
-            }
-        if failures:
-            result["failures"] = failures
-            result["partial"] = True
-        return result
-
-    def _maybe_promote_reflection_skill(
-        self,
-        profile: dict[str, Any],
-        reflection: dict[str, Any],
-        project_id: str | None = None,
-        *,
-        profile_path: str | Path | None = None,
-    ) -> str:
-        """反思达阈值且存在重复模式时，生成/更新 SKILL.md 并导入技能库。
-
-        .7：同名技能不再冻结——已晋升技能出现新条目时走**合并式补丁更新**
-        （version 递增 + history 备份，可回滚），而非整文件覆盖丢历史；
-        无新条目保持幂等不重写。
-        技能晋升审批：首次晋升不再直写技能库，改入技能暂存区等待用户批准
-        （无自动批准路径），返回 `pending:<id8>` 待批准引用；同 skill_name
-        重复命中由暂存区覆盖去重（supersede）。暂存 payload 携带档案定位
-        （profile_path/employee_id/pattern_key）——审批通过后由审批链路回写
-        真实技能名，使后续反思进入合并更新分支而非重复入队。
-        """
-        employees = profile.setdefault("employees", {})
-        employee_id = str(reflection.get("employee_id", "")).strip()
-        record = employees.get(employee_id)
-        if not record:
-            return ""
-        pattern_key = str(reflection.get("pattern_key", "")).strip()
-        pattern = dict(record.get("patterns", {}).get(pattern_key, {}) or {})
-        # 功能：历史直写时代遗留的非空 learned_skill_ref 视为已批准基线（审批门
-        # 上线前技能已直写技能库），允许直接走合并更新；新流程不再产生此类档案
-        existing_ref = str(pattern.get("learned_skill_ref", ""))
-        if not pattern:
-            return existing_ref
-        if int(pattern.get("reflection_count", 0)) < self.LEARNED_SKILL_THRESHOLD:
-            return existing_ref
-
-        repeated_working = self._repeated_items(pattern.get("working_pattern_counts", {}))
-        repeated_checklists = self._repeated_items(pattern.get("checklist_counts", {}))
-        repeated_reviewer = self._repeated_items(pattern.get("reviewer_preference_counts", {}))
-        repeated_tools = self._repeated_items(pattern.get("tool_preference_counts", {}))
-        repeated_risks = self._repeated_items(pattern.get("risk_watchout_counts", {}))
-        if not any(
-            (
-                repeated_working,
-                repeated_checklists,
-                repeated_reviewer,
-                repeated_tools,
-                repeated_risks,
-            )
-        ):
-            return existing_ref
-
-        employee_name = str(reflection.get("employee_name", "Employee")).strip() or "Employee"
-        role_id = str(reflection.get("role_id", "")).strip() or record.get("role_id", "general")
-        domains = (
-            list(reflection.get("domains", [])) or list(pattern.get("domains", [])) or [role_id]
-        )
-        primary_domain = domains[0] if domains else role_id
-        display_name = f"{employee_name} {role_id} {primary_domain} playbook"
-        skill_name = existing_ref or _normalize_skill_name(display_name)
-        reflection_count = int(pattern.get("reflection_count", 0))
-
-        sections = [
-            f"# {display_name}",
-            "",
-            f"Learned playbook for **{employee_name}** in role `{role_id}` across "
-            f"{', '.join(domains)}.",
-            f"Distilled from {reflection_count} project reflections.",
-        ]
-        if repeated_working:
-            sections.extend(
-                ["", "## Successful Behaviors", *[f"- {item}" for item in repeated_working]]
-            )
-        if repeated_checklists:
-            sections.extend(
-                ["", "## Default Checklist", *[f"- {item}" for item in repeated_checklists]]
-            )
-        if repeated_reviewer:
-            sections.extend(
-                ["", "## Reviewer Preferences", *[f"- {item}" for item in repeated_reviewer]]
-            )
-        if repeated_tools:
-            sections.extend(["", "## Tool Preferences", *[f"- {item}" for item in repeated_tools]])
-        if repeated_risks:
-            sections.extend(["", "## Risk Watchouts", *[f"- {item}" for item in repeated_risks]])
-        avoid_for = self._rank_items(record.get("avoid_domain_counts", {}), limit=4)
-        if avoid_for:
-            sections.extend(["", "## Avoid For", *[f"- {item}" for item in avoid_for]])
-
-        content = "\n".join(sections).strip() + "\n"
-        metadata = {
-            "employee_id": employee_id,
-            "employee_name": employee_name,
-            "role_id": role_id,
-            "template_id": reflection.get("template_id", ""),
-            "pattern_key": pattern_key,
-            "built_from": "project_reflections",
-        }
-        if existing_ref:
-            # 已晋升：合并式更新（无新条目 → 幂等不重写）
-            self._update_skill_md(existing_ref, content, metadata)
-            return existing_ref
-        lesson_bits = _dedupe_preserve_order(
-            [*repeated_working, *repeated_checklists, *repeated_risks]
-        )
-        summary = f"技能 {skill_name} 待批准（{reflection_count} 次项目反思）"
-        if lesson_bits:
-            summary += "：" + "；".join(lesson_bits[:2])
-        location_path = (
-            Path(profile_path)
-            if profile_path is not None
-            else self.evolution_profile_path(project_id)
-        )
-        record = stage_skill_write(
-            skill_name=skill_name,
-            content=self._compose_skill_md(skill_name, content, version=1),
-            origin=ORIGIN_BACKGROUND,
-            summary=summary,
-            reason=f"pattern {pattern_key} reflection_count={reflection_count}",
-            extra_payload={
-                "profile_path": str(location_path),
-                "employee_id": employee_id,
-                "pattern_key": pattern_key,
-            },
-        )
-        if record is None or not getattr(record, "persisted", False):
-            return ""
-        return f"{_PENDING_SKILL_PREFIX}{record.id8}"
-
     # -- .7：技能版本化更新与回滚 ----------------------------------------
 
     def _skills_root(self) -> Path:
@@ -1451,94 +889,6 @@ class EmployeeEvolutionManager:
             "reflection_count": 0,
         }
 
-    def _normalize_work_item_tasks(
-        self, work_item_tasks: list[Any], delivery_task: Any
-    ) -> list[Any]:
-        tasks_by_id: dict[str, Any] = {}
-        for task in work_item_tasks:
-            task_id = str(getattr(task, "id", "") or "").strip()
-            if task_id:
-                tasks_by_id[task_id] = task
-        delivery_task_id = str(getattr(delivery_task, "id", "") or "").strip()
-        if delivery_task_id:
-            tasks_by_id[delivery_task_id] = delivery_task
-        return list(tasks_by_id.values())
-
-    def _collect_domains(self, tasks: list[Any], fallback: list[str]) -> list[str]:
-        collected: list[str] = []
-        for task in tasks:
-            assignment = (
-                dict(getattr(task, "metadata", {}) or {}).get("employee_assignment", {}) or {}
-            )
-            for value in list(assignment.get("domains", [])) + list(
-                getattr(task, "tags", []) or []
-            ):
-                item = str(value).strip()
-                if item and item not in collected:
-                    collected.append(item)
-        for value in fallback:
-            item = str(value).strip()
-            if item and item not in collected:
-                collected.append(item)
-        return collected
-
-    def _collect_task_summaries(self, tasks: list[Any]) -> list[str]:
-        summaries: list[str] = []
-        for task in tasks:
-            task_meta = dict(getattr(task, "metadata", {}) or {})
-            result_obj = getattr(task, "result", None)
-            result_text = ""
-            if isinstance(result_obj, dict):
-                result_text = str(result_obj.get("content", "") or "")
-            for candidate in (
-                str(task_meta.get("work_item_summary_for_downstream", "") or ""),
-                result_text,
-                str(getattr(task, "title", "") or ""),
-            ):
-                candidate = str(candidate or "").strip()
-                if candidate and candidate not in summaries:
-                    summaries.append(candidate)
-                    break
-        return summaries
-
-    def _collect_items(self, tasks: list[Any], key: str) -> list[str]:
-        items: list[str] = []
-        for task in tasks:
-            for value in list((getattr(task, "metadata", {}) or {}).get(key, []) or []):
-                text = str(value).strip()
-                if text and text not in items:
-                    items.append(text)
-        return items
-
-    def _collect_preferred_agents(self, tasks: list[Any], assignment: dict[str, Any]) -> list[str]:
-        agents: list[str] = []
-        assignment_agent = str(assignment.get("preferred_external_agent", "") or "").strip()
-        if assignment_agent:
-            agents.append(assignment_agent)
-        for task in tasks:
-            value = str(getattr(task, "assigned_external_agent", "") or "").strip()
-            if value and value not in agents:
-                agents.append(value)
-        return agents
-
-    def _infer_avoid_domains(self, risks: list[str]) -> list[str]:
-        avoid: list[str] = []
-        joined = " ".join(risks).lower()
-        for token in ("security", "compliance", "billing", "finance", "production", "deployment"):
-            if token in joined and token not in avoid:
-                avoid.append(token)
-        return avoid
-
-    def _find_employee_feedback(
-        self, employee_id: str, evaluation: dict[str, Any] | None
-    ) -> dict[str, Any]:
-        if not evaluation:
-            return {}
-        for item in list(evaluation.get("employees", [])):
-            if str(item.get("employee_id", "")).strip() == employee_id:
-                return dict(item)
-        return {}
-
     def _increment_outcome_counts(self, container: dict[str, Any], outcome: str) -> None:
         normalized = _normalize_outcome(outcome)
         if normalized == "success":
@@ -1576,17 +926,6 @@ class EmployeeEvolutionManager:
             key=lambda pair: (-pair[1], pair[0].lower()),
         )
         return [item for item, _count in ranked[:limit]]
-
-    def _repeated_items(self, counts: dict[str, Any], *, minimum: int = 2) -> list[str]:
-        ranked = sorted(
-            (
-                (str(item).strip(), int(count))
-                for item, count in dict(counts).items()
-                if int(count) >= minimum and str(item).strip()
-            ),
-            key=lambda pair: (-pair[1], pair[0].lower()),
-        )
-        return [item for item, _count in ranked[:6]]
 
     def _pattern_key(self, role_id: str, domains: list[str]) -> str:
         domain_key = ",".join(

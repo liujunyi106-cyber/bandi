@@ -436,6 +436,14 @@
       "maxTurns": "Reached the maximum steps for this turn. Retry or split the task.",
       "unknown": "The last reply was interrupted by a network or model issue; you can retry this turn."
     },
+    "pendingSend": {
+      "label": "Pending",
+      "sendNow": "Send now",
+      "edit": "Edit",
+      "delete": "Delete",
+      "attachmentOnly": "Attachment",
+      "attachmentWait": "Attachments send after this turn"
+    },
     "resume": {
       "hint": "The last reply was interrupted (network or model issue). You can retry.",
       "action": "Retry",
@@ -455,9 +463,10 @@
       "forkEmpty": "No message to fork from",
       "delete": "Delete session",
       "deleteTitle": "Delete this session?",
-      "deleteHint": "The chat and its thread will be permanently deleted; employee memory and artifacts are kept.",
+      "deleteHint": "The chat, its thread, and group memory will be permanently deleted; employee/team memory and artifacts are kept.",
       "deleted": "Session deleted",
       "deleteFailed": "Some chats failed to delete. Please retry.",
+      "groupMemoryPurgeFailed": "Session deleted, but group memory cleanup failed. Please retry cleanup later.",
       "revertToHere": "Roll back to here",
       "pin": "Pin",
       "unpin": "Unpin",
@@ -601,36 +610,6 @@
     "notifications": "Notifications",
     "clearNotifications": "Clear all",
     "noNotifications": "No notifications"
-  },
-  "teamMemory": {
-    "section": "Team memory approvals",
-    "source": "Source",
-    "adviceOnly": "Sign-off only",
-    "confirm": "Approve and write",
-    "reject": "Discard",
-    "field": {
-      "reason": "Reason",
-      "analysis": "Review",
-      "output": "Output",
-      "files": "Files touched",
-      "employee": "Target employee",
-      "skill": "Suggested skill",
-      "whatHappened": "What happened",
-      "lesson": "What to remember",
-      "willWrite": "What approval writes",
-      "teamMemory": "Team memory (recallable on similar tasks)",
-      "evidence": "Evidence files",
-      "skillPendingName": "Name pending, editable after approval",
-      "legacyHint": "This record has no structured notes. Expand evidence to check the original.",
-      "experience": "Team experience",
-      "skillToggle": "Also create a skill card",
-      "skillToggleHint": "On approval, saved as this employee's skill card for reuse",
-      "skillName": "Skill card name"
-    },
-    "done": {
-      "confirmed": "Approved to team memory",
-      "rejected": "Rejected"
-    }
   },
   "settings": {
     "nav": {
@@ -911,13 +890,8 @@
     "memory": {
       "title": "Memory drafts awaiting approval"
     },
-    "skill": {
-      "title": "Skill promotion awaiting approval"
-    },
     "kind": {
       "personal": "Memory draft",
-      "team": "Team memory",
-      "skill": "Skill promotion",
       "nominated": "Long-term memory",
       "draft": "Memory draft",
       "episodic": "Episodic memory"

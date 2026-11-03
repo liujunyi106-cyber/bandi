@@ -1,6 +1,6 @@
 /**
   * 功能：脚手架期的页面占位符——把每个导航入口的归属日与形态写清楚
-  * 后续 Day 逐页替换为真实实现（@base docs/前端设计规划.md 功能分区矩阵）。
+  * 后续 Day 逐页替换为真实实现（）。
  */
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useT } from "@/i18n";

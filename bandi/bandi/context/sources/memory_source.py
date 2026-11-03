@@ -181,6 +181,18 @@ def persist_seen_state() -> None:
         logger.warning("seen memory state persist failed: %s", e)
 
 
+def forget_session(session_id: str) -> None:
+    """功能：删除会话时清掉跨轮注入/已见缓存，避免同 id 复用带出旧记忆。"""
+    sid = str(session_id or "").strip()
+    if not sid:
+        return
+    with _SEEN_LOCK:
+        SEEN_BY_SESSION.pop(sid, None)
+    with _HIERARCHY_LOCK:
+        HIERARCHY_INJECTED_BY_SESSION.pop(sid, None)
+    persist_seen_state()
+
+
 def _memory_id(category: str, key: str) -> str:
     # 功能：统一 memory_id（category 命名空间）——跨分类同 key 不互覆
     return f"{category}:{key}"

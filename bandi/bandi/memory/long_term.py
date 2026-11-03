@@ -600,6 +600,31 @@ class LongTermMemory:
             self._conn.execute("DELETE FROM long_term_fts WHERE id = ?", (item_id,))
             self._conn.commit()
 
+    def delete_scope(
+        self,
+        project_id: str | None,
+        employee_id: str | None = None,
+    ) -> int:
+        """功能：按维度分区批量删除长期记忆（主表 + FTS 索引），返回删除条数。"""
+        scope_clause, scope_args = self._scope_clause(project_id, employee_id)
+        with self._lock:
+            count = int(
+                self._conn.execute(
+                    f"SELECT COUNT(*) FROM long_term_memory WHERE 1=1{scope_clause}",
+                    scope_args,
+                ).fetchone()[0]
+            )
+            if not count:
+                return 0
+            self._conn.execute(
+                "DELETE FROM long_term_fts WHERE id IN ("
+                f"SELECT id FROM long_term_memory WHERE 1=1{scope_clause})",
+                scope_args,
+            )
+            self._conn.execute(f"DELETE FROM long_term_memory WHERE 1=1{scope_clause}", scope_args)
+            self._conn.commit()
+        return count
+
     def apply_batch(
         self,
         *,

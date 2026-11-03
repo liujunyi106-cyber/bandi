@@ -1057,12 +1057,21 @@ class WorkItemStore:
             )
             self._conn.commit()
 
+    def delete_memory_snapshots_by_project(self, project_id: str) -> int:
+        """功能：按记忆域批量删除快照——群聊记忆域与会话一一对应，域内无其他数据。"""
+        with self._lock:
+            cursor = self._conn.execute(
+                "DELETE FROM memory_snapshots WHERE project_id = ?", (project_id,)
+            )
+            self._conn.commit()
+        return int(cursor.rowcount or 0)
+
     # ── 组织本体持久化 ────────────────────────────────────────────────
 
     def save_org_roles(self, roles: list[dict[str, Any]]) -> None:
         """批量保存角色定义（INSERT OR REPLACE）。"""
         with self._lock:
-            # 功能：时间戳按本地时间口径记录（与全仓拍板口径一致）
+            # 功能：时间戳按本地时间口径记录
             now = datetime.now(UTC).isoformat()
             self._conn.execute("DELETE FROM org_roles")
             for r in roles:
@@ -1121,7 +1130,7 @@ class WorkItemStore:
         保留供测试与既有装配，llm_config 三态（None/{}/值）保真。
         """
         with self._lock:
-            # 功能：时间戳按本地时间口径记录（与全仓拍板口径一致）
+            # 功能：时间戳按本地时间口径记录
             now = datetime.now(UTC).isoformat()
             self._conn.execute("DELETE FROM org_employees")
             for e in employees:

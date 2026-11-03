@@ -1,5 +1,5 @@
 /**
-  * 功能：过程消息（@base docs/前端设计规划.md / 原型）——无卡片
+  * 功能：过程消息（）——无卡片
  * 字段行 + 多级折叠：总行（过程消息 · 状态 · 总耗时）→ 分类行（思考/联网搜索/调用 Skills/
  * 调用知识库/其他工具，×N）→ 明细行（具体项 + 耗时）；知识条目一行虚化 + 「展示」按钮 →
  * 约 100px 滚动内容区。执行中 spinner；完成灰色 ✓；进行中自动展开/完成 1.5s 自动收起。
@@ -48,7 +48,7 @@ interface BucketItem {
   /**
    * 该行正文可折叠（思考节点「摘要 + 展开全文」两级）。
    * 折叠态只给摘要标题，正文进 max-h 封顶滚动区——长思考不淹没对话
-    * 。
+    *。
    */
   collapsible?: boolean;
   durationMs?: number;
@@ -115,8 +115,8 @@ function buildBuckets(nodes: ProcessNode[]): Bucket[] {
 
 /** 功能：记忆写入注记按通道分档——每档一行，长期在上、草稿在下，各带图标。
  *
- *  `long_term` 是用户理解的「长期记忆」；`working` 与 `compaction` 是本轮草稿与纪要。
- *  情景记忆（episodic）不进过程块——仅情景通道时整行不显示。无通道名（旧数据）回落总条数。
+ * `long_term` 是用户理解的「长期记忆」；`working` 与 `compaction` 是本轮草稿与纪要。
+ * 情景记忆（episodic）不进过程块——仅情景通道时整行不显示。无通道名（旧数据）回落总条数。
  */
 interface MemoryRow {
   key: string;
@@ -348,7 +348,7 @@ function BucketRow({ bucket, actions }: { bucket: Bucket; actions?: ProcessBlock
         <ItemStatus status={running ? "running" : "success"} />
         <Icon className="size-3.5 shrink-0 opacity-75" />
         <span className="text-chat-ink">{t(meta.labelKey)}</span>
-        {/* 2026-09-29：按工具名聚合（标本「资料搜索 ×7」「设计准则查阅 ×2」）。
+        {/* 按工具名聚合（标本「资料搜索 ×7」「设计准则查阅 ×2」）。
             规则计数，无 LLM 往返——opencode `contextToolSummary` 同口径。 */}
         <span data-testid={`process-bucket-count-${bucket.key}`} className="text-chat-muted">
           {toolBreakdown.length > 0 && bucket.items.length > 1
@@ -417,7 +417,7 @@ function BucketRow({ bucket, actions }: { bucket: Bucket; actions?: ProcessBlock
                       {t("chat.process.skipped")}
                     </span>
                   ) : null}
-                  {/* 2026-10-12 用户拍板：行尾不再常驻耗时（如 12ms）——
+                  {/* 用户拍板：行尾不再常驻耗时（如 12ms）——
                       该位置本应承载「展开/收起」，但工具行的展开入口是点击行打开右侧详情
                       （ProcessBlockActions.onShowDetail），与思考正文的行内展开并非同一机制；
                       两种都做会给出两个含义相近的入口。故此处不显示，
@@ -453,10 +453,10 @@ export function ProcessBlock({
   nodes: ProcessNode[];
   actions?: ProcessBlockActions;
   /** 功能：强制总行「正在执行」态（live 过程块用——过程节点全完成但回复卡片
-   *  未落地时仍显示执行中，而非「已完成 · 时间」）。 */
+   * 未落地时仍显示执行中，而非「已完成 · 时间」）。 */
   forceRunning?: boolean;
   /** 功能：总行时长的消息级覆盖——回复卡片落后的总执行时长（user 消息到回复
-   *  落卡的墙钟差；缺省回退过程节点累计时长）。 */
+   * 落卡的墙钟差；缺省回退过程节点累计时长）。 */
   totalMsOverride?: number;
 }) {
   const t = useT();
@@ -477,7 +477,7 @@ export function ProcessBlock({
   const buckets = useMemo(() => buildBuckets(nodes), [nodes]);
   const running = forceRunning || nodes.some((node) => node.status === "running");
   // 原先只累加 tool 节点 ⇒ 纯文本轮（无工具）恒显示「已完结 · 0.0s」
-  // 。改为工具 + 思考两类累加，无任何度量时显示「—」而非假精度 0.0s。
+  //。改为工具 + 思考两类累加，无任何度量时显示「—」而非假精度 0.0s。
   const totalMs = useMemo(() => totalDurationMs(nodes), [nodes]);
   const [open, setOpen] = useState(running);
   const manualRef = useRef(false);

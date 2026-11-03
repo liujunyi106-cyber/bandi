@@ -1441,7 +1441,6 @@ class CompanyDispatcher:
                         item = transition_work_item(
                             item, Phase.APPROVED, self.store, reason="review: approved"
                         )
-                        self._maybe_record_project_delivery(item)
                 elif rv == "rework":
                     base_metadata = dict(item.metadata or {})
                     structured = base_metadata.get("structured_review_verdict")
@@ -1464,7 +1463,6 @@ class CompanyDispatcher:
                         item = transition_work_item(
                             item, Phase.APPROVED, self.store, reason="review: rework cap reached"
                         )
-                        self._maybe_record_project_delivery(item)
                     else:
                         base_metadata["rework_feedback"] = (
                             feedback or str(base_metadata.get("rework_feedback", "") or "").strip()
@@ -2663,38 +2661,8 @@ class CompanyDispatcher:
                     task.cancel()
                 return
 
-    def _maybe_record_project_delivery(self, item: WorkItem) -> None:
-        """功能：交付卡（turn_type=DELIVER）进入终态即触发项目反思与技能晋升。
-
-        边界：审批型交付卡停在 AWAITING_MANAGER_REVIEW 时不算交付完成（终态才触发）。
-        """
-        if self.employee_evolution is None or item.turn_type is not WorkItemTurnType.DELIVER:
-            return
-        try:
-            from bandi.company.project_delivery import maybe_record_delivery_reflection
-
-            result = maybe_record_delivery_reflection(
-                store=self.store, evolution=self.employee_evolution, item=item
-            )
-            # A5/A6 桥接：反思后同步各员工经验分/技能到组织 metadata（前端可见）
-            for reflection in (result or {}).get("reflections") or []:
-                reflected_employee = str(reflection.get("employee_id") or "").strip()
-                if not reflected_employee:
-                    continue
-                try:
-                    self.employee_evolution.sync_org_employee_metadata(
-                        self.org_engine,
-                        reflected_employee,
-                        project_id=str(reflection.get("project_id") or "").strip() or None,
-                    )
-                except Exception:
-                    logger.debug("delivery metadata sync failed", exc_info=True)
-        except Exception:  # 反思记录失败不阻断调度主链路
-            logger.debug("project delivery reflection failed", exc_info=True)
-
     def _record_work_item_completion(self, item: WorkItem, result: SeatResult) -> None:
         """员工演进记录：写入 employee_assignment 元数据并记录完成经验。"""
-        self._maybe_record_project_delivery(item)
         if self.employee_evolution is None:
             return
         role_id = item.assignee_role or ""

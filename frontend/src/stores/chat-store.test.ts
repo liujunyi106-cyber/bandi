@@ -32,6 +32,7 @@ function resetStore(): void {
     activeSessionId: null,
     activeProjectId: "",
     messagesBySession: {},
+    pendingSendsBySession: {},
     streams: {},
     interactions: {},
     notifications: [],
@@ -1029,5 +1030,39 @@ describe("entriesToMessages · checkpoint 条目不进对话（2026-10-12 排查
     expect(messages).toHaveLength(1);
     expect(messages[0].content).toBe("你好");
     expect(messages.some((m) => m.id === "c1")).toBe(false);
+  });
+});
+
+describe("pendingSendsBySession · 执行中待发送队列", () => {
+  beforeEach(resetStore);
+
+  it("按会话入队/删除，文本与附件保留", () => {
+    const store = useChatStore.getState();
+    const id = store.enqueuePendingSend("s1", "排队", [
+      { upload_id: "u1", name: "a.md", size: 3 },
+    ]);
+    expect(useChatStore.getState().pendingSendsBySession.s1).toHaveLength(1);
+    expect(useChatStore.getState().pendingSendsBySession.s1[0]).toMatchObject({
+      id,
+      text: "排队",
+      attachments: [{ upload_id: "u1", name: "a.md", size: 3 }],
+    });
+
+    store.removePendingSend("s1", id);
+    expect(useChatStore.getState().pendingSendsBySession.s1).toBeUndefined();
+  });
+
+  it("会话删除时同步清空待发送队列", () => {
+    const store = useChatStore.getState();
+    store.upsertSession({
+      id: "s1",
+      title: "会话",
+      created_at: "",
+      message_count: 0,
+      project_id: "p1",
+    });
+    store.enqueuePendingSend("s1", "排队");
+    store.removeSessionLocal("s1");
+    expect(useChatStore.getState().pendingSendsBySession.s1).toBeUndefined();
   });
 });

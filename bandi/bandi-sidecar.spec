@@ -1,10 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
-# 功能：bandi-sidecar 的 PyInstaller 打包配置（Day147 C-5 / ADR-42）。
+# 功能：bandi-sidecar 的 PyInstaller 打包配置。
 #
 # 产物：onedir 桌面 sidecar（`bandi-sidecar/bandi-sidecar.exe`），供 Electron 壳
 # 在打包态 spawn（electron/sidecar.ts），提供 SPA + API + WS 单端口服务。
 #
-# 构建口径（Windows 实测，见 交付文档收集 §13）：
+# 构建口径：
 #   父解释器 + PYTHONPATH=<repo>/.venv/Lib/site-packages -m PyInstaller 本 spec
 #   （venv 解释器本身在本机 spawn 异常，父解释器借 venv 的包跑 PyInstaller）。
 # B-11 约束：原生二进制不得留在含中文的路径——distpath/workpath 必须指到
@@ -34,7 +34,7 @@ a = Analysis(
     datas=[
         # jsonschema_specifications 以 data 目录形式携带内置 schema 集，
         # PyInstaller 静态分析只收 .py 不收数据——启动时 iterdir 找不到目录即崩
-        # （2026-11-02 sidecar exe 实测：_internal/jsonschema_specifications/schemas 缺失）。
+        # 。
         *collect_data_files("jsonschema_specifications"),
         # rich._unicode_data 的 unicode17-0-0 数据文件同理（实测启动即 ModuleNotFoundError）
         *collect_data_files("rich"),

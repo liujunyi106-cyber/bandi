@@ -10,9 +10,7 @@ from bandi.company.comms import (
     create_meeting,
     list_inbox,
     mark_read,
-    read_team_memory,
     send_message,
-    write_team_memory,
 )
 
 
@@ -45,15 +43,6 @@ class TestComms:
         send_message(tmp_workspace, "p", "s", "manager", "worker", "test", "body")
         inbox = list_inbox(tmp_workspace, "p", "s", "manager", include_seen=True)
         assert len(inbox) == 0
-
-    def test_team_memory_read_write(self, tmp_workspace):
-        write_team_memory(tmp_workspace, "p", "s", "# Updated Memory")
-        content = read_team_memory(tmp_workspace, "p", "s")
-        assert "Updated Memory" in content
-
-    def test_team_memory_default(self, tmp_workspace):
-        content = read_team_memory(tmp_workspace, "p2", "s2")
-        assert "Team Memory" in content
 
     def test_create_meeting(self, tmp_workspace):
         meeting_dir = create_meeting(
@@ -128,8 +117,6 @@ class TestComms:
         assert msgs[0].created_at is not None
 
     def test_no_tmp_leftover_after_writes(self, tmp_workspace):
-        write_team_memory(tmp_workspace, "p", "s", "# v1")
-        write_team_memory(tmp_workspace, "p", "s", "# v2")
         create_meeting(tmp_workspace, "p", "s", "m1", "M", ["manager"])
         append_transcript(tmp_workspace, "p", "s", "m1", "manager", "hi")
         root = Path(tmp_workspace) / ".bandi-comms" / "p" / "s"

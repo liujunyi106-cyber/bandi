@@ -170,23 +170,6 @@ class TestEmployeeLifecycle:
         assert record["dissolved_team_ids"] == ["team-a"]
         assert client.get("/api/company/employees/emp-team-a").status_code == 200
 
-    def test_team_blackboard_is_scoped_by_team_id(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        from bandi.company.comms import read_team_memory, write_team_memory
-        from bandi.company.team_registry import TeamRegistry
-
-        monkeypatch.setenv("BANDI_HOME", str(tmp_path))
-        workspace = str(tmp_path / "workspace")
-        write_team_memory(workspace, "p1", "s1", "team-a", team_id="team-a")
-        assert read_team_memory(workspace, "p1", "s1", team_id="team-a") == "team-a"
-        assert "team-a" not in read_team_memory(workspace, "p1", "s1", team_id="team-b")
-
-        TeamRegistry().set_status("team-a", "dissolved")
-        assert read_team_memory(workspace, "p1", "s1", team_id="team-a") == ""
-        with pytest.raises(ValueError, match="TEAM_DISSOLVED"):
-            write_team_memory(workspace, "p1", "s1", "blocked", team_id="team-a")
-
 
 class TestOperationsAndMigration:
     def test_company_operations_audit_states(self, tmp_path: Path) -> None:
@@ -247,7 +230,7 @@ class TestOperationsAndMigration:
         body = resp.json()
         assert body["tombstones"] >= 1
         assert "by_state" in body["operations"]
-        assert body["team_pending"] >= 0
+        assert "team_pending" not in body
 
     def test_thread_system_note_dedupes_and_persists_metadata(self) -> None:
         from bandi.api.app import _get_company_dispatcher
@@ -319,43 +302,6 @@ class TestOperationsAndMigration:
         assert purged.json()["role_deleted"] is False
         assert purged.json()["tombstone"]["role_id"] == ""
         assert client.get("/api/company/employees/qa-no-role").status_code == 404
-
-    def test_legacy_team_memory_single_and_multi_team(self, tmp_path: Path) -> None:
-        from bandi.company.comms import migrate_legacy_team_memory
-
-        root = tmp_path / "comms"
-        legacy = root / "_shared" / "team_memory" / "TEAM_MEMORY.md"
-        legacy.parent.mkdir(parents=True)
-        legacy.write_text("legacy", encoding="utf-8")
-        result = migrate_legacy_team_memory(root, ["team-a"])
-        assert result["state"] == "migrated"
-        assert (root / "_shared" / "teams" / "team-a" / "TEAM_MEMORY.md").read_text(
-            encoding="utf-8"
-        ) == "legacy"
-        assert not legacy.exists()
-
-        legacy.parent.mkdir(parents=True, exist_ok=True)
-        legacy.write_text("old-multi", encoding="utf-8")
-        result = migrate_legacy_team_memory(root, ["team-a", "team-b"])
-        assert result["state"] == "deleted"
-        assert not legacy.exists()
-
-    def test_team_pending_cannot_confirm_after_dissolve(self) -> None:
-        from bandi.company.team_registry import TeamRegistry
-
-        TeamRegistry().set_status("team-gone", "dissolved")
-        with patch(
-            "bandi.api.app._get_team_staging_store",
-        ) as factory:
-            record = type(
-                "Record",
-                (),
-                {"payload": {"team_id": "team-gone", "summary": "x", "project_id": "p"}},
-            )()
-            factory.return_value.get_pending.return_value = record
-            resp = client.post("/api/memory/team-pending/p1/confirm", json={})
-        assert resp.status_code == 409
-        assert "TEAM_DISSOLVED" in str(resp.json())
 
     def test_template_rejects_second_employee_for_same_role(self) -> None:
         from bandi.company.org_engine import OrgEmployee

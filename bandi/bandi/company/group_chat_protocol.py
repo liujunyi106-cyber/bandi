@@ -11,9 +11,23 @@ MENTION_NOT_IN_PROJECT = "MENTION_NOT_IN_PROJECT"
 GROUP_PASS_HINT = (
     "群聊规则：只回复你这一轮要补充的内容；如果本轮没有新的补充，"
     "只回复 [PASS]，不要重复上一位成员。"
+    "弃权时不要加标点、解释或补充内容。"
 )
 
-_PASS_RE = re.compile(r"^\s*(?:[\[（(]\s*pass\s*[\]）)]|pass)\s*$", re.IGNORECASE)
+_PASS_CORE = r"\s*pass\s*"
+_PASS_RE = re.compile(
+    rf"^(?:{_PASS_CORE}|[\[（(【]{_PASS_CORE}[\]）)】])\s*[。.!！?？]?\s*$",
+    re.IGNORECASE,
+)
+_PASS_MARKS = ("**", "__", "`")
+
+
+def _normalize_pass_text(text: str) -> str:
+    value = str(text or "").replace("\u200b", "").replace("\ufeff", "").strip()
+    for mark in _PASS_MARKS:
+        if len(value) > len(mark) * 2 and value.startswith(mark) and value.endswith(mark):
+            value = value[len(mark) : -len(mark)].strip()
+    return value
 
 
 class MentionError(BandiError):
@@ -37,4 +51,4 @@ def mention_error_text(error: MentionError) -> str:
 
 def is_pass_output(text: str) -> bool:
     """功能：判断群聊成员本轮是否选择沉默"""
-    return bool(_PASS_RE.match(str(text or "").strip()))
+    return bool(_PASS_RE.match(_normalize_pass_text(text)))

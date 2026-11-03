@@ -96,8 +96,8 @@ function session(id: string, title: string, projectId: string, createdAt = "") {
 function panelSessions() {
   return [
     { ...session("sec-1", "秘书会话一", "p1", "2026-09-21T10:00:00"), origin: "secretary" },
-    session("group-1", "团队会话一", "p1", "2026-09-20T10:00:00"),
-    session("group-2", "团队会话二", "p1", "2026-09-19T10:00:00"),
+    { ...session("group-1", "团队会话一", "p1", "2026-09-20T10:00:00"), origin: "group" },
+    { ...session("group-2", "团队会话二", "p1", "2026-09-19T10:00:00"), origin: "group" },
   ] as never;
 }
 
@@ -192,22 +192,24 @@ describe("ProjectPanel", () => {
     expect(panel.style.width).toBe("224px");
   });
 
-  it("项目会话两类分列：团队群聊条目化（无会话列表）/ 秘书会话（origin 标记）+ 无项目归任务列表", async () => {
+  it("项目会话两类分列：团队群聊段头 + 会话列表 / 秘书会话（origin 标记）+ 无项目归任务列表", async () => {
     useChatStore.setState({
       sessions: [
-        session("s1", "团队会话一", "p1"),
-        session("s2", "团队会话二", "p1"),
+        { ...session("s1", "团队会话一", "p1"), origin: "group" },
+        { ...session("s2", "团队会话二", "p1"), origin: "group" },
         { ...session("s3", "秘书会话一", "p1"), origin: "secretary" },
         session("s4", "无项目会话", ""),
       ],
     });
     renderPanel();
 
-    // 团队群聊：单条目（条目即入口）——历史群聊会话不再成列
+    // 团队群聊：段头静态展示，历史群聊会话成列
     expect(await screen.findByTestId("panel-group-entry")).toBeInTheDocument();
-    expect(screen.queryAllByTestId("panel-project-session")).toHaveLength(0);
-    expect(screen.queryByText("团队会话一")).not.toBeInTheDocument();
-    expect(screen.queryByText("团队会话二")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("panel-group-open")).not.toBeInTheDocument();
+    const groupRows = await screen.findAllByTestId("panel-project-session");
+    expect(groupRows).toHaveLength(2);
+    expect(screen.getByText("团队会话一")).toBeInTheDocument();
+    expect(screen.getByText("团队会话二")).toBeInTheDocument();
 
     const secretaryRows = await screen.findAllByTestId("panel-secretary-session");
     expect(secretaryRows).toHaveLength(1);
@@ -260,7 +262,7 @@ describe("ProjectPanel", () => {
     expect(rows[0].textContent).toBe("秘书会话一");
   });
 
-  it("标题栏保留「功能」icon；秘书行内置「＋新建会话」+「更多操作」；群聊条目=打开+删除", async () => {
+  it("标题栏保留「功能」icon；秘书/群聊段头内置「＋新建会话」+「更多操作」", async () => {
     renderPanel();
 
     expect(await screen.findByTestId("panel-feature-menu")).toBeInTheDocument();
@@ -268,12 +270,12 @@ describe("ProjectPanel", () => {
     // 秘书行保留「＋新建会话」+「更多操作」
     expect(await screen.findByTestId("panel-secretary-new-session")).toBeInTheDocument();
     expect(screen.getByTestId("panel-secretary-more")).toBeInTheDocument();
-    // 群聊条目化：条目即入口（打开 + 直接删除），不再有新建会话/更多菜单
+    // 群聊段头与助理同口径：静态行 + 新建 + 更多；不再有段头级打开/删除
     expect(await screen.findByTestId("panel-group-entry")).toBeInTheDocument();
-    expect(screen.getByTestId("panel-group-open")).toBeInTheDocument();
-    expect(screen.getByTestId("panel-group-delete")).toBeInTheDocument();
-    expect(screen.queryByTestId("panel-group-new-session")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("panel-group-more")).not.toBeInTheDocument();
+    expect(screen.getByTestId("panel-group-new-session")).toBeInTheDocument();
+    expect(screen.getByTestId("panel-group-more")).toBeInTheDocument();
+    expect(screen.queryByTestId("panel-group-open")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("panel-group-delete")).not.toBeInTheDocument();
     expect(screen.queryByText("员工会话")).not.toBeInTheDocument();
   });
 
@@ -288,13 +290,16 @@ describe("ProjectPanel", () => {
     expect(button.style.pointerEvents).toBe("auto");
   });
 
-  it("群聊删除按钮悬浮显示（2026-10-19 拍板）", async () => {
+  it("群聊段头「＋新建/更多」悬浮显示（与助理同口径）", async () => {
     useChatStore.setState({ sessions: panelSessions() });
     renderPanel();
-    const groupDelete = await screen.findByTestId("panel-group-delete");
-    expect(groupDelete.style.opacity).toBe("0");
+    const newButton = await screen.findByTestId("panel-group-new-session");
+    const moreButton = screen.getByTestId("panel-group-more");
+    expect(newButton.style.opacity).toBe("0");
+    expect(moreButton.style.opacity).toBe("0");
     fireEvent.mouseEnter(screen.getByTestId("panel-group-entry"));
-    expect(groupDelete.style.opacity).toBe("1");
+    expect(newButton.style.opacity).toBe("1");
+    expect(moreButton.style.opacity).toBe("1");
   });
 
   it("面板头部收缩按钮：与选择团队同排，点击回调 onToggle", async () => {
@@ -374,20 +379,20 @@ describe("ProjectPanel", () => {
     expect(screen.queryByTestId("panel-project-more")).not.toBeInTheDocument();
   });
 
-  it("无团队项目：群聊历史不成列，但存在群聊会话时入口保留；秘书会话列表仍可见", async () => {
+  it("无团队项目：群聊段头保留、会话列表可见、仅隐藏新建入口", async () => {
     vi.mocked(companyApi.projects).mockResolvedValue({ projects: [projectRecord(false)] });
     useChatStore.setState({ sessions: panelSessions() });
     renderPanel();
 
-    // 秘书会话可见；群聊历史不成列（条目化口径）
+    // 秘书/群聊会话均可见，群聊段头保留用于清理旧会话
     expect(await screen.findByTestId("panel-secretary-session")).toBeInTheDocument();
-    expect(screen.queryAllByTestId("panel-project-session")).toHaveLength(0);
-    // 存在群聊会话时入口保留（解散后仍可进入只读提示）
+    expect(screen.queryAllByTestId("panel-project-session")).toHaveLength(2);
     expect(screen.getByTestId("panel-group-entry")).toBeInTheDocument();
+    expect(screen.queryByTestId("panel-group-new-session")).not.toBeInTheDocument();
     // 无团队引导提示已按用户要求下线
     expect(screen.queryByTestId("panel-no-team")).not.toBeInTheDocument();
-    // 会话行能力不受影响（仅秘书行）
-    expect(screen.getAllByTestId("panel-session-more").length).toBe(1);
+    // 三类会话行均有 ⋯
+    expect(screen.getAllByTestId("panel-session-more").length).toBe(3);
   });
 
   it("破坏者：已挂团队但无可解析成员/员工会话 → 不得出现提醒字段（2026-10-01 拍板）", async () => {
@@ -426,7 +431,7 @@ describe("ProjectPanel", () => {
     expect(screen.queryByText("从列表中删除")).not.toBeInTheDocument();
   });
 
-  it("会话行菜单：秘书行提供置顶/重命名/批量选择/删除会话；群聊条目删除走确认弹窗", async () => {
+  it("会话行菜单：秘书/群聊行提供置顶/重命名/批量选择/删除会话；群聊行删除走确认弹窗", async () => {
     const user = userEvent.setup();
     useChatStore.setState({ sessions: panelSessions(), pinnedSessionIds: [] });
     renderPanel();
@@ -443,9 +448,11 @@ describe("ProjectPanel", () => {
     expect(useChatStore.getState().pinnedSessionIds).toEqual(["sec-1"]);
     await user.keyboard("{Escape}");
 
-    // 群聊条目：右侧删除 → 确认弹窗（删除按钮悬浮才可见，先悬浮该行）
-    fireEvent.mouseEnter(screen.getByTestId("panel-group-entry"));
-    await user.click(screen.getByTestId("panel-group-delete"));
+    // 群聊行：行菜单删除 → 确认弹窗
+    const groupRow = screen.getAllByTestId("panel-project-session")[0];
+    fireEvent.mouseEnter(groupRow.parentElement as HTMLElement);
+    await user.click(screen.getAllByTestId("panel-session-more")[1]);
+    await user.click(await screen.findByTestId("panel-session-delete"));
     expect(await screen.findByTestId("panel-session-delete-confirm")).toBeInTheDocument();
   });
 
@@ -457,8 +464,10 @@ describe("ProjectPanel", () => {
       renderPanel();
 
       await screen.findByTestId("panel-secretary-session");
-      fireEvent.mouseEnter(screen.getByTestId("panel-group-entry"));
-      await user.click(screen.getByTestId("panel-group-delete"));
+      const groupRow = screen.getAllByTestId("panel-project-session")[0];
+      fireEvent.mouseEnter(groupRow.parentElement as HTMLElement);
+      await user.click(screen.getAllByTestId("panel-session-more")[1]);
+      await user.click(await screen.findByTestId("panel-session-delete"));
       await user.click(await screen.findByTestId("panel-session-delete-confirm"));
       await waitFor(() => {
         const ids = useChatStore.getState().sessions.map((item) => item.id);
@@ -473,7 +482,7 @@ describe("ProjectPanel", () => {
     }
   });
 
-  it("群聊入口行：无群聊会话时不渲染（仅秘书会话 + 有团队）", async () => {
+  it("有团队但无群聊会话：段头仍渲染，显示空态与新建入口", async () => {
     useChatStore.setState({
       sessions: [
         { ...session("sec-1", "秘书会话一", "p1", "2026-09-21T10:00:00"), origin: "secretary" },
@@ -482,10 +491,12 @@ describe("ProjectPanel", () => {
     });
     renderPanel();
     await screen.findByTestId("panel-secretary-session");
-    expect(screen.queryByTestId("panel-group-entry")).not.toBeInTheDocument();
+    expect(screen.getByTestId("panel-group-entry")).toBeInTheDocument();
+    expect(screen.getByTestId("panel-group-new-session")).toBeInTheDocument();
+    expect(screen.getByText("还没有团队群聊会话")).toBeInTheDocument();
   });
 
-  it("重新拉入团队：无群聊会话时补建空群聊恢复入口行（2026-10-16 用户拍板）", async () => {
+  it("群聊段头「＋新建会话」：创建带 origin=group 的新会话", async () => {
     const user = userEvent.setup();
     useChatStore.setState({
       sessions: [
@@ -495,19 +506,15 @@ describe("ProjectPanel", () => {
     });
     renderPanel();
     await screen.findByTestId("panel-secretary-session");
-    expect(screen.queryByTestId("panel-group-entry")).not.toBeInTheDocument();
 
-    await user.click(screen.getByTestId("panel-feature-menu"));
-    await user.click(await screen.findByTestId("panel-select-team"));
-    await user.click(await screen.findByTestId("team-option"));
+    fireEvent.mouseEnter(screen.getByTestId("panel-group-entry"));
+    await user.click(screen.getByTestId("panel-group-new-session"));
     await waitFor(() => {
       expect(vi.mocked(sessionsApi.create)).toHaveBeenCalledWith(
-        expect.objectContaining({ project_id: "p1" }),
+        expect.objectContaining({ project_id: "p1", origin: "group" }),
       );
     });
-    await waitFor(() => {
-      expect(screen.getByTestId("panel-group-entry")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("项目总群聊")).toBeInTheDocument();
   });
 
   it("会话行菜单提供归档：点击调后端归档 + 重取列表（不再本地标记隐藏）", async () => {
@@ -547,7 +554,7 @@ describe("ProjectPanel", () => {
     expect(rows[1]).toHaveTextContent("秘书会话一");
   });
 
-  it("批量选择覆盖秘书会话（群聊条目化后不成列，不参与批量）", async () => {
+  it("批量选择：秘书段头只覆盖秘书会话", async () => {
     const user = userEvent.setup();
     useChatStore.setState({ sessions: panelSessions() });
     renderPanel();
@@ -556,7 +563,7 @@ describe("ProjectPanel", () => {
     fireEvent.mouseEnter(screen.getByTestId("panel-secretary-entry"));
     await user.click(await screen.findByTestId("panel-secretary-more"));
     await user.click(await screen.findByTestId("panel-session-bulk"));
-    // 全选口径 = 秘书 1（群聊条目化后不再计入）
+    // 全选口径 = 秘书 1（群聊分区独立批量）
     await user.click(screen.getByTestId("panel-bulk-all"));
     expect(screen.getByTestId("panel-bulk-bar")).toHaveTextContent("已选 1 项");
     // 再点一次全选 = 取消（toggle 语义）
@@ -564,54 +571,67 @@ describe("ProjectPanel", () => {
     expect(screen.getByTestId("panel-bulk-bar")).toHaveTextContent("已选 0 项");
   });
 
-  it("群聊条目点击：有会话 → 打开最新不重复建；无会话 → 入口行不渲染（2026-10-16 拍板）", async () => {
+  it("批量选择：群聊段头只覆盖群聊会话", async () => {
     const user = userEvent.setup();
-    vi.mocked(sessionsApi.create).mockClear();
-    // 有会话：打开最新（消息优先），不重复建
-    useChatStore.setState({ sessions: panelSessions(), activeSessionId: null });
+    useChatStore.setState({ sessions: panelSessions() });
     renderPanel();
-    await user.click(await screen.findByTestId("panel-group-open"));
-    await waitFor(() => expect(useChatStore.getState().activeSessionId).toBe("group-1"));
-    expect(vi.mocked(sessionsApi.create)).not.toHaveBeenCalled();
-
-    // 无会话：入口行整行消失（删除群聊后语义——恢复走顶部「选择团队」重新拉入）
-    useChatStore.setState({ sessions: [], activeSessionId: null });
-    await waitFor(() => {
-      expect(screen.queryByTestId("panel-group-entry")).not.toBeInTheDocument();
-    });
+    fireEvent.mouseEnter(screen.getByTestId("panel-group-entry"));
+    await user.click(await screen.findByTestId("panel-group-more"));
+    await user.click(await screen.findByTestId("panel-session-bulk"));
+    await user.click(screen.getByTestId("panel-bulk-all"));
+    expect(screen.getByTestId("panel-bulk-bar")).toHaveTextContent("已选 2 项");
   });
 
-  it("破坏者：空置占位会话（更晚创建）不得遮蔽有消息的真实群聊（刷新后「消息没了」根因）", async () => {
+  it("群聊会话行点击打开对应会话；段头本身不可打开", async () => {
     const user = userEvent.setup();
+    vi.mocked(sessionsApi.create).mockClear();
+    useChatStore.setState({ sessions: panelSessions(), activeSessionId: null });
+    renderPanel();
+    const rows = await screen.findAllByTestId("panel-project-session");
+    await user.click(rows[0]);
+    await waitFor(() => expect(useChatStore.getState().activeSessionId).toBe("group-1"));
+    await user.click(rows[1]);
+    await waitFor(() => expect(useChatStore.getState().activeSessionId).toBe("group-2"));
+    expect(vi.mocked(sessionsApi.create)).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("panel-group-open")).not.toBeInTheDocument();
+  });
+
+  it("多群聊会话全部成列：空置占位也保留自己的行（不再被 canonical 遮掉）", async () => {
     useChatStore.setState({
       sessions: [
         {
           ...session("blank-new", "项目总群聊", "p1", "2026-10-16T07:52:38"),
           message_count: 0,
+          origin: "group",
         } as never,
-        session("group-1", "团队会话一", "p1", "2026-10-16T07:47:51"),
+        {
+          ...session("group-1", "团队会话一", "p1", "2026-10-16T07:47:51"),
+          origin: "group",
+        },
       ],
       activeSessionId: null,
     });
-    vi.mocked(sessionsApi.create).mockClear();
     renderPanel();
-    await user.click(await screen.findByTestId("panel-group-open"));
-    await waitFor(() => expect(useChatStore.getState().activeSessionId).toBe("group-1"));
-    expect(vi.mocked(sessionsApi.create)).not.toHaveBeenCalled();
+    const rows = await screen.findAllByTestId("panel-project-session");
+    expect(rows).toHaveLength(2);
+    expect(screen.getByText("项目总群聊")).toBeInTheDocument();
+    expect(screen.getByText("团队会话一")).toBeInTheDocument();
   });
 
-  it("群聊会话不再出现在列表（条目化）——批量不覆盖群聊", async () => {
+  it("群聊会话成列；秘书批量不出现群聊勾选行", async () => {
     const user = userEvent.setup();
     useChatStore.setState({
-      sessions: [session("s1", "团队会话一", "p1"), session("s2", "团队会话二", "p1")],
+      sessions: [
+        { ...session("s1", "团队会话一", "p1"), origin: "group" },
+        { ...session("s2", "团队会话二", "p1"), origin: "group" },
+      ],
     });
     renderPanel();
 
-    // 群聊会话不成列（条目即入口）
     expect(await screen.findByTestId("panel-group-entry")).toBeInTheDocument();
-    expect(screen.queryAllByTestId("panel-project-session")).toHaveLength(0);
+    expect(screen.queryAllByTestId("panel-project-session")).toHaveLength(2);
 
-    // 进入批量：无群聊勾选行（秘书列表为空）
+    // 秘书分区批量：群聊不显示勾选框
     fireEvent.mouseEnter(screen.getByTestId("panel-secretary-entry"));
     await user.click(await screen.findByTestId("panel-secretary-more"));
     await user.click(await screen.findByTestId("panel-session-bulk"));
@@ -741,7 +761,7 @@ describe("ProjectPanel", () => {
     expect(await screen.findByTestId("panel-select-team")).not.toHaveAttribute("data-disabled");
   });
 
-  // 面板内秘书/团队会话与员工单聊都要有任务状态；「更多」改悬浮显示
+  // 用户拍板：面板内秘书/团队会话与员工单聊都要有任务状态；「更多」改悬浮显示
   describe("头像行任务状态与悬浮更多", () => {
     it("秘书会话组有在跑 → 秘书行显示执行中转圈", async () => {
       useChatStore.setState({
@@ -844,7 +864,8 @@ describe("ProjectPanel", () => {
     expect(screen.getAllByTestId("team-avatar-cell")).toHaveLength(4);
   });
 
-  it("删除群聊：本地条目立即消失（不等待后端返回）", async () => {
+  it("删除群聊会话行：本地条目立即消失（不等待后端返回），段头保留", async () => {
+    const user = userEvent.setup();
     let release: () => void = () => undefined;
     const gate = new Promise<void>((resolve) => {
       release = resolve;
@@ -854,19 +875,22 @@ describe("ProjectPanel", () => {
       return { ok: true };
     });
     useChatStore.setState({
-      sessions: [session("group-1", "团队会话一", "p1")],
+      sessions: [{ ...session("group-1", "团队会话一", "p1"), origin: "group" }],
       activeSessionId: "group-1",
     });
     renderPanel();
 
-    const entry = await screen.findByTestId("panel-group-entry");
-    fireEvent.mouseEnter(entry);
-    fireEvent.click(screen.getByTestId("panel-group-delete"));
-    fireEvent.click(await screen.findByTestId("panel-session-delete-confirm"));
+    const row = await screen.findByTestId("panel-project-session");
+    fireEvent.mouseEnter(row.parentElement as HTMLElement);
+    await user.click(screen.getByTestId("panel-session-more"));
+    await user.click(await screen.findByTestId("panel-session-delete"));
+    await user.click(await screen.findByTestId("panel-session-delete-confirm"));
 
-    await waitFor(() => expect(screen.queryByTestId("panel-group-entry")).not.toBeInTheDocument(), {
-      timeout: 800,
-    });
+    await waitFor(
+      () => expect(screen.queryByTestId("panel-project-session")).not.toBeInTheDocument(),
+      { timeout: 800 },
+    );
+    expect(screen.getByTestId("panel-group-entry")).toBeInTheDocument();
     release();
     vi.mocked(sessionsApi.remove).mockResolvedValue({ ok: true });
   });

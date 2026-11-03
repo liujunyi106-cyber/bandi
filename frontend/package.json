@@ -22,7 +22,8 @@
     "dev:api": "cd ../bandi && .venv\\Scripts\\python.exe -m uvicorn bandi.api.app:app --host 127.0.0.1 --port 8766",
     "dev:api:reload": "cd ../bandi && .venv\\Scripts\\python.exe -m uvicorn bandi.api.app:app --host 127.0.0.1 --port 8766 --reload",
     "dev:electron": "tsc -p electron/tsconfig.json && wait-on tcp:127.0.0.1:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 node scripts/electron-runner.cjs .",
-    "dev:desktop": "concurrently -k -n vite,api,electron -c cyan,magenta,yellow \"vite\" \"pnpm run dev:api\" \"pnpm run dev:electron\""
+    "dev:desktop": "concurrently -k -n vite,api,electron -c cyan,magenta,yellow \"vite\" \"pnpm run dev:api\" \"pnpm run dev:electron\"",
+    "desktop:build": "pnpm run build && pnpm run electron:compile && electron-builder --win"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.1.1",

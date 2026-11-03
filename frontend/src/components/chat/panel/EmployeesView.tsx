@@ -1,5 +1,5 @@
 /**
-  * 功能：右栏员工视图（v5，@base docs/前端设计规划.md）——以员工为主体的工作台
+  * 功能：右栏员工视图（v5，）——以员工为主体的工作台
  * 项目会话（.3 删甲后团队群聊由项目会话承载）= 员工列表 → 单击展开（摘要格：
  * 技能/任务/token/SOP + 技能胶囊 + 任务列表）；单聊 = 直出目标员工；普通会话 = 助理卡（秘书）。
  * @员工 → 自动展开该员工并滚动到位。
@@ -184,7 +184,7 @@ function CardDetails({
           }
         />
       </div>
-      {/* 技能列表（字段行——2026-09-26 用户拍板：胶囊语义不清，改与任务列表同款文字行） */}
+      {/* 技能列表 */}
       <div className="space-y-0.5" data-testid="employee-skills">
         <p className="text-chat-muted text-[10px] font-medium">{t("chat.panel.employeeSkills")}</p>
         {skills === null ? (

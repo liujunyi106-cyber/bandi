@@ -524,6 +524,62 @@ class EpisodicStore:
             self._conn.commit()
         return True
 
+    def delete_scope(
+        self,
+        project_id: str | None,
+        employee_id: str | None = None,
+        team_id: str | None = None,
+    ) -> int:
+        """功能：按维度分区批量删除经历（主表 + FTS 索引），返回删除条数。"""
+        scope_clause, scope_args = self._scope_clause(project_id, employee_id, team_id=team_id)
+        with self._lock:
+            rows = self._conn.execute(
+                f"SELECT rowid FROM episodes WHERE 1=1{scope_clause}", scope_args
+            ).fetchall()
+            if not rows:
+                return 0
+            self._conn.executemany(
+                "DELETE FROM episodes_fts WHERE rowid = ?",
+                [(int(row[0]),) for row in rows],
+            )
+            self._conn.execute(f"DELETE FROM episodes WHERE 1=1{scope_clause}", scope_args)
+            self._conn.commit()
+        return len(rows)
+
+    def count_team_memory(self) -> int:
+        """功能：统计团队分区经历条数。"""
+        with self._lock:
+            return int(
+                self._conn.execute(
+                    "SELECT COUNT(*) FROM episodes WHERE team_id IS NOT NULL"
+                ).fetchone()[0]
+            )
+
+    def count_group_memory(self) -> int:
+        """功能：统计群聊记忆域经历条数。"""
+        with self._lock:
+            return int(
+                self._conn.execute(
+                    "SELECT COUNT(*) FROM episodes WHERE project_id LIKE 'group:%'"
+                ).fetchone()[0]
+            )
+
+    def delete_team_memory(self) -> int:
+        """功能：物理删除全部团队分区经历（仅 team_id 非空；不碰群/全局/员工）。"""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT rowid FROM episodes WHERE team_id IS NOT NULL"
+            ).fetchall()
+            if not rows:
+                return 0
+            self._conn.executemany(
+                "DELETE FROM episodes_fts WHERE rowid = ?",
+                [(int(row[0]),) for row in rows],
+            )
+            self._conn.execute("DELETE FROM episodes WHERE team_id IS NOT NULL")
+            self._conn.commit()
+        return len(rows)
+
     def close(self) -> None:
         with self._lock:
             self._conn.close()

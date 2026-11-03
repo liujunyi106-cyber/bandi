@@ -1,17 +1,16 @@
 #!/usr/bin/env node
 /**
-  * 功能：sidecar 链路冒烟——不需要 Electron/GUI。
+ * 功能：sidecar 链路冒烟——不需要 Electron/GUI。
  *
- * 模拟壳视角完整链路：
- *   spawn `python -m bandi serve --port 0`（BANDI_HOME 指到隔离目录）
- *   → stdout 读 `BANDI_SIDECAR_READY port=N` 行
- *   → GET /ready 期望 200
- *   → taskkill /PID /T /F 树杀（与 electron/sidecar.ts 同口径）
- *   → 断言：退出后 127.0.0.1:N 不再应答（端口真正释放，无孤儿进程）。
+ * 模拟壳视角完整链路（两种 sidecar 形态）：
+ * - 默认：`python -m bandi serve --port 0`（BANDI_HOME 指到隔离目录）
+ * - `--exe <路径>`：PyInstaller 产物 `bandi-sidecar.exe serve --port 0`
+ * → stdout 读 `BANDI_SIDECAR_READY port=N` 行
+ * → GET /ready 期望 200
+ * → taskkill /PID /T /F 树杀（与 electron/sidecar.ts 同口径）
+ * → 断言：退出后 127.0.0.1:N 不再应答（端口真正释放，无孤儿进程）。
  *
- * 用法：node scripts/sidecar-smoke.cjs [python 解释器路径]
- *   未传解释器时：优先 bandi/.venv/Scripts/python.exe，回退 PATH 里的 python，
- *   并自动把 .venv/Lib/site-packages 拼进 PYTHONPATH（沙箱口径）。
+ * 用法：node scripts/sidecar-smoke.cjs [python 解释器路径 | --exe sidecar.exe 路径]
  */
 const { spawn, execFileSync } = require("node:child_process");
 const fs = require("node:fs");
@@ -23,6 +22,14 @@ const BANDI_DIR = path.join(REPO_ROOT, "bandi");
 const VENV_SITE = path.join(BANDI_DIR, ".venv", "Lib", "site-packages");
 const READY_PREFIX = "BANDI_SIDECAR_READY";
 
+function parseArgs(argv) {
+  const idx = argv.indexOf("--exe");
+  if (idx >= 0 && argv[idx + 1]) {
+    return { mode: "exe", exe: path.resolve(argv[idx + 1]) };
+  }
+  return { mode: "python", python: argv[0] || null };
+}
+
 function resolvePython(explicit) {
   if (explicit) return explicit;
   const venvPython = path.join(BANDI_DIR, ".venv", "Scripts", "python.exe");
@@ -31,20 +38,36 @@ function resolvePython(explicit) {
 }
 
 async function main() {
-  const python = resolvePython(process.argv[2]);
+  const opts = parseArgs(process.argv.slice(2));
+  const isExe = opts.mode === "exe";
+  let command, args, cwd;
+  if (isExe) {
+    command = opts.exe;
+    args = ["serve", "--host", "127.0.0.1", "--port", "0"];
+    cwd = path.dirname(opts.exe); // PyInstaller onedir：_internal/ 相对 exe 目录
+    if (!fs.existsSync(command)) throw new Error(`sidecar exe 不存在：${command}`);
+  } else {
+    const python = resolvePython(opts.python);
+    command = python;
+    args = ["-m", "bandi", "serve", "--host", "127.0.0.1", "--port", "0"];
+    cwd = BANDI_DIR;
+    console.log(`[smoke] python = ${python}`);
+  }
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "bandi-sidecar-smoke-"));
   const env = {
     ...process.env,
     BANDI_HOME: home,
-    PYTHONPATH: [BANDI_DIR, VENV_SITE, process.env.PYTHONPATH || ""].join(path.delimiter),
     BANDI_SERVE_SPA: "0",
     BANDI_SCHEDULER_AUTOSTART: "0",
   };
-  console.log(`[smoke] python = ${python}`);
+  if (!isExe) {
+    env.PYTHONPATH = [BANDI_DIR, VENV_SITE, process.env.PYTHONPATH || ""].join(path.delimiter);
+  }
+  console.log(`[smoke] mode = ${isExe ? "exe" : "python"}，command = ${command}`);
   console.log(`[smoke] BANDI_HOME = ${home}`);
 
-  const child = spawn(python, ["-m", "bandi", "serve", "--host", "127.0.0.1", "--port", "0"], {
-    cwd: BANDI_DIR,
+  const child = spawn(command, args, {
+    cwd,
     env,
     windowsHide: true,
     stdio: ["ignore", "pipe", "pipe"],

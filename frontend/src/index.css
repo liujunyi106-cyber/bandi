@@ -5,14 +5,14 @@
 @import "@fontsource-variable/inter";
 @import "@fontsource/jetbrains-mono";
 
-/* 仅 light 主题（前端设计规划 §3.4）：dark 变体绑到永不出现的 .dark 类，锁死浅色 */
+/* 仅 light 主题：dark 变体绑到永不出现的 .dark 类，锁死浅色 */
 @custom-variant dark (&:is(.dark *));
 
-/* ── 底座 token（@base: docs/前端设计规划.md §3.1 色板 / §3.2 圆角 / §3.3 对话区子色板）── */
+/* ── 底座 token── */
 :root {
   --radius: 0.625rem;
 
-  /* SD1 冷白灰工作台 */
+  /* 冷白灰工作台 */
   --background: #f7f8fa;
   --foreground: #111111;
 
@@ -22,7 +22,7 @@
   --popover: #ffffff;
   --popover-foreground: #111111;
 
-  /* 品牌主色 = 近黑重灰（2026-09-29 用户拍板：丢弃蓝色，全部选中/激活效果改中性）。
+  /* 品牌主色 = 近黑重灰。
      与对话区 ink（#18181a）同族，无彩色偏移；白字在其上对比度 >15:1。 */
   --primary: #18181b;
   --primary-foreground: #ffffff;
@@ -40,7 +40,7 @@
   --destructive-foreground: #ffffff;
 
   /* @提及（仅 @角色/员工）——2026-10-01 用户拍板重开的**唯一蓝色例外**：
-     沿用 2026-09-29 废除前的蓝相（#315eff），但饱和度 100%→69%、亮度 60%→55%
+ 沿用 2026-09-29 废除前的蓝相（#315eff），但饱和度 100%→69%、亮度 60%→55%
      （用户反馈原蓝「饱和过高过亮」）；在用户气泡 #f6f6f6 上对比度 5.24（AA 达标）。
      注意：这是提及专用色，**不参与**选中/激活/聚焦（那些仍走中性近黑）。 */
   --mention: #3b5bdb;
@@ -53,7 +53,7 @@
   /* 聚焦环随品牌改为中性重灰（弹窗输入/选项卡/开关不再出现蓝色选中效果） */
   --ring: #18181b;
 
-  /* 图表色板（团队记忆条目等消费方使用） */
+  /* 图表色板（图表与统计消费方使用） */
   --chart-1: #0f766e;
   --chart-2: #6366f1;
   --chart-3: #d97706;
@@ -77,7 +77,7 @@
   --sidebar-border: #eceef1;
   --sidebar-ring: #18181b;
 
-  /* Bandi 扩展 token（§3.1 / §3.3） */
+  /* Bandi 扩展 token */
   --panel-bg: rgba(255, 255, 255, 0.94);
   --divider: #eceef1;
   --border-strong: #d4d4d8;
@@ -85,7 +85,7 @@
   --warning: #b45309;
   --success: #138a55;
 
-  /* 员工 tone（§3.1）：四档全中性/土色，不再含蓝色（原第 4 档随品牌蓝改为石墨灰） */
+  /* 员工 tone：四档全中性/土色，不再含蓝色（原第 4 档随品牌蓝改为石墨灰） */
   --tone-ink: #343633;
   --tone-copper: #a85d32;
   --tone-olive: #6f7b42;
@@ -94,7 +94,7 @@
   --shadow-float: 0 8px 24px rgba(17, 17, 17, 0.1);
   --shadow-soft: 0 1px 2px rgba(17, 17, 17, 0.045);
 
-  /* 对话区独立冷白子色板（§3.3） */
+  /* 对话区独立冷白子色板 */
   --chat-bg: #fcfcfc;
   --chat-rail: #f4f4f4;
   --chat-ink: #18181a;
@@ -164,7 +164,7 @@
   --color-tone-olive: var(--tone-olive);
   --color-tone-graphite: var(--tone-graphite);
   --color-muted-foreground-weak: var(--muted-foreground-weak);
-  /* 对话区子色板（§3.3；Day136 补映射——此前只有 CSS 变量无可用的 Tailwind 类） */
+  /* 对话区子色板 */
   --color-chat-bg: var(--chat-bg);
   --color-chat-rail: var(--chat-rail);
   --color-chat-ink: var(--chat-ink);
@@ -206,7 +206,7 @@
   }
 }
 
-/* ── 文本选中高亮：浏览器默认蓝 → 中性灰（2026-09-29 用户拍板：全局丢弃蓝色） ── */
+/* ── 文本选中高亮：浏览器默认蓝 → 中性灰 ── */
 ::selection {
   background: rgba(24, 24, 27, 0.16);
   color: inherit;
@@ -240,7 +240,7 @@
   background: transparent;
 }
 
-/* ── 消息正文 Markdown（Day137b-1；SD1 对话区 token 子样式）── */
+/* ── 消息正文 Markdown── */
 /* Tailwind preflight 会清掉 ol/ul/li/p 的默认列表符号、缩进与间距，
    导致 marked 渲染出的有序列表视觉上「不是分点」——此处逐项还原。 */
 .chat-md {
@@ -481,7 +481,7 @@
   height: auto;
 }
 
-/* 思考挡位滑杆（Day137b-2b DP-137b2b-1；2026-09-24 二轮真机反馈）：
+/* 思考挡位滑杆：
    结构 = 胶囊容器（背景 hairline + 已滑过部分填充层变色）+ 原生 range（bg 透明、
    只承担交互与白色圆钮 thumb）+ 灰色竖条刻度层（DOM，首尾不放、与胶囊垂直居中）。
    填充宽度由组件按当前 index 内联（--thinking-fill），拖动经 React 受控回填连续更新；
@@ -551,10 +551,10 @@
   }
 }
 
-/* 2026-09-29 用户反馈：消息中心/设置等功能 icon 按钮「点开浮层 → 点空白取消」后
+/* 用户反馈：消息中心/设置等功能 icon 按钮「点开浮层 → 点空白取消」后
    残留一圈外部描边。根因：Radix 浮层关闭时把焦点归还触发器，shadcn Button 基类的
    `focus-visible:ring-3 + border-ring` 随即显现（鼠标点击亦可能被判定 focus-visible）。
-   2026-10-01 用户拍板：**全面取消焦点环**（不止浮层触发型）——键盘焦点改由光标/既有描边承担。
+用户拍板：**全面取消焦点环**（不止浮层触发型）——键盘焦点改由光标/既有描边承担。
    保留 `.no-focus-ring` 选择器（历史用例/语义更明确，冗余但无害）。 */
 :focus,
 :focus-visible,
@@ -567,7 +567,7 @@
   border-color: transparent;
 }
 
-/* 2026-10-02 用户拍板：批量选择复选框——轻圆角（4px）+ 边缘线 = 多选卡片底色
+/* 用户拍板：批量选择复选框——轻圆角（4px）+ 边缘线 = 多选卡片底色
    （border-primary/5）；选中态实心主色 + 白勾。项目面板与左栏批量操作共用（BulkCheckbox）。 */
 .bulk-checkbox {
   width: 14px;

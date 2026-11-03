@@ -9,14 +9,14 @@
   * 而 app 代码本身仍可留在中文路径。
  *
  * 用法：
- *   node scripts/electron-runner.js <electron 参数...>
- *   例：node scripts/electron-runner.js .
- *       node scripts/electron-runner.js C:\path\to\app
+ * node scripts/electron-runner.js <electron 参数...>
+ * 例：node scripts/electron-runner.js .
+ * node scripts/electron-runner.js C:\path\to\app
  *
  * 行为：
- *   - dist 路径已是纯 ASCII → 直接启动，不做任何复制；
- *   - dist 路径含非 ASCII → 首次把运行时复制到 ~/.bandi/electron-dist/v<版本>/（用户目录，
- *     不污染工作区、不进 git），之后复用；并设 ELECTRON_OVERRIDE_DIST_PATH 指向该副本。
+ * - dist 路径已是纯 ASCII → 直接启动，不做任何复制；
+ * - dist 路径含非 ASCII → 首次把运行时复制到 ~/.bandi/electron-dist/v<版本>/（用户目录，
+ * 不污染工作区、不进 git），之后复用；并设 ELECTRON_OVERRIDE_DIST_PATH 指向该副本。
  */
 const { spawn, execFileSync } = require("node:child_process");
 const fs = require("node:fs");

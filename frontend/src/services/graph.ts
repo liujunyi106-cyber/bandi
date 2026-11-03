@@ -1,5 +1,5 @@
 /**
-  * 功能：知识图谱数据层（@base docs/前端设计规划.md 「知识 · 图谱」）。
+  * 功能：知识图谱数据层（）。
  * 后端契约：`GET /api/ontology/graph?includeInferred=&limit=` → `build_graph_payload()`
  * 快照最小字段 `{entities:[{id,type,name}], edges:[{source,target,type}]}`（无坐标，布局由前端算）。
  * 实体类型 = 用户声明的类名（动态无上限）——颜色/标签由 graph-visual 按类名散列与回退。

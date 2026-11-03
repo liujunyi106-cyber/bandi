@@ -71,7 +71,6 @@ def _reset_api_overrides() -> None:
                 pass
     app_mod._memory_feedback_target = None
     app_mod._memory_feedback_overrides = None
-    app_mod._skill_write_overrides = None
     app_mod._memory_replay_overrides = None
     app_mod._skill_distill_overrides = None
     app_mod._skill_distiller = None

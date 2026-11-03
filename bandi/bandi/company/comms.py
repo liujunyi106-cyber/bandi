@@ -17,10 +17,6 @@ COMMS_ROOT_NAME = ".bandi-comms"
 INBOX_DIRNAME = "inbox"
 MEETINGS_DIRNAME = "meetings"
 THREADS_DIRNAME = "threads"
-SHARED_DIRNAME = "_shared"
-TEAM_MEMORY_DIRNAME = "team_memory"
-TEAM_MEMORY_ENTRYPOINT = "TEAM_MEMORY.md"
-_TEAM_MEMORY_SCAFFOLD = "# Team Memory\n\nDurable shared team state."
 NEW_DIRNAME = "new"
 SEEN_DIRNAME = "seen"
 OUTBOX_DIRNAME = "outbox"
@@ -276,94 +272,3 @@ def append_transcript(
     if not transcript_path.exists():
         return
     _atomic_append_text(transcript_path, f"\n**{speaker}:** {text}\n")
-
-
-def _team_memory_path(root: Path, team_id: str) -> Path:
-    """功能：黑板路径——有 team_id 时按团队隔离，否则兼容旧路径。"""
-    if not str(team_id or "").strip():
-        return root / SHARED_DIRNAME / TEAM_MEMORY_DIRNAME / TEAM_MEMORY_ENTRYPOINT
-    safe_team = _safe_path_segment(team_id, "team_id")
-    return root / SHARED_DIRNAME / "teams" / safe_team / TEAM_MEMORY_ENTRYPOINT
-
-
-def migrate_legacy_team_memory(
-    root: Path,
-    team_ids: list[str],
-) -> dict[str, str]:
-    """功能：迁移旧团队黑板；单团队移动，多团队直接删除（用户已确认不备份）。"""
-    legacy = root / SHARED_DIRNAME / TEAM_MEMORY_DIRNAME / TEAM_MEMORY_ENTRYPOINT
-    if not legacy.exists():
-        return {"state": "absent"}
-    normalized = [str(item).strip() for item in team_ids if str(item).strip()]
-    if len(normalized) != 1:
-        legacy.unlink(missing_ok=True)
-        try:
-            legacy.parent.rmdir()
-        except OSError:
-            pass
-        return {"state": "deleted"}
-    target = _team_memory_path(root, normalized[0])
-    if target.exists():
-        return {"state": "kept"}
-    target.parent.mkdir(parents=True, exist_ok=True)
-    os.replace(legacy, target)
-    try:
-        legacy.parent.rmdir()
-    except OSError:
-        pass
-    return {"state": "migrated", "team_id": normalized[0]}
-
-
-def migrate_project_team_memory(
-    workspace: str,
-    project_id: str,
-    team_ids: list[str],
-) -> list[dict[str, str]]:
-    """功能：扫描一个项目的全部会话目录，执行旧黑板迁移/清理。"""
-    base = Path(workspace) / COMMS_ROOT_NAME / _safe_path_segment(project_id, "project_id")
-    if not base.is_dir():
-        return []
-    results: list[dict[str, str]] = []
-    for session_dir in sorted(path for path in base.iterdir() if path.is_dir()):
-        outcome = migrate_legacy_team_memory(session_dir, team_ids)
-        if outcome.get("state") != "absent":
-            results.append({"session_id": session_dir.name, **outcome})
-    return results
-
-
-def _team_memory_status(team_id: str) -> str:
-    if not str(team_id or "").strip():
-        return "active"
-    from bandi.company.team_registry import TeamRegistry
-
-    return TeamRegistry().get_status(team_id)
-
-
-def read_team_memory(
-    workspace: str,
-    project_id: str,
-    session_id: str,
-    team_id: str = "",
-) -> str:
-    if str(team_id or "").strip() and _team_memory_status(team_id) == "dissolved":
-        return ""
-    root = _comms_root(workspace, project_id, session_id)
-    path = _team_memory_path(root, team_id)
-    if path.exists():
-        return path.read_text(encoding="utf-8")
-    return _TEAM_MEMORY_SCAFFOLD
-
-
-def write_team_memory(
-    workspace: str,
-    project_id: str,
-    session_id: str,
-    content: str,
-    team_id: str = "",
-) -> None:
-    if str(team_id or "").strip() and _team_memory_status(team_id) == "dissolved":
-        raise ValueError("TEAM_DISSOLVED")
-    root = _comms_root(workspace, project_id, session_id)
-    path = _team_memory_path(root, team_id)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    _atomic_write_text(path, content)

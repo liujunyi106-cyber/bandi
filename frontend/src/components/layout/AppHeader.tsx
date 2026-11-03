@@ -1,5 +1,5 @@
 /**
-  * 功能：顶栏（@base docs/前端设计规划.md 顶栏 56px 三槽位）。
+  * 功能：顶栏（）。
  * 左：收缩开关（一键全部收缩/展开：左栏 + 项目面板）+ 当前会话名（+ 重命名按钮）；
  * 右：右栏开合 icon（v5：连接灯移除，与左栏切换按钮对称；WS 异常时保留文字提示）。
  * ：通知中心移至左栏底部；顶栏标题旁加重命名；
@@ -156,9 +156,9 @@ export function AppHeader({
           ) : null}
         </div>
 
-        {/* 右侧组：搜索/历史提问 + 连接提示 + 右栏开合（统一 gap-1——2026-09-26 用户反馈三类 icon 间距一致） */}
+        {/* 右侧组：搜索/历史提问 + 连接提示 + 右栏开合 */}
         <div className="flex shrink-0 items-center gap-1">
-          {/* 2026-09-23 用户拍板：会话内搜索/历史提问移到顶栏，与连接状态指示同排对齐 */}
+          {/* 用户拍板：会话内搜索/历史提问移到顶栏，与连接状态指示同排对齐 */}
           {headerToolTestId && headerToolItems.length > 0 ? (
             <SessionTools items={headerToolItems} testId={headerToolTestId} />
           ) : null}
@@ -174,7 +174,7 @@ export function AppHeader({
             </div>
           ) : null}
 
-          {/* 右栏展开入口（仅收起态显示；左侧 SidebarTrigger 的镜像图标——2026-09-26 用户拍板） */}
+          {/* 右栏展开入口 */}
           {showPanelTrigger ? (
             <button
               type="button"

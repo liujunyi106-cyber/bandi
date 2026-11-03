@@ -4400,36 +4400,20 @@ def _promotable_profile() -> dict[str, Any]:
     }
 
 
-def _reflection() -> dict[str, Any]:
-    return {
-        "employee_id": "e1",
-        "employee_name": "Alice",
-        "role_id": "engineer",
-        "domains": ["engineer"],
-        "template_id": "t1",
-        "pattern_key": "t1",
-    }
-
-
 def _approved_skill(manager: Any, profile: dict[str, Any]) -> str:
-    """适配晋升审批门：首次晋升进暂存区 → 模拟用户批准落盘 → 回填档案技能引用。"""
-    from bandi.memory import staging as staging_mod
-
-    pending_ref = manager._maybe_promote_reflection_skill(profile, _reflection())
-    assert pending_ref.startswith("pending:"), "首次晋升必须进暂存区待批准"
-    id8 = pending_ref.split(":", 1)[1]
-    store = staging_mod.get_skill_pending_store()
-    record = store.get_pending(id8)
-    assert record is not None
-    assert staging_mod.replay_skill_record(record, skills_dir=str(manager._skills_dir)) is True
-    assert store.discard_pending(id8) is True
-    skill_name = str(record.payload["skill_name"])
+    """建立同名技能 v1 并回填档案技能引用。"""
+    skill_name = "alice-engineer-engineer-playbook"
+    manager._save_skill_md(
+        skill_name=skill_name,
+        content="# Alice engineer playbook\n\n## Successful Behaviors\n- 实现缓存层\n",
+        version=1,
+    )
     manager._attach_learned_skill(profile, "e1", "t1", skill_name)
     return skill_name
 
 
 def test_skill_update_merges_new_items_with_version_and_history(tmp_path: Path) -> None:
-    """契约（9.7）：同名技能二次晋升走合并式补丁——旧条目保留、新条目追加
+    """契约（9.7）：同名技能更新走合并式补丁——旧条目保留、新条目追加
     version 递增、旧版本进 history（可回滚），而非整文件覆盖丢历史。"""
     manager = _evolution_manager(tmp_path)
     profile = _promotable_profile()
@@ -4440,13 +4424,12 @@ def test_skill_update_merges_new_items_with_version_and_history(tmp_path: Path) 
     first = skill_md.read_text(encoding="utf-8")
     assert "实现缓存层" in first
 
-    # 新条目出现（同 pattern，计数达重复阈值）
-    pattern = profile["employees"]["e1"]["patterns"]["t1"]
-    pattern["reflection_count"] = 3
-    pattern["working_pattern_counts"]["分批查询优化"] = 2
-    second_ref = manager._maybe_promote_reflection_skill(profile, _reflection())
+    second_ok = manager._update_skill_md(
+        skill_name,
+        "# Alice engineer playbook\n\n## Successful Behaviors\n- 实现缓存层\n- 分批查询优化\n",
+    )
 
-    assert second_ref == skill_name, "同名技能必须走更新分支（不新生成）"
+    assert second_ok is True, "同名技能必须走更新分支"
     updated = skill_md.read_text(encoding="utf-8")
     assert "实现缓存层" in updated, "更新不得丢旧条目"
     assert "分批查询优化" in updated, "新条目必须合并进技能"
@@ -4457,8 +4440,8 @@ def test_skill_update_merges_new_items_with_version_and_history(tmp_path: Path) 
     assert history.read_text(encoding="utf-8") == first
 
     # 无新条目 → 幂等不更新
-    third = manager._maybe_promote_reflection_skill(profile, _reflection())
-    assert third == skill_name
+    third = manager._update_skill_md(skill_name, "# Alice engineer playbook\n\n- 实现缓存层\n")
+    assert third is False
     assert skill_md.read_text(encoding="utf-8") == updated, "无新条目不得重写技能"
     assert "version: 2" in skill_md.read_text(encoding="utf-8")
 
@@ -4473,10 +4456,7 @@ def test_skill_rollback_api_and_cli(tmp_path: Path) -> None:
     skill_name = _approved_skill(manager, profile)
     first = (tmp_path / "skills" / skill_name / "SKILL.md").read_text(encoding="utf-8")
 
-    pattern = profile["employees"]["e1"]["patterns"]["t1"]
-    pattern["reflection_count"] = 3
-    pattern["working_pattern_counts"]["新增条目"] = 2
-    manager._maybe_promote_reflection_skill(profile, _reflection())
+    manager._update_skill_md(skill_name, "# Alice engineer playbook\n\n- 新增条目\n")
 
     assert manager.rollback_skill(skill_name, 1) is True
     restored = (tmp_path / "skills" / skill_name / "SKILL.md").read_text(encoding="utf-8")
@@ -4489,10 +4469,7 @@ def test_skill_rollback_api_and_cli(tmp_path: Path) -> None:
     cli_skill_name = _approved_skill(cli_manager, cli_profile)
     cli_skills_dir = cli_root / "skills"
     cli_first = (cli_skills_dir / cli_skill_name / "SKILL.md").read_text(encoding="utf-8")
-    cli_pattern = cli_profile["employees"]["e1"]["patterns"]["t1"]
-    cli_pattern["reflection_count"] = 3
-    cli_pattern["working_pattern_counts"]["CLI 场景新条目"] = 2
-    cli_manager._maybe_promote_reflection_skill(cli_profile, _reflection())
+    cli_manager._update_skill_md(cli_skill_name, "# Alice engineer playbook\n\n- CLI 场景新条目\n")
 
     runner = CliRunner()
     ok = runner.invoke(

@@ -515,50 +515,6 @@ def stage_long_term_write(
     )
 
 
-def stage_skill_write(
-    *,
-    skill_name: str,
-    content: str,
-    origin: str,
-    summary: str,
-    reason: str = "",
-    extra_payload: dict[str, Any] | None = None,
-) -> MemoryWriteRecord | None:
-    """功能：把一条待批准技能写入排入技能暂存区（不直写技能目录）。
-
-    skill_name 先经 path_guard 校验（穿越/盘符/保留名拒绝，返回 None）；
-    同 skill_name 重复暂存由暂存区去重覆盖（supersede）。
-    extra_payload 为审批后回写档案所需的定位字段（employee_id/pattern_key/
-    profile_path 等），不能覆盖 skill_name/content/reason 核心键。
-    """
-    from bandi.core.exceptions import BandiError
-    from bandi.skills.importer import SkillImportError
-    from bandi.skills.path_guard import validate_path_segment
-
-    try:
-        safe_name = validate_path_segment(
-            skill_name, label="skill_name", error_cls=SkillImportError
-        )
-    except BandiError as exc:
-        logger.warning("skill staging rejected unsafe name %r: %s", skill_name, exc)
-        return None
-    payload: dict[str, Any] = {
-        "skill_name": safe_name,
-        "content": str(content or ""),
-        "reason": str(reason or ""),
-    }
-    for key, value in dict(extra_payload or {}).items():
-        payload.setdefault(str(key), value)
-    return get_skill_pending_store().stage(
-        {
-            "action": "stage_skill",
-            "origin": origin,
-            "summary": mask_summary(summary),
-            "payload": payload,
-        }
-    )
-
-
 def replay_record(
     record: MemoryWriteRecord,
     *,

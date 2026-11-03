@@ -128,6 +128,15 @@ class GroupRoundStore:
             ).fetchall()
         return [GroupRound.from_dict(json.loads(row[0])) for row in rows]
 
+    def delete_by_session(self, session_id: str) -> int:
+        """功能：删除会话的全部回合记录（会话删除后的数据治理）。"""
+        with self._lock:
+            cursor = self._conn.execute(
+                "DELETE FROM group_rounds WHERE session_id = ?", (session_id,)
+            )
+            self._conn.commit()
+        return int(cursor.rowcount or 0)
+
     def close(self) -> None:
         with self._lock:
             try:

@@ -164,7 +164,13 @@ def test_pass_output_is_detected() -> None:
     assert is_pass_output("[PASS]")
     assert is_pass_output("pass")
     assert is_pass_output("（PASS）")
+    assert is_pass_output("【PASS】")
+    assert is_pass_output("**PASS**")
+    assert is_pass_output("`PASS`")
+    assert is_pass_output("[PASS]。")
     assert not is_pass_output("这里不能 pass 掉")
+    assert not is_pass_output("PASS，我补充一点")
+    assert not is_pass_output("[PASS] 补充")
 
 
 @pytest.mark.parametrize("text", ["@worker", "@worker @reviewer"])

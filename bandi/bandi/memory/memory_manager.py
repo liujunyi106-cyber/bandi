@@ -205,6 +205,19 @@ class MemoryHierarchyManager:
             self._project_store_cache[segment] = store
         return store
 
+    def purge_project_memory(self, project_id: str) -> bool:
+        """功能：清空指定项目记忆域（群聊记忆按会话隔离的安全清理入口）。"""
+        if not project_id:
+            return False
+        if project_id not in self._project_stores and self._store_dir is None:
+            return False
+        store = self._project_store(project_id)
+        store.delete_all()
+        segment = _safe_project_segment(project_id) if self._store_dir is not None else None
+        if segment is not None:
+            self._project_store_cache.pop(segment, None)
+        return True
+
     def save_memory(
         self, scope: str, content: str, *, allow_shared: bool = False, **identifiers: Any
     ) -> None:
@@ -418,35 +431,13 @@ class MemoryHierarchyManager:
                         memory_text=dm_text,
                     )
         if group_conversation_id:
-            from bandi.memory.group_scope import (
-                GROUP_SNAPSHOT_EMPLOYEE_ID,
-                group_scope_id,
-            )
+            from bandi.memory.group_scope import group_scope_id
 
             project_id = group_scope_id(group_conversation_id)
             session_id = ""
             employee_id = ""
             group_header = "## 群聊记忆"
-            snapshot = self._work_items.get_memory_snapshot(
-                project_id=project_id,
-                session_id=memory_session_id,
-                employee_id=GROUP_SNAPSHOT_EMPLOYEE_ID,
-                memory_scope="group",
-            )
-            if snapshot is not None:
-                group_text = str(snapshot.get("memory_text") or "")
-            else:
-                group_text = self.load_memory(SCOPE_PROJECT, project_id=project_id)
-                if group_text:
-                    self._work_items.save_memory_snapshot(
-                        project_id=project_id,
-                        session_id=memory_session_id,
-                        employee_id=GROUP_SNAPSHOT_EMPLOYEE_ID,
-                        role_id="",
-                        memory_scope="group",
-                        memory_kind="final",
-                        memory_text=group_text,
-                    )
+            group_text = self.load_memory(SCOPE_PROJECT, project_id=project_id)
         sections: list[tuple[str, str, str]] = []
         global_text = self.load_memory(SCOPE_GLOBAL)
         if global_text:
@@ -463,13 +454,13 @@ class MemoryHierarchyManager:
         )
         if project_text:
             sections.append((SCOPE_PROJECT, group_header, project_text))
-        if session_id:
+        if session_id and employee_id:
             session_text = self.load_memory(
                 SCOPE_SESSION, project_id=project_id, session_id=session_id, employee_id=employee_id
             )
             if session_text:
                 sections.append((SCOPE_SESSION, _SCOPE_HEADERS[SCOPE_SESSION], session_text))
-        if not group_conversation_id and not dm_conversation_id:
+        if not group_conversation_id and not dm_conversation_id and employee_id:
             employee_text = self.load_memory(
                 SCOPE_EMPLOYEE, project_id=project_id, employee_id=employee_id
             )

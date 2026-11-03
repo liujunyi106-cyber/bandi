@@ -1,5 +1,5 @@
 /**
- * 功能：左栏上下文列表区（用户第三/五轮拍板 IA）。
+ * 功能：左栏上下文列表区。
  * 两段（取消 Tab）：
  * - 「任务」：无项目归属的普通会话 + 无主项目会话兜底（项目被删后回归）；
  * - 「项目空间」：项目行 = 项目会话入口（点击打开最新会话；无会话进新建态）；
@@ -779,7 +779,7 @@ export function SidebarContextList() {
                         <span className="min-w-0 flex-1 truncate">
                           {project.name || project.project_id}
                         </span>
-                        {/* 2026-10-02 用户拍板：删除项目条目右侧的成员数显示 */}
+                        {/* 用户拍板：删除项目条目右侧的成员数显示 */}
                       </button>
                       {/* 右侧槽位（与会话行同口径）：非悬浮显示任务状态；悬浮时
                           「更多」按钮浮现，状态点左移让位 */}
@@ -930,7 +930,7 @@ export function SidebarContextList() {
         ) : null}
       </div>
 
-      {/* 2026-09-25 用户拍板：批量操作改为面板内分区（贴合面板两边，非弹窗） */}
+      {/* 用户拍板：批量操作改为面板内分区（贴合面板两边，非弹窗） */}
       {selectionMode ? (
         <div
           className="border-primary/5 bg-card shrink-0 border-t px-2 py-2"

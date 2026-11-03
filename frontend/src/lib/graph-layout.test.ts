@@ -136,7 +136,7 @@ describe("layoutGraph", () => {
     // 影响相抵。另留一个**宽松绝对上限**兜底（真死循环 / 指数退化仍会红）。
     // 规模取 50/200（同为 4× ⇒ O(n²) 仍 16×，判别力不变）而非 100/400：复测
     // 发现重负载下 100+400 的 bestOf 总耗时 > vitest 默认 用例超时 ⇒ 假红复发；
-    // 总工作量降为 1/4，并显式放宽用例超时到 。
+    // 总工作量降为 1/4，并显式放宽用例超时到。
     const build = (count: number): LayoutGraphInput => ({
       entities: makeEntities(count),
       edges: Array.from({ length: count * 2 }, (_, index) => ({

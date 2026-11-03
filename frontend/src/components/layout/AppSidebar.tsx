@@ -1,7 +1,7 @@
 /**
-  * 功能：一体左栏（@base docs/前端设计规划.md 左栏结构 / 侧栏导航 IA）。
+ * 功能：一体左栏（）。
  * 结构：顶部（Logo（点击回会话首页）+ ＋新建会话）→ 导航区（团队…记忆）→ 上下文列表区
- * （仅会话页展开态：项目 | 单聊 两 Tab）→ 底部（🔔 通知〔含团队记忆待确认〕+ ⚙ 设置）。
+ * （仅会话页展开态：项目 | 单聊 两 Tab）→ 底部（🔔 通知〔记忆草稿待批准〕+ ⚙ 设置）。
  * ：「会话」导航项删除（首页即会话）；设置改弹窗。
  */
 import { Settings } from "lucide-react";
@@ -55,7 +55,7 @@ function NavEntries({ items }: { items: NavItem[] }) {
                   isActive && "bg-primary/5 text-sidebar-accent-foreground!",
                 )}
               >
-                {/* 2026-09-26 用户反馈：图标统一细描边（1.75，对齐顶栏左伸缩按钮的线感/参考源
+                {/* 用户反馈：图标统一细描边（1.75，对齐顶栏左伸缩按钮的线感/参考源
                     datafoundry 左栏 16px@1.6 的做法），避免 lucide 默认 2px 在 16px 下显糊 */}
                 <item.icon strokeWidth={1.75} />
                 <span>{t(item.labelKey)}</span>
@@ -105,12 +105,12 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
-            {/* v5（2026-09-26 用户拍板）：新建会话改为与导航项完全同款（字重/行距/间距一致，
+            {/* v5：新建会话改为与导航项完全同款（字重/行距/间距一致，
                 原主色大按钮移除）。
-                2026-09-26 三轮反馈：图标「不要太方、也不用那么圆」——lucide 的
+三轮反馈：图标「不要太方、也不用那么圆」——lucide 的
                 `MessageSquarePlus` 圆角仅 r=2（显方），`MessageCirclePlus` 是正圆（太圆），
                 都不合 → 自绘圆角气泡（r=4.5 + 开口尾巴 + 加号）。
-                2026-09-26 五轮（设计统一）：图形抽到 `components/icons/NewSessionIcon`，
+五轮（设计统一）：图形抽到 `components/icons/NewSessionIcon`，
                 与项目面板头像行的「＋新建会话」共用同一组件（同语义同图形） */}
             <SidebarMenu>
               <SidebarMenuItem>
@@ -132,7 +132,7 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
-        {/* 2026-09-25 用户拍板：批量选择激活时隐藏通知/设置——批量分区接管侧栏底部并贴底 */}
+        {/* 用户拍板：批量选择激活时隐藏通知/设置——批量分区接管侧栏底部并贴底 */}
         {bulkSelectionActive ? null : (
           <div className="flex items-center justify-end gap-1">
             <NotificationMenu />
@@ -143,7 +143,7 @@ export function AppSidebar() {
               title={t("nav.settings")}
               onClick={() => setSettingsOpen(true)}
             >
-              {/* 2026-09-26 设计统一：底栏图标也收细到 1.75，与导航项一致 */}
+              {/* 设计统一：底栏图标也收细到 1.75，与导航项一致 */}
               <Settings strokeWidth={1.75} />
             </Button>
           </div>

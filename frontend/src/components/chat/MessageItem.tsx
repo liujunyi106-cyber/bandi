@@ -1,5 +1,5 @@
 /**
-  * 功能：单条消息条目（@base docs/前端设计规划.md：过程块 + 反馈按钮内嵌消息流）。
+  * 功能：单条消息条目（）。
  * user 右对齐气泡 / assistant 左对齐（过程块在正文上方）/ system 居中小字；
  * 操作条：时间戳在左（相对日期），复制在最右；
  * user 仅保留「编辑 + 复制」（无点赞/差评/更多/重发），assistant 保留「👍/👎/⋯/复制」；
@@ -76,14 +76,14 @@ interface MessageItemProps {
   /** 功能：@提及高亮名单（v5——ChatView 传员工名/角色 id；渲染后 DOM 处理）。 */
   mentions?: string[];
   /** 功能：默认助手身份覆盖（秘书会话 = 「秘书」——与项目面板/右栏一致；缺省 = 「AI 助手」）。
-   *  显式 `null` = 不显示身份头（团队会话无署名流式占位——团队里没有「秘书/助手」角色）。 */
+   * 显式 `null` = 不显示身份头（团队会话无署名流式占位——团队里没有「秘书/助手」角色）。 */
   assistantIdentity?: AssistantIdentity | null;
   /** 功能：成员任务卡（该回复派发的子卡——完整任务内容可展开；置于正文之后）。 */
   memberTaskItems?: WorkItemSummary[];
   /** 功能：本轮产物（写类工具落盘文件——与引用文件同一容器渲染，紧凑排布）。 */
   replyArtifacts?: { id: string; path: string; tool_name?: string }[];
   /** 功能：本轮消息级总执行时长（上一条 user 消息 → 本条回复落卡的墙钟差；
-   *  过程块总行「已完成 · 时间」的口径来源）。 */
+   * 过程块总行「已完成 · 时间」的口径来源）。 */
   turnDurationMs?: number;
 }
 
@@ -322,7 +322,7 @@ function MessageItemComponent({
             >
               <Loader2 className="size-3 animate-spin" />
               {t("chat.composer.responding")}
-              {/* 2026-10-01 §4.3：尝试调用阶段显示已等待秒数（opencode StreamingIndicator 同构） */}
+              {/* 尝试调用阶段显示已等待秒数 */}
               {elapsed > 0 ? (
                 <span data-testid="streaming-elapsed" className="tabular-nums">
                   {formatElapsed(elapsed)}
@@ -384,7 +384,7 @@ function MessageItemComponent({
                   : "bg-card border-chat-hairline rounded-tl-[4px] border",
               )}
             >
-              {/* 员工回复：成员任务卡（用户拍板 2026-10-16）——**数据卡优先**（完整
+              {/* 员工回复：成员任务卡——**数据卡优先**（完整
                   任务内容可展开，与右栏计划同源）；无数据卡时正文「## 成员任务」文本段
                   兜底渲染为卡；两者都没有则不渲染。卡片置于其余正文（含风险）之后。 */}
               {isEmployee && memberTaskItems?.length ? (
@@ -424,9 +424,9 @@ function MessageItemComponent({
                   ) : null}
                 </p>
               ) : null}
-              {/* 2026-09-26 用户拍板：移除回复末尾的流式光标（蓝竖条）——逐段出字本身即进度反馈，
+              {/* 用户拍板：移除回复末尾的流式光标（蓝竖条）——逐段出字本身即进度反馈，
                   空内容期由上方「正在回复中…」状态行承担指示 */}
-              {/* 2026-10-12 用户拍板：引用文件落在「回复卡片内」最下方，标蓝可点开（裸路径） */}
+              {/* 用户拍板：引用文件落在「回复卡片内」最下方，标蓝可点开（裸路径） */}
               {!isUser && replyArtifacts?.length ? (
                 <div
                   className="text-chat-muted mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 border-t border-chat-hairline pt-1.5 text-xs"
@@ -524,7 +524,7 @@ function MessageItemComponent({
         >
           {isUser ? (
             <>
-              {/* user（2026-09-25 用户拍板）：时间戳贴编辑按钮、不撑开；仅复制 + 编辑 */}
+              {/* user：时间戳贴编辑按钮、不撑开；仅复制 + 编辑 */}
               {message.createdAt ? (
                 <span
                   data-testid="message-time"

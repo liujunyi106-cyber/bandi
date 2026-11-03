@@ -239,7 +239,7 @@ if ($ReverseSync) {
     Write-Host "=== For each NEEDS-SYNC registry: annotate 已同步 / 已登记 / 不适用 — record in delivery doc (DoD-9) ==="
     Write-Host "=== DoD-10: for each synchronized family group, contract must parametrize ALL members (N tools -> N rows) ==="
 
-    # 5) 反向冗余检测 (FM-21 免疫)：容器成员 → 容器块之外必须存在引用
+    # 5) 反向冗余检测：容器成员 → 容器块之外必须存在引用
     #    成员仅出现在自身容器内 = DEAD-MEMBER 候选（死条目，如 broadcast）。
     #    按容器语义分两档：符号注册容器（工具/命令名，成员应对应实体）高优先核对；
     #    数据值容器（SET/MAP/NAMES/FLAGS 等，成员本就是数据值）低优先仅列出。
@@ -272,7 +272,7 @@ if ($ReverseSync) {
         Write-Host "  No DEAD-MEMBER candidates — every container member has at least one reference outside its own block."
         Write-Host ""
     } else {
-        # 符号注册容器：名字含工具/白名单/注册语义（成员应对应实体，FM-21 高优先）。
+        # 符号注册容器：名字含工具/白名单/注册语义。
         # 注意：不含 COMMANDS —— _GIT_READ_ONLY_SUBCOMMANDS 是 git 子命令数据白名单（成员是数据值）
         $symContainerDef = '(?:TOOLS|ALLOWED|WRITE|COLLAB|WHITELIST|BLACKLIST|REGISTRY|ACTIONS|PERMISSIONS)'
         $symDead  = @($dead | Where-Object { $_.Container -match $symContainerDef })

@@ -44,7 +44,6 @@ from bandi.api.middleware import (
     SizeLimitMiddleware,
     error_body,
 )
-from bandi.core.account import DEFAULT_LOCAL_USER_ID
 from bandi.core.config import BandiConfig
 from bandi.core.error_codes import AppError, AppErrorCode, code_for_status
 from bandi.core.security.secret_protect import unprotect
@@ -1688,324 +1687,6 @@ def _consolidation_episode_id(record: Any) -> str:
     return ""
 
 
-# ── 团队记忆写入门（Phase2-2）：提名列表 / 上报建议 / 用户确认落库 / 驳回 ──
-
-
-def _get_team_staging_store() -> Any:
-    from bandi.memory.staging import default_memory_store_dir
-    from bandi.memory.team_staging import TeamMemoryStaging
-
-    return TeamMemoryStaging(default_memory_store_dir())
-
-
-@app.get("/api/memory/team-pending")
-async def list_team_memory_pending() -> dict[str, Any]:
-    """待确认团队记忆列表（超时项顺带清理——拍板：超时丢弃；TTL 单一来源
-    在 team_staging.DEFAULT_TTL_DAYS，写侧 propose 亦清理）。"""
-    from bandi.memory.team_staging import DEFAULT_TTL_DAYS
-
-    store = _get_team_staging_store()
-    await asyncio.to_thread(store.discard_expired, DEFAULT_TTL_DAYS)
-    records = await asyncio.to_thread(store.list_pending)
-    team_names: dict[str, str] = {}
-    try:
-        for team in (await company_org_teams()).get("teams", []):
-            team_names[str(team.get("team_id") or "")] = str(team.get("name") or "")
-    except Exception:  # noqa: BLE001 — 名称解析失败回落 id，不阻断审批
-        team_names = {}
-    employee_names: dict[str, str] = {}
-    try:
-        for employee in _org_api_dispatcher().org_engine.list_employees(include_inactive=True):
-            employee_names[str(employee.employee_id)] = str(employee.name or "")
-    except Exception:  # noqa: BLE001
-        employee_names = {}
-    project_names: dict[str, str] = {}
-    try:
-        for project in _get_project_store().list_projects():
-            project_names[str(project.project_id)] = str(project.name or "")
-    except Exception:  # noqa: BLE001
-        project_names = {}
-    pending = []
-    for record in records:
-        payload = dict(record.payload)
-        employee_id = str(payload.get("employee_id") or "")
-        team_id = str(payload.get("team_id") or "")
-        project_id = str(payload.get("project_id") or "")
-        pending.append(
-            {
-                "id": record.id8,
-                "summary": record.summary,
-                "payload": payload,
-                "created_at": iso_local(record.created_at),
-                "employee_name": employee_names.get(employee_id, employee_id),
-                "team_name": team_names.get(team_id, team_id),
-                "project_name": project_names.get(project_id, project_id),
-            }
-        )
-    return {"pending": pending}
-
-
-@app.post("/api/memory/team-pending/{pending_id}/report")
-async def report_team_memory(pending_id: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
-    """上报上级角色——意见仅存档为建议，无落库效力（确认权仅用户本人）。"""
-    body = body or {}
-    ok = await asyncio.to_thread(
-        _get_team_staging_store().report_to_superior,
-        pending_id,
-        opinion=str(body.get("opinion") or ""),
-        reporter_role=str(body.get("reporter_role") or ""),
-    )
-    if not ok:
-        raise HTTPException(status_code=HTTP_NOT_FOUND, detail="PENDING_NOT_FOUND")
-    return {"reported": True, "id": pending_id}
-
-
-def _create_team_memory_skill(payload: dict[str, Any], skill_name: str) -> str:
-    """功能：把团队返工教训写成 SKILL.md，并 best-effort 绑定到目标员工。"""
-    import tempfile
-
-    import yaml
-
-    from bandi.skills.importer import SkillImporter
-
-    name = (skill_name or "").strip() or "团队经验"
-    reason = str(payload.get("reason") or "").strip()
-    analysis = str(payload.get("analysis") or "").strip().replace("分析：", "", 1)
-    description = f"团队返工经验：{reason or name}"[:1024]
-    frontmatter = {
-        "name": name,
-        "description": description,
-        "version": "1.0.0",
-        "triggers": [],
-    }
-    body = "\n".join(
-        [
-            f"# {name}",
-            "",
-            "## Instructions",
-            f"本技能来自团队返工复盘：{reason or '同任务执行经验'}。",
-            "",
-            analysis or "执行同类任务前，先确认关键输入齐全，再进入产出阶段。",
-            "",
-        ]
-    )
-    text = (
-        "---\n"
-        + yaml.safe_dump(frontmatter, allow_unicode=True, sort_keys=False)
-        + "---\n\n"
-        + body
-    )
-    with tempfile.TemporaryDirectory() as tmp:
-        source = Path(tmp) / "SKILL.md"
-        source.write_text(text, encoding="utf-8")
-        result = SkillImporter(os.environ.get("BANDI_SKILLS_DIR")).import_skill(str(source))
-    employee_id = str(payload.get("employee_id") or "").strip()
-    if employee_id:
-        try:
-            from bandi.company.agent_profile import AgentProfileManager
-
-            AgentProfileManager().bind_resource(employee_id, "general_skill", result.skill_name)
-        except Exception:  # 档案不存在/已绑定时技能文件仍保留
-            logger.debug("team skill bind skipped (employee=%s)", employee_id, exc_info=True)
-    return result.skill_path
-
-
-@app.post("/api/memory/team-pending/{pending_id}/confirm")
-async def confirm_team_memory(
-    pending_id: str, body: dict[str, Any] | None = None
-) -> dict[str, Any]:
-    """用户本人确认——payload 带 team_id 落 episodic 团队分区。
-
-    顺序铁律（端到端 暴露的静默丢数据）：**落库先于消费暂存项**。
-    原实现先 `store.confirm()`（内含 discard）再落库，落库失败即 500 且 pending 归零
-    ⇒ 用户点一次「批准」这条记忆永久消失且不可重试。落库用稳定 episode_id
-    （`team-pending-<id8>`）⇒ 消费失败/进程崩溃后重试是 `INSERT OR REPLACE` 覆盖，不重复。
-    """
-    store = _get_team_staging_store()
-    record = store.get_pending(pending_id)
-    if record is None:
-        raise HTTPException(status_code=HTTP_NOT_FOUND, detail="PENDING_NOT_FOUND")
-    payload = dict(record.payload)
-    team_id = str(payload.get("team_id") or "").strip()
-    if team_id:
-        from bandi.company.team_registry import TeamRegistry
-
-        if TeamRegistry().get_status(team_id) == "dissolved":
-            raise HTTPException(status_code=409, detail="TEAM_DISSOLVED")
-
-    def _land() -> None:
-        from bandi.memory.episodic import Episode, get_shared_episodic
-
-        # （否则行被员工分区隔离，团队查询永远查不到）
-        get_shared_episodic().record(
-            Episode(
-                episode_id=f"team-pending-{pending_id}",
-                summary=str(payload.get("summary") or ""),
-                project_id=payload.get("project_id"),
-                team_id=payload.get("team_id"),
-            )
-        )
-
-    try:
-        await asyncio.to_thread(_land)
-    except Exception as e:
-        # 落库失败必须让暂存项留在原位（可重试）——异常上抛走全局错误体，不吞
-        logger.error("team_memory_land_failed (pending kept, id=%s): %s", pending_id, e)
-        raise HTTPException(status_code=503, detail="TEAM_MEMORY_LAND_FAILED") from e
-
-    skill_path = ""
-    if bool((body or {}).get("create_skill")):
-        try:
-            skill_path = await asyncio.to_thread(
-                _create_team_memory_skill,
-                payload,
-                str((body or {}).get("skill_name") or ""),
-            )
-        except Exception as e:  # 技能写入失败保留暂存项可重试
-            logger.error("team_memory_skill_failed (pending kept, id=%s): %s", pending_id, e)
-            raise HTTPException(status_code=503, detail="TEAM_SKILL_CREATE_FAILED") from e
-
-    from bandi.utils.errors import error_text
-
-    try:
-        store.confirm(pending_id, confirmer=DEFAULT_LOCAL_USER_ID)
-    except PermissionError as e:
-        raise HTTPException(status_code=403, detail=error_text(e)) from e
-    except KeyError as e:
-        raise HTTPException(status_code=HTTP_NOT_FOUND, detail="PENDING_NOT_FOUND") from e
-    return {
-        "confirmed": True,
-        "id": pending_id,
-        **({"skill_path": skill_path} if skill_path else {}),
-    }
-
-
-@app.post("/api/memory/team-pending/{pending_id}/reject")
-async def reject_team_memory(pending_id: str) -> dict[str, Any]:
-    """用户本人驳回（丢弃，不落库）。"""
-    from bandi.utils.errors import error_text
-
-    try:
-        discarded = await asyncio.to_thread(
-            _get_team_staging_store().reject, pending_id, confirmer=DEFAULT_LOCAL_USER_ID
-        )
-    except PermissionError as e:
-        raise HTTPException(status_code=403, detail=error_text(e)) from e
-    if not discarded:
-        raise HTTPException(status_code=HTTP_NOT_FOUND, detail="PENDING_NOT_FOUND")
-    return {"rejected": True, "id": pending_id}
-
-
-# ── 技能晋升审批队列（技能侧无自动批准路径：自动晋升只进暂存区） ──────────
-
-# 测试注入 override：技能重放落盘目录（缺省 ~/.bandi/skills）
-_skill_write_overrides: dict[str, Any] | None = None
-
-
-def _get_skill_pending_store() -> Any:
-    """功能：技能待批准队列单例（测试经 staging.reset_skill_pending_store 注入）。"""
-    from bandi.memory.staging import get_skill_pending_store
-
-    return get_skill_pending_store()
-
-
-def _write_back_approved_skill(record: Any) -> bool:
-    """功能：批准后回写员工档案（payload 带定位时）——pending 引用转真实技能名。
-
-    无定位字段（历史/手工暂存记录）视为无需回写；带定位但档案写失败返回
-    False，审批端点据此保留待批准记录以便重试（防技能已落盘而档案永久失联）。
-    """
-    payload = dict(getattr(record, "payload", None) or {})
-    profile_path = str(payload.get("profile_path") or "").strip()
-    employee_id = str(payload.get("employee_id") or "").strip()
-    pattern_key = str(payload.get("pattern_key") or "").strip()
-    if not (profile_path and employee_id and pattern_key):
-        return True
-    from bandi.company.employee_evolution import EmployeeEvolutionManager
-
-    attached = EmployeeEvolutionManager.attach_approved_skill(
-        profile_path,
-        employee_id=employee_id,
-        pattern_key=pattern_key,
-        skill_name=str(payload.get("skill_name") or "").strip(),
-    )
-    if attached:
-        # A6 桥接：批准回写档案后同步组织员工 metadata（前端档案/招募同源可见）
-        try:
-            home = Path(profile_path).resolve().parents[2]
-            manager = EmployeeEvolutionManager(home_dir=home)
-            manager.sync_org_employee_metadata(_org_api_dispatcher().org_engine, employee_id)
-        except Exception:
-            logger.debug("approved skill metadata sync failed", exc_info=True)
-    return attached
-
-
-def _replay_skill_record(record: Any) -> bool:
-    """功能：技能批准重放（原子写 SKILL.md + 档案回写；失败记 warning 并保留记录）。"""
-    from bandi.memory.staging import replay_skill_record
-
-    overrides = _skill_write_overrides
-    skills_dir = (overrides or {}).get("skills_dir")
-    try:
-        if not replay_skill_record(record, skills_dir=skills_dir):
-            return False
-        return _write_back_approved_skill(record)
-    except Exception as exc:  # noqa: BLE001 — 坏 payload 重放失败不得丢弃待批准记录
-        logger.warning("skill pending replay failed: %s", exc)
-        return False
-
-
-@app.get("/api/skills/pending")
-async def list_skills_pending() -> dict[str, Any]:
-    """技能审批：待批准晋升列表（脱敏——只回技能名/动作/来源/时间/摘要）。"""
-    from bandi.memory.staging import mask_summary
-
-    store = _get_skill_pending_store()
-    records = await asyncio.to_thread(store.list_pending)
-    rows = [
-        {
-            "id": record.id8,
-            "skill_name": str((record.payload or {}).get("skill_name") or ""),
-            "action": record.action,
-            "summary": mask_summary(record.summary),
-            "origin": record.origin,
-            "created_at": iso_local(record.created_at),
-        }
-        for record in records
-    ]
-    return {"pending": rows}
-
-
-@app.post("/api/skills/pending/{pending_id}/approve")
-async def approve_skill_pending(pending_id: str) -> dict[str, Any]:
-    """技能审批：批准并落盘 SKILL.md——写盘成功后才出队（失败保留待重试）。"""
-    pending_id = _validate_pending_id(pending_id)
-    store = _get_skill_pending_store()
-    record = await asyncio.to_thread(store.get_pending, pending_id)
-    if record is None:
-        raise HTTPException(status_code=HTTP_NOT_FOUND, detail="PENDING_NOT_FOUND")
-    if not await asyncio.to_thread(_replay_skill_record, record):
-        raise HTTPException(status_code=500, detail="SKILL_REPLAY_FAILED")
-    await asyncio.to_thread(store.discard_pending, pending_id)
-    return {
-        "approved": True,
-        "id": pending_id,
-        "skill_name": str((record.payload or {}).get("skill_name") or ""),
-    }
-
-
-@app.post("/api/skills/pending/{pending_id}/reject")
-async def reject_skill_pending(pending_id: str) -> dict[str, Any]:
-    """技能审批：拒绝一条待批准晋升（丢弃，不写技能库）。"""
-    pending_id = _validate_pending_id(pending_id)
-    store = _get_skill_pending_store()
-    record = await asyncio.to_thread(store.get_pending, pending_id)
-    if record is None:
-        raise HTTPException(status_code=HTTP_NOT_FOUND, detail="PENDING_NOT_FOUND")
-    discarded = await asyncio.to_thread(store.discard_pending, pending_id)
-    return {"rejected": bool(discarded), "id": pending_id}
-
-
 # ── SOP 蒸馏（NL / 程序性记忆 → draft 技能卡；不写 SKILL.md、不进审批暂存区） ──
 
 _DISTILL_MEMORY_TYPES = frozenset({"procedural", "process_conclusion"})
@@ -2165,8 +1846,8 @@ def _distill_card_path(distiller: Any, skill_id: str) -> Path | None:
 async def skills_distill(body: dict[str, Any]) -> dict[str, Any]:
     """SOP 蒸馏：raw_content 或程序性记忆 → draft 技能卡落 skills_dir。
 
-    只产 draft（不写 SKILL.md、不进技能审批暂存区）；技能晋升仍走
-    /api/skills/pending 审批门。memory_source 无命中 404，空内容/非法参数 400。
+    只产 draft（不写 SKILL.md、不进技能审批暂存区）。memory_source 无命中 404，
+    空内容/非法参数 400。
     """
     from bandi.skills.distiller import SkillDistillRequest
 
@@ -2477,18 +2158,48 @@ async def delete_session(session_id: str) -> dict[str, bool]:
     meta = raw_meta if isinstance(raw_meta, dict) else {}
     thread_id = str(meta.get("thread_id") or "").strip()
     project_id = str(meta.get("project_id") or "").strip()
+    threads = _threads_for_project(project_id) if thread_id else None
+    thread = threads.get_thread(thread_id) if threads is not None and thread_id else None
+    origin = str(meta.get("origin") or "")
+    is_group = (
+        origin == "group"
+        or (thread is not None and str(getattr(thread, "kind", "") or "") == "group")
+        or (
+            bool(project_id)
+            and origin not in {"secretary", "employee_dm"}
+            and not meta.get("target_role")
+        )
+    )
     ok = store.delete_session(session_id)
     if not ok:
         raise HTTPException(status_code=HTTP_NOT_FOUND, detail="SESSION_NOT_FOUND")
     await _interrupt_session_work_items(session_id)
     # 群聊窗口级联：会话删除即终止其线程（新会话新线程，不继承旧对话）
     thread_deleted = False
-    if thread_id:
-        threads = _threads_for_project(project_id)
-        if threads is not None:
-            thread_deleted = threads.delete_thread(thread_id)
+    if thread_id and threads is not None:
+        thread_deleted = threads.delete_thread(thread_id)
+    group_memory_purged = True
+    if is_group:
+        try:
+            from bandi.memory.group_maintenance import purge_group_memory
+
+            purged = await asyncio.to_thread(purge_group_memory, session_id)
+            group_memory_purged = bool(purged.get("ok", False))
+        except Exception as exc:  # noqa: BLE001 — 记忆清理失败不阻断会话删除
+            group_memory_purged = False
+            logger.warning("group memory purge failed (session=%s): %s", session_id, exc)
+        try:
+            round_service = getattr(_get_company_dispatcher(), "group_rounds", None)
+            if round_service is not None:
+                round_service.delete_session_rounds(session_id)
+        except Exception as exc:  # noqa: BLE001 — 回合记录清理失败不阻断会话删除
+            logger.warning("group round cleanup failed (session=%s): %s", session_id, exc)
     await _run_session_end_hooks(session_id)
-    return {"ok": True, "thread_deleted": thread_deleted}
+    return {
+        "ok": True,
+        "thread_deleted": thread_deleted,
+        "group_memory_purged": group_memory_purged,
+    }
 
 
 def _bind_session_thread(session_id: str, thread_id: str) -> None:
@@ -6408,6 +6119,7 @@ async def _handle_team_chat_takeover(
             mode=mode,
             project_root=_validated_session_project_root(payload.get("project_root"), project_id),
             project_id=project_id,
+            origin="group",
             title=(session_title or message[:40])[:120],
         )
     store.append_message(session_id, Message(role=MessageRole.USER, content=message))
@@ -7343,7 +7055,6 @@ _RESERVED_SESSION_PREFIXES = (
     "role-session::",
     "role-runtime::",
     "skill_distill:",
-    "team-pending-",
     "automation:",
 )
 
@@ -7942,9 +7653,8 @@ async def company_project_delete(project_id: str) -> dict[str, Any]:
 
 @app.post("/api/company/projects/{project_id}/deliver")
 async def company_project_deliver(project_id: str) -> dict[str, Any]:
-    """显式项目交付——建交付里程碑卡并触发按员工反思与技能晋升。
+    """显式项目交付——建交付里程碑卡并记录工作项覆盖清单。
 
-    前端入口（项目面板「交付」动作）留后续 Day；本端点为交付语义的后端原语。
     返回 `status`：recorded / already_delivered / no_work_items。
     """
     from bandi.company.project_delivery import deliver_project
@@ -7960,7 +7670,6 @@ async def company_project_deliver(project_id: str) -> dict[str, Any]:
     dispatcher = _get_company_dispatcher()
     return deliver_project(
         store=dispatcher.store,
-        evolution=dispatcher.employee_evolution,
         project_id=project_id,
     )
 
@@ -8682,21 +8391,15 @@ async def company_operations_list(state: str = "") -> dict[str, Any]:
 
 @app.get("/api/company/operations/stats")
 async def company_operations_stats() -> dict[str, Any]:
-    """功能：操作/墓碑/团队记忆待确认计数（审计与排障用）。"""
+    """功能：操作/墓碑计数（审计与排障用）。"""
     try:
         tombstone_count = _employee_tombstones().count()
     except Exception:
         logger.warning("tombstone stats failed", exc_info=True)
         tombstone_count = -1
-    try:
-        team_pending = _get_team_staging_store().list_pending_count()
-    except Exception:
-        logger.warning("team pending stats failed", exc_info=True)
-        team_pending = -1
     return {
         "tombstones": tombstone_count,
         "operations": _company_operations().stats(),
-        "team_pending": team_pending,
     }
 
 

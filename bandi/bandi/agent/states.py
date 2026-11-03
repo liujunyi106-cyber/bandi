@@ -8,7 +8,7 @@ from typing import Any
 
 from bandi.agent.base import CoTStep, CoTStepType, ExecutionContext, ParseOutcome, TerminalReason
 from bandi.agent.deps import get_query_deps
-from bandi.agent.verifier import Verdict, VerifierPacket
+from bandi.agent.verifier import VerifierPacket
 from bandi.core.events import Event, EventType
 from bandi.core.message import (
     LLMResponse,
@@ -2494,12 +2494,6 @@ async def on_reflecting(
         ctx.terminal_reason = TerminalReason.VERIFIED
         # 纯文本轮（无工具证据）不跑 judge——judge 是每轮一次 LLM 调用
         # 员工数×轮数放大后是真实成本，而纯文本轮无工具证据可核。
-        # 但工作轮的结论仍要沉淀：合成轻量 verdict 走同一提名钩子
-        # 混合口径——仅工作轮提名，非工作轮不产生待确认项）。
-        if _turn_has_work_item(ctx):
-            _nominate_team_lesson(
-                ctx, task_desc or "", _PURE_TEXT_PASS_VERDICT, output=ctx.current_content or ""
-            )
         return
 
     output = ctx.current_content or ""
@@ -2593,117 +2587,10 @@ async def on_reflecting(
                     },
                 )
             )
-    _nominate_team_lesson(ctx, task_desc or "", verdict, output=ctx.current_content or "")
 
 
 _LESSON_MAX_CHARS = 200
 _COMPRESSION_FALLBACK_RISK_THRESHOLD = 3
-# 提名显著性阈值——低于阈值不提名，避免每轮刷屏
-_NOMINATION_THRESHOLD = 0.35
-
-# 功能：纯文本轮（未触发验证闸门）的合成判定——action=pass 表示「无需返工」
-# reason 明示来源是跳过 judge 而非 judge 判定，避免确认环节误读为已验证
-_PURE_TEXT_PASS_VERDICT = Verdict(
-    action="pass", reason="纯文本轮未触发验证闸门（无工具证据，未调用 judge）"
-)
-
-
-def _turn_has_work_item(ctx: ExecutionContext) -> bool:
-    # 功能：判定本轮是否有工作项归属——工作轮才把结论沉淀进团队记忆
-    # 非工作轮（员工闲聊/群聊响应）不产生待确认项
-    return bool(str(ctx.meta.get("work_item_id") or "").strip())
-
-
-def _touched_files(ctx: ExecutionContext) -> list[str]:
-    # 功能：从消息窗口工具调用参数提取本轮触碰的文件路径（去重保序，最多 5 个）——
-    # 提名卡「涉及文件」的数据源，让用户看清这次经验改动了什么。
-    files: list[str] = []
-    for message in getattr(ctx, "messages", None) or []:
-        for call in getattr(message, "tool_calls", None) or []:
-            arguments = getattr(call, "arguments", None)
-            if not isinstance(arguments, dict):
-                continue
-            for key in ("file_path", "path", "file", "target", "output_path"):
-                value = str(arguments.get(key) or "").strip()
-                if value and value not in files:
-                    files.append(value)
-                    break
-    return files[:5]
-
-
-def _suggested_skill_slug(task_desc: str) -> str:
-    # 功能：从任务描述生成建议技能名（保中文、去文件名不安全字符，供提名卡展示）
-    import re as _re
-
-    slug = _re.sub(r'[\\/:*?"<>|\s]+', "-", (task_desc or "").strip()[:40]).strip("-")
-    return slug or "learned-skill"
-
-
-def _nominate_team_lesson(
-    ctx: ExecutionContext, task_desc: str, verdict: Any, output: str = ""
-) -> None:
-    # 零新增 LLM 调用——复用 verdict/analysis 产物做路由；一切失败静默降级。
-    # output：员工本轮实际产出。纯文本轮无 judge 分析可依，产出是唯一内容载体
-    # 不带则确认卡只剩「任务 + 跳过 judge」，团队记忆退化为空壳。
-    #
-    # 显著性门控（不每轮提名）：仅返工（教训）提名——pass 类（含多步成功「经验」）
-    # 不再打扰用户。
-    # 阈值 0.35；内容签名跨轮去重（同团队同任务同结论只留一条）。
-    try:
-        team_id = str(ctx.meta.get("team_id") or "").strip()
-        if not team_id:
-            return
-        action = str(getattr(verdict, "action", "") or "").strip().lower()
-        if action == "rework":
-            significance = 0.40
-        else:
-            significance = 0.0
-        if significance < _NOMINATION_THRESHOLD:
-            return
-        from bandi.company.team_registry import TeamRegistry
-        from bandi.memory.staging import default_memory_store_dir
-        from bandi.memory.team_staging import TeamMemoryStaging
-
-        if TeamRegistry().get_status(team_id) == "dissolved":
-            return
-        reason = str(getattr(verdict, "reason", "") or "").strip()
-        analysis = str(getattr(verdict, "analysis", "") or "").strip()
-        suggest_slug = _suggested_skill_slug(task_desc)
-        suggest_emp = str(ctx.meta.get("employee_id") or "").strip() or "（未指派）"
-        summary = (
-            f"任务：{task_desc[:150]}\n"
-            f"判定：{getattr(verdict, 'action', '')}（{reason[:200]}）"
-            + (f"\n反思：{analysis[:300]}" if analysis else "")
-            + (f"\n经验：{output.strip()[:300]}" if output.strip() else "")
-            + (
-                f"\n建议沉淀：员工 {suggest_emp} → 技能库 {suggest_slug}/SKILL.md"
-                "（learned skill，审批导入后生效）"
-            )
-        )
-        signature = hashlib.sha1(
-            f"{team_id}|{action}|{task_desc[:80]}|{reason[:80]}".encode()
-        ).hexdigest()[:16]
-        TeamMemoryStaging(default_memory_store_dir()).propose(
-            summary=summary,
-            project_id=str(ctx.meta.get("project_id") or ""),
-            team_id=team_id,
-            employee_id=str(ctx.meta.get("employee_id") or ""),
-            session_id=str(ctx.meta.get("session_id") or ""),
-            turn_index=int(ctx.turn_index),
-            signature=signature,
-            extra={
-                "verdict_action": action,
-                "reason": reason[:200],
-                "analysis": analysis[:300],
-                "output_preview": output.strip()[:300],
-                "suggested_employee": suggest_emp,
-                "suggested_skill_slug": suggest_slug,
-                "skill_target": f"{suggest_slug}/SKILL.md",
-                "files": _touched_files(ctx),
-            },
-        )
-    except Exception as e:  # noqa: BLE001 — 提名失败不影响反思主链路
-        logger.warning("team_lesson_nominate_failed: %s", e)
 
 
 def _record_lesson(ctx: ExecutionContext, task_desc: str, verdict: Any) -> None:

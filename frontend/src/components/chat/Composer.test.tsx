@@ -86,6 +86,43 @@ describe("Composer", () => {
     expect(onSteer).toHaveBeenCalledWith("转向");
   });
 
+  it("执行中发送走 onQueue（含附件），不再直接转向", () => {
+    const onQueue = vi.fn();
+    const onSteer = vi.fn();
+    render(
+      <Composer
+        busy
+        executing
+        onSend={vi.fn()}
+        onQueue={onQueue}
+        onSteer={onSteer}
+        onStop={vi.fn()}
+      />,
+    );
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: "排队这句" } });
+    fireEvent.keyDown(textarea, { key: "Enter" });
+    expect(onQueue).toHaveBeenCalledWith("排队这句", []);
+    expect(onSteer).not.toHaveBeenCalled();
+  });
+
+  it("编辑待发送条目：prefill 回填文本并聚焦", () => {
+    const { rerender } = render(
+      <Composer busy={false} onSend={vi.fn()} onSteer={vi.fn()} onStop={vi.fn()} />,
+    );
+    rerender(
+      <Composer
+        busy={false}
+        prefill={{ token: 1, text: "改一下这句", attachments: [] }}
+        onPrefillConsumed={vi.fn()}
+        onSend={vi.fn()}
+        onSteer={vi.fn()}
+        onStop={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("textbox")).toHaveValue("改一下这句");
+  });
+
   it("停止键：busy 时发送键原位变停止（方形小圆角实心），点击两次确认停止", () => {
     const onStop = vi.fn();
     render(<Composer busy onSend={vi.fn()} onSteer={vi.fn()} onStop={onStop} />);

@@ -460,15 +460,15 @@ def preflight() -> None:
 
 @company_app.command("migrate-plan")
 def migrate_plan() -> None:
-    """功能：dry-run 输出 retired 员工与旧黑板迁移清单。"""
+    """功能：dry-run 输出 retired 员工迁移清单。"""
     root = Path(__file__).resolve().parents[2]
-    for name in ("migrate_retired.py", "migrate_team_memory.py"):
-        subprocess.run([sys.executable, str(root / "scripts" / name)], check=True)
+    subprocess.run([sys.executable, str(root / "scripts" / "migrate_retired.py")], check=True)
 
 
 @company_app.command("migrate-apply")
 def migrate_apply() -> None:
-    """功能：执行 retired 员工与旧黑板迁移（破坏性，不备份）。"""
+    """功能：执行 retired 员工迁移（破坏性，不备份）。"""
     root = Path(__file__).resolve().parents[2]
-    for name in ("migrate_retired.py", "migrate_team_memory.py"):
-        subprocess.run([sys.executable, str(root / "scripts" / name), "--apply"], check=True)
+    subprocess.run(
+        [sys.executable, str(root / "scripts" / "migrate_retired.py"), "--apply"], check=True
+    )

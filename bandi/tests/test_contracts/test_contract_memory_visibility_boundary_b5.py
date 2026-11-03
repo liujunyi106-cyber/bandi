@@ -77,7 +77,6 @@ def _all_memory_api_bodies(env: Any) -> dict[str, str]:
     for name, path in (
         ("events", "/api/memory/events"),
         ("pending", "/api/memory/pending"),
-        ("team-pending", "/api/memory/team-pending"),
     ):
         resp = env.client.get(path)
         assert resp.status_code == 200, f"{path} 应可用：{resp.status_code} {resp.text[:200]}"

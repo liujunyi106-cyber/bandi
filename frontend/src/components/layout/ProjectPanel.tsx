@@ -120,9 +120,9 @@ export function ProjectPanel(props: ProjectPanelProps) {
 function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps) {
   const t = useT();
   const navigate = useNavigate();
-  // 拍板：项目面板宽度可由右边缘拖拽调整（手动覆盖持久化 + min/max 钳制）
-  // 拍板：无手动覆盖时随窗口自适应（1024→160 / 1920→224），双击手柄回自适应
-  // 拍板：拖拽上限收到 224；旧 override 可能超出上限 → 读取时同样钳制
+  // 项目面板宽度可由右边缘拖拽调整（手动覆盖持久化 + min/max 钳制）
+  // 无手动覆盖时随窗口自适应（1024→160 / 1920→224），双击手柄回自适应
+  // 拖拽上限收到 224；旧 override 可能超出上限 → 读取时同样钳制
   const windowWidth = useWindowWidth();
   const widthOverride = useUiStore((state) => state.projectPanelWidthOverride);
   const setPanelWidth = useUiStore((state) => state.setProjectPanelWidth);
@@ -146,16 +146,10 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
     () => sessions.find((item) => item.id === activeSessionId) ?? null,
     [sessions, activeSessionId],
   );
-  /** 功能：群聊条目选中态——当前会话属于本项目且非秘书（含本地新建占位会话）。 */
-  const groupEntrySelected =
-    !activeView &&
-    activeSession !== null &&
-    activeSession.project_id === projectId &&
-    activeSession.origin !== "secretary" &&
-    !isEmployeeDmSession(activeSession);
   const showFeatureMenu =
     activeSession?.origin !== "secretary" &&
     (activeSession === null || !isEmployeeDmSession(activeSession));
+  /** 功能：群聊行显示名（单团队且模板库有 team_id→name 映射时跟随团队名；命名由团队组建落地）。 */
   const [teamName, setTeamName] = useState("");
   const groupEntryName =
     project?.team_ids?.length === 1 && teamName ? teamName : t("chat.panel.groupEntry");
@@ -170,11 +164,13 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
   const [deletingSession, setDeletingSession] = useState<SessionSummary | null>(null);
   const pinnedIds = useChatStore((state) => state.pinnedSessionIds);
   const pinnedSet = useMemo(() => new Set(pinnedIds), [pinnedIds]);
-  // 群聊会话支持批量操作（员工会话不做）
+  // 群聊/秘书会话分区批量（员工会话不做）
   const [bulk, setBulk] = useState(false);
+  const [bulkScope, setBulkScope] = useState<"secretary" | "group" | "">("");
   const [bulkSelected, setBulkSelected] = useState<string[]>([]);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+  const [groupAll, setGroupAll] = useState(false);
   // 功能：hover / 聚焦中的会话 id——更多按钮仅此时浮现
   const [hoveredId, setHoveredId] = useState("");
 
@@ -182,8 +178,8 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
   const hasTeam = (project?.members.length ?? 0) > 0;
 
   /** 功能：团队群聊头像成员——项目成员中的在职员工（最多 4 个由 TeamAvatar 截断）。
-   *  成员集以项目解析结果为准（employee_name 已随接口返回），员工列表只补头像元数据——
-   *  员工接口未就绪/失败时不再把头像组退化成单图标。 */
+   * 成员集以项目解析结果为准（employee_name 已随接口返回），员工列表只补头像元数据——
+   * 员工接口未就绪/失败时不再把头像组退化成单图标。 */
   const groupMembers = useMemo(() => {
     const byRole = new Map(employees.map((employee) => [employee.role_id, employee]));
     return (project?.members ?? [])
@@ -230,6 +226,9 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
     [projectSessions, sortSessions],
   );
 
+  /** 功能：群聊段头显示条件——有团队（可新建）或已有群会话（只读/清理）。 */
+  const showGroupEntry = hasTeam || projectChatSessions.length > 0;
+
   const projectEmployeeGroups = useMemo(
     () => groupSessionsByEmployee(projectSessions),
     [projectSessions],
@@ -274,8 +273,11 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
     secretaryAutomation.length > 0 ||
     assistantEntryProjects.includes(projectId);
 
-  /** 功能：批量选择目标 = 秘书会话（群聊条目化后不成列，不参与批量；员工无独立列表）。 */
-  const bulkTargets = useMemo(() => projectSecretarySessions, [projectSecretarySessions]);
+  /** 功能：批量选择目标 = 当前分区（秘书/群聊）会话；员工无独立列表。 */
+  const bulkTargets = useMemo(
+    () => (bulkScope === "group" ? projectChatSessions : projectSecretarySessions),
+    [bulkScope, projectChatSessions, projectSecretarySessions],
+  );
 
   /** 功能：项目详情刷新（选择团队拉入成功后同步成员）。 */
   const refreshProject = useCallback(() => {
@@ -340,7 +342,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
     };
   }, [projectId]);
 
-  // 现无实例化记录（命名在「团队组建」落地），匹配不到即回落通用名「项目总群聊」
+  // 团队名解析：单团队时优先团队模板名，其次组织团队实例名，最后回落 team_id。
   useEffect(() => {
     const firstTeam = project?.team_ids?.[0] ?? "";
     if (!firstTeam) {
@@ -348,12 +350,18 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
       return;
     }
     let cancelled = false;
-    void companyApi
-      .teams()
-      .then(({ teams }) => {
+    void Promise.allSettled([companyApi.teams(), companyApi.orgTeams()])
+      .then(([templates, orgTeams]) => {
         if (cancelled) return;
-        // 模板库有同名模板 → 用模板名；自定义实例（无模板）回落 team_id 本身作显示名
-        setTeamName(teams.find((item) => item.team_id === firstTeam)?.name ?? firstTeam);
+        const templateName =
+          templates.status === "fulfilled"
+            ? templates.value.teams.find((item) => item.team_id === firstTeam)?.name
+            : "";
+        const orgName =
+          orgTeams.status === "fulfilled"
+            ? orgTeams.value.teams.find((item) => item.team_id === firstTeam)?.name
+            : "";
+        setTeamName(templateName || orgName || firstTeam);
       })
       .catch(() => undefined);
     return () => {
@@ -366,8 +374,10 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
     setSearchOpen(false);
     // 切项目重置批量态：防选中项指向旧项目会话被误删（-3 修复）
     setBulk(false);
+    setBulkScope("");
     setBulkSelected([]);
     setBulkConfirmOpen(false);
+    setGroupAll(false);
   }, [projectId]);
 
   const openSession = useCallback(
@@ -576,38 +586,35 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
     navigate(`/?project=${projectId}`);
   };
 
-  /** 功能：团队总群聊入口——条目即唯一入口（优先打开有消息的会话，空置占位不遮蔽真实群聊；
-   * 无会话则后端建会话再打开）。 */
-  const canonicalGroupSession =
-    projectChatSessions.find((session) => (session.message_count ?? 0) > 0) ??
-    projectChatSessions[0] ??
-    null;
-  const openGroupChat = () => {
-    if (canonicalGroupSession) {
-      openSession(canonicalGroupSession);
-      return;
-    }
-    // 无群聊会话：后端先建空会话（落库）再打开——选中态不随列表刷新丢失
-    void sessionsApi
-      .create({ title: t("chat.panel.groupEntry"), project_id: projectId })
-      .then(({ session }) => {
-        const store = useChatStore.getState();
-        store.upsertSession({
-          id: session.id,
-          title: session.title ?? "",
-          created_at: session.created_at ?? new Date().toISOString(),
-          message_count: 0,
-          project_id: projectId,
-        });
-        store.setActiveSession(session.id);
-        store.setActiveProject(projectId);
-        setQuery("");
-        setSearchOpen(false);
-        navigate(`/?project=${projectId}`);
-      })
-      .catch((error) => {
-        toast.error(error instanceof Error ? error.message : String(error));
+  /** 功能：新建团队群聊会话——每会话独立 thread / round / 群记忆。 */
+  const newGroupSession = async () => {
+    if (!hasTeam) return;
+    const base = t("chat.panel.groupEntry");
+    const title =
+      projectChatSessions.length > 0 ? `${base} ${projectChatSessions.length + 1}` : base;
+    try {
+      const { session } = await sessionsApi.create({
+        title,
+        project_id: projectId,
+        origin: "group",
       });
+      const store = useChatStore.getState();
+      store.upsertSession({
+        id: session.id,
+        title: session.title ?? title,
+        created_at: session.created_at ?? new Date().toISOString(),
+        message_count: 0,
+        project_id: projectId,
+        origin: "group",
+      });
+      store.setActiveSession(session.id);
+      store.setActiveProject(projectId);
+      setQuery("");
+      setSearchOpen(false);
+      navigate(`/?project=${projectId}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
   };
 
   /** 功能：删除当前群聊会话（团队和项目保留；再拉团队生成新群聊）。 */
@@ -617,8 +624,11 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
     store.removeSessionLocal(session.id);
     if (activeId === session.id) store.setActiveSession(null);
     try {
-      await sessionsApi.remove(session.id);
+      const result = await sessionsApi.remove(session.id);
       toast.success(t("chat.session.deleted"));
+      if (result.group_memory_purged === false) {
+        toast.warning(t("chat.session.groupMemoryPurgeFailed"));
+      }
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {
         toast.success(t("chat.session.deleted"));
@@ -633,7 +643,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
   };
 
   /** 功能：拉入团队后确保群聊入口——无群聊会话时补建一个空群聊
-   *  （删除群聊后经顶部「选择团队」重新拉入即可恢复入口行）。 */
+   * （删除群聊后经顶部「选择团队」重新拉入即可恢复入口行）。 */
   const ensureGroupSession = async () => {
     await refreshProject();
     // 以 store 现状判断（memo 可能滞后于本帧）——已有群聊会话则不再补建
@@ -650,11 +660,13 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
       const { session } = await sessionsApi.create({
         title: t("chat.panel.groupEntry"),
         project_id: projectId,
+        origin: "group",
       });
       useChatStore.getState().upsertSession({
         id: session.id,
         title: session.title ?? "",
         created_at: session.created_at ?? new Date().toISOString(),
+        origin: "group",
         message_count: 0,
         project_id: projectId,
       });
@@ -664,7 +676,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
   };
 
   /** 功能：删除员工单聊——本地立即清条目/过程槽，后台删后端直聊线程（窗口边界）；
-   *  重新选择员工即新线程新上下文（团队记忆/产物不删）。 */
+   * 重新选择员工即新线程新上下文（产物不删）。 */
   const openFolder = () => {
     void companyApi
       .openFolder(projectId)
@@ -672,7 +684,14 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
       .catch((error) => toast.error(error instanceof Error ? error.message : String(error)));
   };
 
-  /** 功能：批量选择（仅群聊会话）——切换选中 / 全选 / 退出。 */
+  /** 功能：进入某分区批量态（秘书 / 群聊），可选初始选中项。 */
+  const enterBulk = (scope: "secretary" | "group", ids: string[] = []) => {
+    setBulk(true);
+    setBulkScope(scope);
+    setBulkSelected(ids);
+  };
+
+  /** 功能：批量选择——切换选中 / 全选 / 退出。 */
   const toggleBulkItem = (id: string) =>
     setBulkSelected((previous) =>
       previous.includes(id) ? previous.filter((item) => item !== id) : [...previous, id],
@@ -680,6 +699,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
 
   const exitBulk = () => {
     setBulk(false);
+    setBulkScope("");
     setBulkSelected([]);
   };
 
@@ -699,10 +719,12 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
     if (bulkSelected.length === 0) return;
     setBulkBusy(true);
     const removed = new Set<string>();
+    const purgeFailed: string[] = [];
     try {
       for (const id of bulkSelected) {
         try {
-          await sessionsApi.remove(id);
+          const result = await sessionsApi.remove(id);
+          if (result.group_memory_purged === false) purgeFailed.push(id);
         } catch (error) {
           // 404 = 后端已无该会话——仍计入已删并本地清理
           if (!(error instanceof ApiError && error.status === 404)) {
@@ -713,14 +735,19 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
         removed.add(id);
       }
       // 功能：秘书会话清空后助理条目不再保留（条目按需出现）
-      const secretaryIds = new Set(projectSecretarySessions.map((item) => item.id));
-      if (secretaryIds.size > 0 && bulkSelected.every((id) => secretaryIds.has(id))) {
-        const remaining = projectSecretarySessions.filter((item) => !removed.has(item.id));
-        if (remaining.length === 0) {
-          useUiStore.getState().hideAssistantEntry(projectId);
+      if (bulkScope === "secretary") {
+        const secretaryIds = new Set(projectSecretarySessions.map((item) => item.id));
+        if (secretaryIds.size > 0 && bulkSelected.every((id) => secretaryIds.has(id))) {
+          const remaining = projectSecretarySessions.filter((item) => !removed.has(item.id));
+          if (remaining.length === 0) {
+            useUiStore.getState().hideAssistantEntry(projectId);
+          }
         }
       }
       toast.success(t("chat.bulk.deleted").replace("{n}", String(removed.size)));
+      if (purgeFailed.length > 0) {
+        toast.warning(t("chat.session.groupMemoryPurgeFailed"));
+      }
       exitBulk();
     } catch (error) {
       // 中途失败：剔除已删项、保留未删项供重试（-3 修复——原实现残留已删 id
@@ -735,7 +762,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
   };
 
   /** 功能：单条删除会话（秘书/群聊共用）——本地立即清理，再请求后端。
-   *  群聊条目化：删除任一「团队群聊会话」= 清空整个群聊（单条目口径）。 */
+   * 群聊行只删当前会话及其群记忆，不影响同项目其他群会话。 */
   const onDeleteSession = async (session: SessionSummary) => {
     if (isEmployeeDmSession(session)) {
       setDeletingSession(null);
@@ -888,7 +915,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
 
   /** 功能：项目面板会话行（秘书/群聊共用）：批量态 = 原生 checkbox；常态 = 打开 + ⋯ 菜单。 */
   const panelSessionRow = (session: SessionSummary, scope: "secretary" | "group") => {
-    if (bulk) {
+    if (bulk && bulkScope === scope) {
       return (
         <label
           key={session.id}
@@ -941,10 +968,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
             testId={`panel-activity-${session.id}`}
           />
         </span>
-        {sessionMenu(session, () => {
-          setBulk(true);
-          setBulkSelected([session.id]);
-        })}
+        {sessionMenu(session, () => enterBulk(scope, [session.id]))}
       </div>
     );
   };
@@ -967,7 +991,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
     ) : null;
 
   /** 功能：头像行内置「＋新建会话」（聊天气泡加号）——与「更多」同口径：
-    * 平时隐形，条目悬浮 / 聚焦时浮现。 */
+   * 平时隐形，条目悬浮 / 聚焦时浮现。 */
   const newSessionButton = (scope: string, onNew: () => void) => {
     const hoverKey = `entry:${scope}`;
     return (
@@ -985,14 +1009,14 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
         onBlur={() => setHoveredId((prev) => (prev === hoverKey ? "" : prev))}
         onClick={onNew}
       >
-        {/* 2026-09-26 设计统一：与左栏「新建会话」共用自绘图标（同一语义同一图形） */}
+        {/* 设计统一：与左栏「新建会话」共用自绘图标（同一语义同一图形） */}
         <NewSessionIcon className="size-3.5" />
       </button>
     );
   };
 
   /** 功能：头像行内置「更多操作 ⋯」（三类行统一入口，菜单内容按行类型区分）。
-       * 与会话行同口径——平时隐形，条目悬浮 / 聚焦时浮现。 */
+      2026-10-09 用户拍板：与会话行同口径——平时隐形，条目悬浮 / 聚焦时浮现。 */
   const moreMenu = (scope: string, items: React.ReactNode) => {
     const hoverKey = `entry:${scope}`;
     return (
@@ -1032,7 +1056,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
       className="border-chat-hairline bg-card relative flex shrink-0 flex-col border-r [&_svg]:stroke-[1.75]"
       data-testid="project-panel"
     >
-      {/* 右边缘拖拽手柄（2026-10-03）：向右拖增宽，store 层钳制 [160, 224]；双击重置默认。
+      {/* 右边缘拖拽手柄：向右拖增宽，store 层钳制 [160, 224]；双击重置默认。
           right-0：8px 热区全在面板内（-right-1 伸出 4px 会污染 scrollWidth / 覆盖对话区边缘）。 */}
       <div
         data-testid="project-panel-resize-handle"
@@ -1057,7 +1081,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
         <span className="min-w-0 flex-1 truncate text-sm font-medium">
           {project?.name || projectId}
         </span>
-        {/* 2026-09-23 用户拍板：保留原「功能」icon（选择团队/选择员工；无团队灰色禁用）
+        {/* 用户拍板：保留原「功能」icon（选择团队/选择员工；无团队灰色禁用）
             2026-10-02 用户拍板：仅项目群聊会话显示（DM / 项目内秘书会话隐藏） */}
         {showFeatureMenu ? (
           <DropdownMenu>
@@ -1097,7 +1121,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
         </button>
       </div>
 
-      {/* 2026-09-23 用户拍板：搜索框常驻（与下方不设分割线）；聚焦即呈现历史任务 */}
+      {/* 用户拍板：搜索框常驻（与下方不设分割线）；聚焦即呈现历史任务 */}
       <div className="shrink-0 px-2 pt-2 pb-3">
         <div className="border-chat-hairline bg-card flex items-center gap-1.5 rounded-md border px-2 py-1.5">
           <Search className="text-chat-muted size-3.5 shrink-0" />
@@ -1165,8 +1189,8 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
           <>
             {showSecretaryEntry ? (
               <>
-                {/* 秘书（纯展示——2026-09-23 用户拍板：带头像组件不可点，仅会话行可点选中）
-                2026-09-29 用户拍板：右侧按钮位置与下方会话行 ⋯ **上下对齐**——
+                {/* 秘书
+用户拍板：右侧按钮位置与下方会话行 ⋯ **上下对齐**——
                 右侧内边距用 pr-1（会话行同值），不用 px-2（否则 ⋯ 右移 4px 错位）。 */}
                 <div
                   data-testid="panel-secretary-entry"
@@ -1187,7 +1211,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
                   {newSessionButton("secretary", () => newSession("secretary"))}
                   {moreMenu(
                     "secretary",
-                    sessionMenuItems(null, () => setBulk(true), false),
+                    sessionMenuItems(null, () => enterBulk("secretary"), false),
                   )}
                 </div>
                 {(secretaryAll
@@ -1211,79 +1235,47 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
               </>
             ) : null}
 
-            {/* 群聊入口行：hasTeam 且存在群聊会话时显示——删除群聊（清空会话）后整行消失，
-                经顶部「选择团队」重新拉入（幂等）自动补建空群聊恢复入口。 */}
-            {projectChatSessions.length > 0 ? (
-              <div
-                data-testid="panel-group-entry"
-                className={cn(
-                  "text-muted-foreground mt-1.5 flex w-full items-center gap-1 rounded-lg pr-1",
-                  groupEntrySelected && "bg-primary/5 text-foreground",
+            {/* 群聊段头：与助理条目同口径——静态不可点，+ 新建，⋯ 仅文件夹/批量；
+                会话行在段头下方独立展示，删除只作用于单条会话。 */}
+            {showGroupEntry ? (
+              <>
+                <div
+                  data-testid="panel-group-entry"
+                  className="text-muted-foreground mt-1.5 flex w-full items-center gap-1 rounded-lg pr-1"
+                  onMouseEnter={() => setHoveredId("entry:group")}
+                  onMouseLeave={() =>
+                    setHoveredId((prev) => (prev === "entry:group" ? "" : prev))
+                  }
+                >
+                  <div className="flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1">
+                    <TeamAvatar members={groupMembers} className="size-6" />
+                    <span className="min-w-0 flex-1 truncate text-xs">{groupEntryName}</span>
+                  </div>
+                  <SessionActivityIcon
+                    state={groupActivity(projectChatSessions)}
+                    testId="panel-group-activity"
+                  />
+                  {hasTeam ? newSessionButton("group", () => void newGroupSession()) : null}
+                  {moreMenu(
+                    "group",
+                    sessionMenuItems(null, () => enterBulk("group"), false),
+                  )}
+                </div>
+                {projectChatSessions.length === 0 ? (
+                  <p className="text-chat-muted/60 py-1 pl-[38px] text-[11px]">
+                    {t("chat.panel.sessionsEmpty")}
+                  </p>
+                ) : null}
+                {(groupAll ? projectChatSessions : projectChatSessions.slice(0, PANEL_LIMIT)).map(
+                  (session) => panelSessionRow(session, "group"),
                 )}
-                onMouseEnter={() => setHoveredId("entry:group")}
-                onMouseLeave={() => setHoveredId((prev) => (prev === "entry:group" ? "" : prev))}
-              >
-                {/* 团队总群聊：条目即入口（点击打开群聊，无会话则新建）；右侧直接删除 */}
-                <button
-                  type="button"
-                  data-testid="panel-group-open"
-                  className="flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1 text-left"
-                  onClick={openGroupChat}
-                >
-                  <TeamAvatar members={groupMembers} className="size-6" />
-                  <span className="min-w-0 flex-1 truncate text-xs">{groupEntryName}</span>
-                </button>
-                <SessionActivityIcon
-                  state={groupActivity(projectChatSessions)}
-                  testId="panel-group-activity"
-                />
-                {/* 功能：归档群聊（悬浮浮现）——归档后从面板隐藏，历史沉淀到项目 AGENTS.md */}
-                <button
-                  type="button"
-                  data-testid="panel-group-archive"
-                  className={ROW_ICON}
-                  title={t("chat.session.archive")}
-                  style={{
-                    opacity: hoveredId === "entry:group" ? 1 : 0,
-                    pointerEvents: hoveredId === "entry:group" ? "auto" : "none",
-                    transition: "opacity 120ms ease-out",
-                  }}
-                  onFocus={() => setHoveredId("entry:group")}
-                  onBlur={() => setHoveredId((prev) => (prev === "entry:group" ? "" : prev))}
-                  onClick={() => {
-                    if (canonicalGroupSession) {
-                      void archiveSession(canonicalGroupSession);
-                    } else {
-                      toast.info(t("chat.panel.sessionsEmpty"));
-                    }
-                  }}
-                >
-                  <Archive className="size-3.5" />
-                </button>
-                <button
-                  type="button"
-                  data-testid="panel-group-delete"
-                  className={ROW_ICON}
-                  title={t("chat.session.delete")}
-                  style={{
-                    opacity: hoveredId === "entry:group" ? 1 : 0,
-                    pointerEvents: hoveredId === "entry:group" ? "auto" : "none",
-                    transition: "opacity 120ms ease-out",
-                  }}
-                  onFocus={() => setHoveredId("entry:group")}
-                  onBlur={() => setHoveredId((prev) => (prev === "entry:group" ? "" : prev))}
-                  onClick={() => {
-                    // 删除团队总群聊（经确认弹窗；无会话可删时提示）
-                    if (canonicalGroupSession) {
-                      setDeletingSession(canonicalGroupSession);
-                    } else {
-                      toast.info(t("chat.panel.sessionsEmpty"));
-                    }
-                  }}
-                >
-                  <X className="size-3.5" />
-                </button>
-              </div>
+                {renderMore(
+                  projectChatSessions.length,
+                  groupAll,
+                  () => setGroupAll((value) => !value),
+                  "group-more",
+                )}
+              </>
             ) : null}
 
             {employeeRoleIds.map((roleId) => {
@@ -1343,7 +1335,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
         )}
       </div>
 
-      {/* 2026-09-25 用户拍板：与任务面板批量操作同款（面板内分区 + 按钮组，非弹窗） */}
+      {/* 用户拍板：与任务面板批量操作同款（面板内分区 + 按钮组，非弹窗） */}
       {bulk ? (
         <div
           data-testid="panel-bulk-bar"

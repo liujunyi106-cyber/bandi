@@ -22,14 +22,13 @@ from bandi.company.prompt_contract import (
 )
 from bandi.company.work_item import WorkItem, WorkItemTurnType
 from bandi.company.work_item_transition import DEPENDENCY_WORK_ITEM_IDS_KEY
-from bandi.context.sources.company_source import ROLE_IDENTITY_CONTEXT_KEY, TEAM_MEMORY_CONTEXT_KEY
+from bandi.context.sources.company_source import ROLE_IDENTITY_CONTEXT_KEY
 from bandi.core.account import DEFAULT_LOCAL_USER_ID
 from bandi.knowledge.scopes import KNOWLEDGE_BASES_PERMISSION_KEY, intersect_knowledge_bases
 from bandi.knowledge.scopes import reset_runtime_knowledge_bases as _reset_knowledge_scope
 from bandi.knowledge.scopes import reset_runtime_knowledge_employee as _reset_knowledge_employee
 from bandi.knowledge.scopes import set_runtime_knowledge_bases as _set_knowledge_scope
 from bandi.knowledge.scopes import set_runtime_knowledge_employee as _set_knowledge_employee
-from bandi.memory.episodic import get_shared_episodic
 
 logger = logging.getLogger(__name__)
 
@@ -226,7 +225,6 @@ class EngineSeatExecutor:
         interaction_provider: Any | None = None,
         slot_answer_provider: Any | None = None,
         artifact_store: Any | None = None,
-        team_memory_store: Any | None = None,
         group_context_provider: Any | None = None,
     ) -> None:
         self._active: dict[str, CompanyRuntime] = {}
@@ -254,7 +252,6 @@ class EngineSeatExecutor:
         # 群聊回合上下文提供者（按卡 round_id 渲染顺序/未读消息/PASS 规则）
         self._group_context_provider = group_context_provider
         # run_turn 按角色 home team 做团队分享摘要
-        self._team_memory_store = team_memory_store
 
     def bind_abort_provider(self, provider: Any) -> None:
         """功能：绑定工作项级 AbortController 查询器——run_turn 透传给 run_agent"""
@@ -570,42 +567,6 @@ class EngineSeatExecutor:
             logger.warning("role identity render failed (role_id=%s): %s", runtime.role_id, exc)
             return ""
 
-    def _role_team_id(self, runtime: CompanyRuntime) -> str:
-        """角色归属团队（OrgRole.team_id，团队共享记忆的分区键）——无角色/
-        查询失败返回空串。"""
-        if self._org_engine is None or not runtime.role_id:
-            return ""
-        get_role = getattr(self._org_engine, "get_role", None)
-        if get_role is None:
-            return ""
-        try:
-            role = get_role(runtime.role_id)
-        except Exception:  # noqa: BLE001 — 团队记忆是加固项，失败不阻断主链路
-            return ""
-        return str(getattr(role, "team_id", "") or "").strip() if role is not None else ""
-
-    def _render_team_memory(self, runtime: CompanyRuntime) -> str:
-        """Phase3：渲染团队记忆摘要（Team 层注入）——按角色 home team 查
-        episodic team 分区最近 5 条；无团队/无团队记忆/查询失败返回空串
-        （注入是加固项，不阻断执行主链路）。"""
-        team_id = self._role_team_id(runtime)
-        if not team_id:
-            return ""
-        store = self._team_memory_store or get_shared_episodic()
-        try:
-            episodes = store.list_recent(
-                project_id=runtime.project_id or None,
-                team_id=team_id,
-                limit=5,
-            )
-        except Exception as exc:  # noqa: BLE001 — 团队记忆读取失败不阻断执行主链路
-            logger.warning("team memory render failed (team_id=%s): %s", team_id, exc)
-            return ""
-        lines = [f"- {e.summary}" for e in episodes if (e.summary or "").strip()]
-        if not lines:
-            return ""
-        return "以下是本团队沉淀的共享经验，可作为执行参考：\n【团队记忆】\n" + "\n".join(lines)
-
     def _render_knowledge_hint(self, allowed_bases: list[str] | None, employee_id: str) -> str:
         """功能：把可见资料库名写进员工身份段——提升 knowledge_search 触发率。"""
         if allowed_bases is not None and not allowed_bases:
@@ -847,10 +808,6 @@ class EngineSeatExecutor:
         if identity_context:
             runtime.set_metadata(ROLE_IDENTITY_CONTEXT_KEY, identity_context)
         dm_conversation_id = dm_conversation_id_for(work_item)
-        if not dm_conversation_id:
-            team_memory_context = self._render_team_memory(runtime)
-            if team_memory_context:
-                runtime.set_metadata(TEAM_MEMORY_CONTEXT_KEY, team_memory_context)
         # finally 复位防泄漏到同任务后续运行
         knowledge_scope_token = _set_knowledge_scope(allowed_bases)
         employee_scope_token = _set_knowledge_employee(runtime.employee_id or None)

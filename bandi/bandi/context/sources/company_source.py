@@ -14,10 +14,6 @@ from bandi.utils.token_counter import TokenCounter
 # 本 source 读取转发进 system prompt——单一来源常量，双方同 imports）
 ROLE_IDENTITY_CONTEXT_KEY = "role_identity_context"
 
-TEAM_MEMORY_CONTEXT_KEY = "team_memory_context"
-
-# 注入序 Org→Team→Project→Role：团队记忆（Team 层）priority 高于身份段（Role 层）
-_TEAM_MEMORY_PRIORITY = 10
 # 身份段 priority 高于成员状态项（4）——上下文预算裁剪时优先保留
 _IDENTITY_PRIORITY = 9
 
@@ -37,27 +33,6 @@ class CompanyContextSource(RuntimeContextSource):
     def __init__(self, company_runtime: Any = None, max_members: int = 8) -> None:
         self._runtime = company_runtime
         self._max_members = max_members
-
-    def _collect_team_memory(self) -> ContextItem | None:
-        """功能：读取 runtime.metadata 中的团队记忆摘要（Phase3）——键缺失/
-        空串/duck-typing stub 均静默跳过。"""
-        get_meta = getattr(self._runtime, "metadata", None)
-        if get_meta is None:
-            return None
-        try:
-            text = str(get_meta(TEAM_MEMORY_CONTEXT_KEY) or "").strip()
-        except Exception:  # noqa: BLE001 — 团队记忆读取失败不阻断感知链路
-            return None
-        if not text:
-            return None
-        role_id = str(getattr(self._runtime, "role_id", "") or "").strip()
-        return ContextItem(
-            id=f"company:team_memory:{role_id or 'unknown'}",
-            source_type="company",
-            content=text,
-            priority=_TEAM_MEMORY_PRIORITY,
-            token_estimate=TokenCounter.estimate(text),
-        )
 
     def _collect_identity(self) -> ContextItem | None:
         """功能：读取 runtime.metadata 中的执行身份段——duck-typing 安全
@@ -90,9 +65,6 @@ class CompanyContextSource(RuntimeContextSource):
         if self._runtime is None:
             return []
         items: list[ContextItem] = []
-        team_memory = self._collect_team_memory()
-        if team_memory is not None:
-            items.append(team_memory)
         identity = self._collect_identity()
         if identity is not None:
             items.append(identity)

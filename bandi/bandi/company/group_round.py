@@ -439,6 +439,13 @@ class GroupRoundService:
         card = self._advance(round_)
         return [card] if card is not None else []
 
+    def delete_session_rounds(self, session_id: str) -> int:
+        """功能：会话删除后清理其回合记录，避免孤儿回合被 tick 再次推进。"""
+        delete = getattr(self._rounds, "delete_by_session", None)
+        if not callable(delete):
+            return 0
+        return int(delete(session_id))
+
     def context_for(self, work_item: Any) -> str:
         """功能：按卡的 round/slot 渲染本轮上下文；无回合元数据返回空。"""
         metadata = getattr(work_item, "metadata", None) or {}

@@ -251,9 +251,7 @@ class ContextLoader(RuntimeContextSource):
             )
         memory_context = ""
         if self._hierarchy is not None and (
-            self._group_conversation_id
-            or self._dm_conversation_id
-            or (self._project_id and self._employee_id)
+            self._group_conversation_id or self._dm_conversation_id or self._project_id
         ):
             # 功能：builder 后缀裁剪后先取到高优先级记忆
             memory_context = self._hierarchy.collect_memory_context(

@@ -117,7 +117,6 @@ class TestFieldMatrix:
             "review_attempt",
             "rework_feedback",
             "delivery_package",
-            "self_evolution_work_item",
             "runtime_v2",
             "working_memory",
             "peer_wait",

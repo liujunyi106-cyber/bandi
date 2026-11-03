@@ -38,7 +38,7 @@ def test_project_root_accepts_existing_directory(fake_home: Path) -> None:
 
 @pytest.mark.parametrize(
     "session_id",
-    ["role-session::p::t::r", "role-runtime::r::x", "skill_distill:abc", "team-pending-1"],
+    ["role-session::p::t::r", "role-runtime::r::x", "skill_distill:abc", "automation:1"],
 )
 def test_reserved_session_ids_detected(session_id: str) -> None:
     assert _is_reserved_session_id(session_id) is True

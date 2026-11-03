@@ -1,10 +1,10 @@
 /**
-  * 功能：对话主视图（@base docs/前端设计规划.md 会话行 / 交互规范）。
+ * 功能：对话主视图（）。
  * 组成：会话详情加载 + 消息流（keyed 增量）+ 过程块 + 中断恢复提示 + 回滚暂存条 +
  * 挂起交互卡 + Composer（发送/转向/停止）。群聊·单聊视图见 pages/chat 分流。
  */
 import { CircleAlert } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Composer } from "@/components/chat/Composer";
@@ -12,6 +12,7 @@ import { EmployeePickerDialog } from "@/components/chat/EmployeePickerDialog";
 import { GroupRoundBar } from "@/components/chat/GroupRoundBar";
 import { InteractionCard, type InteractionDraft } from "@/components/chat/InteractionCard";
 import { PendingEmployeeReply } from "@/components/chat/PendingEmployeeReply";
+import { PendingSendBar } from "@/components/chat/PendingSendBar";
 import { LiveProgressList } from "@/components/chat/LiveProgressList";
 import { APPROVAL_FRAME_PREFIX, useCompanyApprovals } from "@/hooks/use-company-approvals";
 import { MessageList } from "@/components/chat/MessageList";
@@ -42,6 +43,7 @@ import {
   useChatStore,
   type ChatAttachment,
   type ChatMessage,
+  type PendingSend,
 } from "@/stores/chat-store";
 import { usePanelStore } from "@/stores/panel-store";
 import { useUiStore } from "@/stores/ui-store";
@@ -52,6 +54,7 @@ function errorMessage(error: unknown): string {
 
 /** 稳定空引用（zustand selector 返回值必须引用稳定，否则触发无限重渲）。 */
 const EMPTY_MESSAGES: ChatMessage[] = [];
+const EMPTY_PENDING_SENDS: PendingSend[] = [];
 
 /** 停止受理后等待终结帧的窗口（超时未见 done → 本地兜底定稿，防残留）。 */
 const ABORT_SETTLE_WINDOW_MS = 2500;
@@ -87,6 +90,14 @@ export function ChatView() {
   const sessionKey = activeSessionId ?? "";
   // busy 按会话判定——每会话独立流槽，其它会话的流不影响本会话。
   const busy = Boolean(streams[sessionKey]);
+  const pendingSends = useChatStore(
+    (state) => state.pendingSendsBySession[sessionKey] ?? EMPTY_PENDING_SENDS,
+  );
+  const [composerPrefill, setComposerPrefill] = useState<{
+    token: number;
+    text: string;
+    attachments: ChatAttachment[];
+  } | null>(null);
 
   // 空态秘书提示的团队判定——与项目面板 hasTeam 同源（项目成员数）；
   // 无项目归属时回落全局员工列表（保持原有语义）
@@ -393,12 +404,17 @@ export function ChatView() {
     };
     // 消息数变化重拉（派卡发生在执行中；新回复到达即应看到新子卡）
   }, [activeProjectId, messageCountForTasks, tasksRefreshTick]);
-  // 功能：群聊有员工任务正在执行（running）——Composer 显示停止键 + 双 Esc 可停止
+  // 功能：本会话员工任务正在执行（running）——多群会话时不得误判/误停其他会话
+  const activeThreadId = String(activeSession?.thread_id ?? "");
   const teamRunningItems = useMemo(
-    () => projectRawItems.filter((item) => item.phase === "running"),
-    [projectRawItems],
+    () =>
+      projectRawItems.filter(
+        (item) => item.phase === "running" && String(item.thread_id ?? "") === activeThreadId,
+      ),
+    [projectRawItems, activeThreadId],
   );
   const teamRunning = teamRunningItems.length > 0;
+  const executing = busy || teamRunning || activeRound?.status === "running";
   const stopTeam = async () => {
     if (!teamRunningItems.length) return;
     const results = await Promise.allSettled(
@@ -462,12 +478,12 @@ export function ChatView() {
 
   // ── v5：会话右栏已提升为通高第四栏（SessionPanelHost 挂 AppShell）；本视图只保留任务条联动 ──
 
-  const send = (text: string, attachments?: ChatAttachment[]) => {
+  const send = (text: string, attachments?: ChatAttachment[]): boolean => {
     const store = useChatStore.getState();
     // 流槽按会话隔离——别的会话回复中不再阻塞本会话发送；
-    // 仅本会话仍在回复时兜底拒绝（正常由 Composer busy→steer 处理）。
+    // 仅本会话仍在回复时兜底拒绝（执行中由 Composer 入待发送队列）。
     if (activeSessionId && store.streams[activeSessionId]) {
-      return;
+      return false;
     }
     if (projectDissolved && activeSessionId && !isSecretarySession) {
       void sessionsApi
@@ -483,7 +499,7 @@ export function ChatView() {
           setProjectLocked(true);
         })
         .catch((error) => toast.error(errorMessage(error)));
-      return;
+      return false;
     }
     // 会话 id 有效性校验：列表已加载但查无此会话（persist 恢复的幽灵 id）→ 视为新会话
     const known =
@@ -586,6 +602,7 @@ export function ChatView() {
     // 来源标记只在建会话时生效一次（防污染后续消息）
     store.setPendingSessionOrigin("");
     setPendingEmployee(null);
+    return true;
   };
 
   // 中断重试：重试属于**新的一次请求**——先终止内核侧
@@ -708,6 +725,52 @@ export function ChatView() {
       })
       .catch((error) => toast.error(errorMessage(error)));
   };
+
+  const removePending = (id: string) => {
+    if (sessionKey) useChatStore.getState().removePendingSend(sessionKey, id);
+  };
+  const sendRef = useRef(send);
+  sendRef.current = send;
+  const removePendingRef = useRef(removePending);
+  removePendingRef.current = removePending;
+
+  const queueSend = (text: string, attachments?: ChatAttachment[]) => {
+    if (!sessionKey) return;
+    useChatStore.getState().enqueuePendingSend(sessionKey, text, attachments ?? []);
+  };
+
+  const sendPendingNow = (item: PendingSend) => {
+    if (executing) {
+      if (item.attachments.length > 0) {
+        toast.info(t("chat.pendingSend.attachmentWait"));
+        return;
+      }
+      sessionsApi
+        .steer(sessionKey, item.text)
+        .then(() => removePending(item.id))
+        .catch((error) => toast.error(errorMessage(error)));
+      return;
+    }
+    if (send(item.text, item.attachments)) removePending(item.id);
+  };
+
+  const editPending = (item: PendingSend) => {
+    setComposerPrefill({
+      token: Date.now(),
+      text: item.text,
+      attachments: item.attachments,
+    });
+    removePending(item.id);
+  };
+
+  useEffect(() => {
+    if (executing || !sessionKey) return;
+    const withAttachments = pendingSends.find((item) => item.attachments.length > 0);
+    if (!withAttachments) return;
+    if (sendRef.current(withAttachments.text, withAttachments.attachments)) {
+      removePendingRef.current(withAttachments.id);
+    }
+  }, [executing, sessionKey, pendingSends]);
 
   const stop = () => {
     if (!activeSessionId) return;
@@ -891,7 +954,7 @@ export function ChatView() {
             onClear={() => void clearRevert()}
           />
         ) : null}
-        {/* 2026-09-23 用户拍板：会话内搜索/历史提问已移至顶栏（AppHeader 渲染，与连接状态同排） */}
+        {/* 用户拍板：会话内搜索/历史提问已移至顶栏（AppHeader 渲染，与连接状态同排） */}
 
         {activeRound ? <GroupRoundBar round={activeRound} /> : null}
 
@@ -950,7 +1013,7 @@ export function ChatView() {
         {/* 员工执行的实时过程已挪入消息流尾部（MessageList children——随滚动，
             不再固定挤占消息区）；此处原独立渲染块删除 */}
 
-        {/* 2026-09-29 用户拍板：新建会话英雄区——品牌字段 + 输入框组垂直居中
+        {/* 用户拍板：新建会话英雄区——品牌字段 + 输入框组垂直居中
             （不再显示秘书头像；秘书提示改挂在输入框下方 below 槽） */}
         <div
           className={cn(
@@ -988,6 +1051,7 @@ export function ChatView() {
           ) : null}
           <Composer
             busy={busy}
+            executing={executing}
             disabled={projectLocked}
             teamRunning={teamRunning}
             enhanced
@@ -998,15 +1062,27 @@ export function ChatView() {
             onPickEmployee={() => setEmployeePickerOpen(true)}
             onClearEmployee={() => setPendingEmployee(null)}
             allowEmployeePicker={isNewSession && !activeSessionTargetRole}
+            prefill={composerPrefill}
+            onPrefillConsumed={() => setComposerPrefill(null)}
             onSend={send}
+            onQueue={queueSend}
             onSteer={steer}
             onStop={() => {
               if (busy) stop();
               if (teamRunning) void stopTeam();
             }}
             above={
-              interrupted || pendingInteraction ? (
+              pendingSends.length > 0 || interrupted || pendingInteraction ? (
                 <div className="flex flex-col gap-2">
+                  {pendingSends.length > 0 ? (
+                    <PendingSendBar
+                      items={pendingSends}
+                      executing={executing}
+                      onSendNow={sendPendingNow}
+                      onEdit={editPending}
+                      onDelete={(item) => removePending(item.id)}
+                    />
+                  ) : null}
                   {interrupted ? (
                     <div
                       className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs"
@@ -1042,7 +1118,7 @@ export function ChatView() {
                   ) : null}
                   {pendingInteraction ? (
                     <div className="flex flex-col gap-1" data-testid="interaction-stack">
-                      {/* 2026-10-01 用户拍板：卡序指示从卡外（本处原「待决策 N 项 · 第 N 项」条）
+                      {/* 用户拍板：卡序指示从卡外（本处原「待决策 N 项 · 第 N 项」条）
                           挪进 InteractionCard 头部（倒计时左侧，形如 1/2） */}
                       <InteractionCard
                         key={pendingInteraction.interaction_id}
@@ -1083,7 +1159,7 @@ export function ChatView() {
             }
             below={isNewSession ? <ProjectSpaceCard /> : undefined}
           />
-          {/* 2026-09-29 用户拍板：秘书提示在「整个会话框 + 项目空间卡」之外（壳外、面板居中）；
+          {/* 用户拍板：秘书提示在「整个会话框 + 项目空间卡」之外（壳外、面板居中）；
             第五轮：与会话框/卡片间距再收（负 margin 抵消 Composer 组件底部留白 pb-5） */}
           {showSecretaryHint ? (
             <p

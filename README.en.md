@@ -93,7 +93,7 @@ Everything lives in `~/.bandi/` on your machine. Both ports bind to `127.0.0.1` 
 
 - 🏢 **An org runtime, not another chat box** — one turn kernel drives direct chat, group chat, background jobs and sub-agents; every employee has its own duties, tool allowlist, skills, SOP and model tier.
 - 🧩 **Project-based scheduling** — create projects, split work items, dispatch along dependency chains; concurrency gates, leases, retries and close-out live in the scheduler, you approve at checkpoints.
-- 🧠 **Layered memory** — episodic / long-term / team / Markdown, with time decay and usage-based revival; low-value noise is gated out and anything important enters memory only after your approval.
+- 🧠 **Layered memory** — episodic / long-term / Markdown, with time decay and usage-based revival; low-value noise is gated out and anything important enters memory only after your approval.
 - 🔐 **Permissions & sandbox** — layered rules (deny / ask / bypass), path allowlists, command blacklist, risk-level interception; writes and shell commands can require a second confirmation.
 - 🔍 **Observability** — every tool call, reasoning step and token is accounted for; trajectory replay plus usage and cost stats.
 - 🧱 **Skills & SOPs** — reusable skill cards plus a visual SOP editor (add/remove nodes, wire edges, save bumps a patch version).

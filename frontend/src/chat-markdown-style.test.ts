@@ -1,6 +1,6 @@
 /** 功能：消息正文 Markdown 渲染回归（样式表契约）——
- *  Tailwind preflight 会清掉 ol/ul/li/p 的列表符号、缩进与间距，
- *  导致 marked 渲染出的有序列表视觉上「不是分点」——此处钉住作者手写规则。 */
+ * Tailwind preflight 会清掉 ol/ul/li/p 的列表符号、缩进与间距，
+ * 导致 marked 渲染出的有序列表视觉上「不是分点」——此处钉住作者手写规则。 */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -10,7 +10,7 @@ import { expect, it } from "vitest";
 const css = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
 
 /** 功能：按完整选择器（形如 ".chat-md ol {" 或 ".chat-md ol,"）取其声明块。
- *  occurrence 用于跳过更早的合并规则（`.chat-md ol,` 块内也含 `.chat-md ul {` 子串）。 */
+ * occurrence 用于跳过更早的合并规则（`.chat-md ol,` 块内也含 `.chat-md ul {` 子串）。 */
 function rule(selector: string, occurrence = 1): string {
   let start = -1;
   for (let index = 0; index < occurrence; index += 1) {

@@ -1,6 +1,6 @@
 /**
-  * 功能：会话域全局状态（zustand，@base docs/前端设计规划.md 交互规范）。
-  * 核心机制
+ * 功能：会话域全局状态（zustand，）。
+ * 核心机制：
  * - keyed 增量归并：发送时开 pending 槽（`<sessionId>:pending:<ts>`），content_delta 累积
  * 工具事件挂过程节点、done/error 定稿——按槽定位，多会话保留（流式期间切会话不串流）；
  * - 会话/消息缓存在 store；通知中心（events.host 聚合）与挂起交互同店；
@@ -14,7 +14,7 @@ import type { GroupRoundSnapshot } from "@/services/company";
 import { sessionsApi } from "@/services/sessions";
 import type { InteractionFrame, SessionEntry, SessionSummary } from "@/services/sessions";
 
-/* CoT 思考节点。 */
+/** CoT 思考节点。 */
 export interface ProcessThoughtNode {
   id: string;
   kind: "thought";
@@ -31,7 +31,7 @@ export interface ProcessThoughtNode {
   startedAt?: number;
 }
 
-/* 工具调用节点。 */
+/** 工具调用节点。 */
 /** 功能：知识库引用（knowledge_search.citations 的展示子集）。 */
 export interface CitationRef {
   id?: string;
@@ -66,7 +66,7 @@ export interface ProcessToolNode {
   children?: ProcessNode[];
 }
 
-/* Skill 使用组节点。 */
+/** Skill 使用组节点。 */
 export interface ProcessSkillNode {
   id: string;
   kind: "skill";
@@ -139,7 +139,7 @@ function settleThought(node: ProcessThoughtNode, now: number = Date.now()): Proc
   return { ...rest, status: "success", durationMs };
 }
 
-/* 任务台账条目。 */
+/** 任务台账条目。 */
 export interface TaskLedgerItem {
   id: string;
   title: string;
@@ -147,7 +147,7 @@ export interface TaskLedgerItem {
   status: "pending" | "in_progress" | "completed";
 }
 
-/* 员工执行过程事件。 */
+/** 员工执行过程事件。 */
 export interface EmployeeProgressEvent {
   type: string;
   data?: Record<string, unknown>;
@@ -168,7 +168,7 @@ export function nodesFromEvents(events: unknown[]): ProcessNode[] {
   return nodes;
 }
 
-/* 功能：员工过程事件 → 过程节点归并。 */
+/** 功能：员工过程事件 → 过程节点归并。 */
 export function applyProgressNode(
   nodes: ProcessNode[],
   event: EmployeeProgressEvent,
@@ -305,7 +305,7 @@ export function applyProgressNode(
     }
     case "done":
     case "error": {
-      // 终态收尾
+      // 终态收尾（真机实证：done/error 落入 default 后省略收尾，快照回放的
       // running 节点永久「正在执行」——刷新后残留）；全部未结节点结为已结束。
       return next.map((node) => {
         if (node.kind === "thought" && node.status === "running") return settleThought(node);
@@ -349,7 +349,7 @@ export interface ChatMessage {
   /** 该回复对应的工作项 id（线程帧 message_id = work item id）——成员任务卡据此
    * 关联子卡（parent_id 匹配）。 */
   workItemId?: string;
-  /* 对话附件。 */
+  /** 对话附件。 */
   attachments?: ChatAttachment[];
     /** 回复底部「下一步」交接行：下一个待执行卡与执行者。 */
     nextAssignee?: { roleId: string; card: string };
@@ -362,7 +362,15 @@ export interface ChatAttachment {
   size: number;
 }
 
-/* 草稿附件。 */
+/** 执行中待发送消息（文本必须点“立即发送”；带附件回合结束自动发送）。 */
+export interface PendingSend {
+  id: string;
+  text: string;
+  attachments: ChatAttachment[];
+  createdAt: string;
+}
+
+/** 草稿附件。 */
 export interface PendingAttachment {
   upload_id: string;
   name: string;
@@ -413,8 +421,8 @@ interface ChatState {
   /** 每会话最近一轮终态（后端 `terminal_reason` 原值）——中断横幅按原因分档。 */
   sessionTerminals: Record<string, string>;
   /** 已从项目列表移除的项目，其下旧会话 id 快照（project_id → session_id 列表；本地隐藏位）。
-   *  语义：移除项目 = 该项目解绑且旧会话不再显示；后端记录与磁盘文件不动，
-   *  重新加入该项目是全新起点（新建会话 id 不在本表内，照常显示）。 */
+   * 语义：移除项目 = 该项目解绑且旧会话不再显示；后端记录与磁盘文件不动，
+   * 重新加入该项目是全新起点（新建会话 id 不在本表内，照常显示）。 */
   dismissedProjectSessions: Record<string, string[]>;
   messagesBySession: Record<string, ChatMessage[]>;
   /** 按会话流槽——A 会话回复中不阻塞 B 会话发送。 */
@@ -422,7 +430,7 @@ interface ChatState {
   interactions: Record<string, InteractionFrame>;
   notifications: NotificationItem[];
   stagedRevert: StagedRevert | null;
-  /* 会话任务台账。 */
+  /** 会话任务台账。 */
   tasksBySession: Record<string, TaskLedgerItem[]>;
   /** 群聊回合状态（group_round 帧 / GET 回合快照）——key = session_id */
   roundsBySession: Record<string, GroupRoundSnapshot>;
@@ -432,7 +440,9 @@ interface ChatState {
   employeeProgressText: Record<string, string>;
   /** 员工过程槽「已完成」标记（done/error 后置位；新执行首帧到达即清槽重建——过程块保留可回顾）。 */
   employeeProgressDone: Record<string, boolean>;
-  /* 草稿附件。 */
+  /** 执行中待发送队列（按会话隔离；文本需手动立即发送，附件回合结束自动发送）。 */
+  pendingSendsBySession: Record<string, PendingSend[]>;
+  /** 草稿附件。 */
   draftAttachments: PendingAttachment[];
   /** 草稿文件引用（Composer 引用 chips；发送时转 @路径 文本——）。 */
   draftReferences: DraftReference[];
@@ -457,7 +467,7 @@ interface ChatState {
   /** 功能：清掉本地系统提示（员工回复落位后「已转交员工」等过渡注记应消失）。 */
   clearTransientNotes: (sessionId: string) => void;
   /** 员工工作回复注入（thread_message 帧——团队会话/群聊的消息流呈现；
-    * process = 该员工本次执行过程。 */
+   * process = 该员工本次执行过程。 */
   appendEmployeeReply: (
     sessionId: string,
     reply: {
@@ -471,7 +481,15 @@ interface ChatState {
     },
   ) => void;
   appendLocalUser: (sessionId: string, content: string, attachments?: ChatAttachment[]) => string;
-  /* 功能：草稿附件增删改清。 */
+  /** 功能：执行中待发送队列（按会话隔离）。 */
+  enqueuePendingSend: (
+    sessionId: string,
+    text: string,
+    attachments?: ChatAttachment[],
+  ) => string;
+  removePendingSend: (sessionId: string, id: string) => void;
+  clearPendingSends: (sessionId: string) => void;
+  /** 功能：草稿附件增删改清。 */
   addDraftAttachment: (item: PendingAttachment) => void;
   updateDraftAttachment: (uploadId: string, patch: Partial<PendingAttachment>) => void;
   removeDraftAttachment: (uploadId: string) => void;
@@ -516,7 +534,7 @@ interface ChatState {
     event: EmployeeProgressEvent,
   ) => void;
   finishEmployeeProgress: (projectId: string, threadId: string, roleId: string) => void;
-  /* 功能：取出并清空员工过程槽。 */
+  /** 功能：取出并清空员工过程槽。 */
   consumeEmployeeProgress: (projectId: string, threadId: string, roleId: string) => ProcessNode[];
   clearEmployeeProgress: (projectId: string, threadId: string, roleId: string) => void;
   /**
@@ -584,7 +602,7 @@ const NOTIFICATION_CAP = 100;
 
 // ── 纯函数 reducer（行为测试直接覆盖）──────────────────────────────────────
 
-/* 功能：解析条目 metadata 中的附件列表。 */
+/** 功能：解析条目 metadata 中的附件列表。 */
 export function parseEntryAttachments(metadata: unknown): ChatAttachment[] | undefined {
   let raw: unknown = metadata;
   if (typeof raw === "string") {
@@ -610,7 +628,7 @@ export function parseEntryAttachments(metadata: unknown): ChatAttachment[] | und
 }
 
 /** 功能：会话条目 → 气泡模型（只保留有内容的 user/assistant/system 条目）。 */
-/* 功能：process 条目 metadata 还原为过程节点。 */
+/** 功能：process 条目 metadata 还原为过程节点。 */
 export function parseEntryProcessNodes(metadata: unknown): ProcessNode[] | undefined {
   let raw: unknown = metadata;
   if (typeof raw === "string") {
@@ -647,7 +665,7 @@ export function entriesToMessages(sessionId: string, entries: SessionEntry[]): C
     if (!String(entry.content ?? "").trim()) continue;
     const attachments = parseEntryAttachments(entry.metadata);
     // 员工产出回写条目（后端 append_employee_reply）→ 带发送者身份渲染
-    // （头像 tone 走 senderRole、名字优先 senderName 快照）——与 live thread_message 注入
+    // （头像 tone 走 senderRole、名字优先 senderName 快照）——与 live thread_message 注入同构
     const employeeReply = parseEntryEmployeeReply(entry.metadata);
     messages.push({
       id: entry.id,
@@ -732,7 +750,7 @@ export function applyDelta(
   );
 }
 
-/* 功能：追加 CoT 思考增量——挂到最后一个进行中的 thought 节点，无则开新节点。 */
+/** 功能：追加 CoT 思考增量——挂到最后一个进行中的 thought 节点，无则开新节点。 */
 export function applyThinking(
   messages: ChatMessage[],
   pendingId: string,
@@ -761,7 +779,7 @@ export function applyThinking(
   });
 }
 
-/* 功能：Skill 注入归并——合并技能名并累加次数；节点插过程块首位。 */
+/** 功能：Skill 注入归并——合并技能名并累加次数；节点插过程块首位。 */
 export function applySkillInjected(
   messages: ChatMessage[],
   pendingId: string,
@@ -951,7 +969,7 @@ export function applySubagentProgress(
   });
 }
 
-/* 功能：child 子树单步累积。 */
+/** 功能：child 子树单步累积。 */
 function applyChildProgress(
   children: ProcessNode[],
   parentNodeId: string,
@@ -1219,6 +1237,7 @@ export const useChatStore = create<ChatState>()(
       sessionTerminals: {},
       dismissedProjectSessions: {},
       messagesBySession: {},
+      pendingSendsBySession: {},
       draftAttachments: [],
       draftReferences: [],
       streams: {},
@@ -1251,6 +1270,8 @@ export const useChatStore = create<ChatState>()(
           // 任务台账/挂起交互随会话一并回收（防 map 键常驻增长、会话重建后读到旧条目）
           const { [sessionId]: _tasks, ...restTasks } = state.tasksBySession;
           const { [sessionId]: _round, ...restRounds } = state.roundsBySession;
+          const { [sessionId]: _pendingSends, ...restPendingSends } =
+            state.pendingSendsBySession;
           const restInteractions = Object.fromEntries(
             Object.entries(state.interactions).filter(
               ([, frame]) => frame.session_id !== sessionId,
@@ -1261,6 +1282,7 @@ export const useChatStore = create<ChatState>()(
             messagesBySession: rest,
             tasksBySession: restTasks,
             roundsBySession: restRounds,
+            pendingSendsBySession: restPendingSends,
             interactions: restInteractions,
             activeSessionId: state.activeSessionId === sessionId ? null : state.activeSessionId,
             streams: Object.fromEntries(
@@ -1313,7 +1335,7 @@ export const useChatStore = create<ChatState>()(
         })),
 
       /** 项目移出列表后，其下旧会话不再出现在任何会话列表（本地隐藏位）。
-       *  只记 id 快照——重新加入该项目时新建的会话不在快照内，照常显示。 */
+       * 只记 id 快照——重新加入该项目时新建的会话不在快照内，照常显示。 */
       dismissProjectSessions: (projectId, sessionIds) =>
         set((state) => {
           if (sessionIds.length === 0) return state;
@@ -1426,6 +1448,45 @@ export const useChatStore = create<ChatState>()(
         });
         return pendingId;
       },
+
+      enqueuePendingSend: (sessionId, text, attachments = []) => {
+        const content = text.trim();
+        if (!content && attachments.length === 0) return "";
+        const id = `pending-send:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
+        set((state) => ({
+          pendingSendsBySession: {
+            ...state.pendingSendsBySession,
+            [sessionId]: [
+              ...(state.pendingSendsBySession[sessionId] ?? []),
+              {
+                id,
+                text: content,
+                attachments: [...attachments],
+                createdAt: new Date().toISOString(),
+              },
+            ],
+          },
+        }));
+        return id;
+      },
+
+      removePendingSend: (sessionId, id) =>
+        set((state) => {
+          const next = (state.pendingSendsBySession[sessionId] ?? []).filter(
+            (item) => item.id !== id,
+          );
+          const pendingSendsBySession = { ...state.pendingSendsBySession };
+          if (next.length > 0) pendingSendsBySession[sessionId] = next;
+          else delete pendingSendsBySession[sessionId];
+          return { pendingSendsBySession };
+        }),
+
+      clearPendingSends: (sessionId) =>
+        set((state) => {
+          const pendingSendsBySession = { ...state.pendingSendsBySession };
+          delete pendingSendsBySession[sessionId];
+          return { pendingSendsBySession };
+        }),
 
       addDraftAttachment: (item) =>
         set((state) => ({ draftAttachments: [...state.draftAttachments, item] })),

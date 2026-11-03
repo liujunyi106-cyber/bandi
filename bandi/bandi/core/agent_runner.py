@@ -1260,6 +1260,67 @@ def _hierarchy_scope(hierarchy: Any) -> str:
     return _store_scope(getattr(hierarchy, "_global", None))
 
 
+def _persist_working_memory(
+    ctx: ExecutionContext,
+    manager: Any,
+    session_id: str,
+    turn_index: int,
+    registry: Any,
+    retry_refs: Any,
+    *,
+    raw_input: str,
+    final_message: str,
+    terminal: str,
+) -> bool:
+    """功能：写工作记忆 turn 快照（普通/群聊/单聊共用）。"""
+    working_store = getattr(manager, "working", None)
+    if working_store is None or not raw_input.strip():
+        return False
+    from bandi.memory.session_memory import build_turn_snapshot
+    from bandi.memory.working import ToolInvocation
+    from bandi.observability.write_failures import RetryDependencyMissingError
+
+    tool_invocations = [
+        ToolInvocation(
+            name=r.tool_name,
+            success=r.success,
+            result_preview=(str(r.output) if r.output is not None else "")[:200],
+            error=r.error,
+            duration_ms=r.duration_ms,
+            session_id=session_id,
+            invocation_id=r.tool_call_id or None,
+        )
+        for r in ctx.tool_results or []
+    ]
+    working_key = f"turn:{turn_index}"
+    meta = getattr(ctx, "meta", None)
+    ledger = meta.get("task_ledger") if isinstance(meta, dict) else None
+    working_value = build_turn_snapshot(
+        raw_input=raw_input,
+        final_message=final_message,
+        terminal=terminal,
+        messages=getattr(ctx, "messages", None) or [],
+        turn_index=turn_index,
+        ledger_items=list(getattr(ledger, "items", None) or []),
+    )
+
+    def _write_working_on(refs: Any) -> None:
+        store = getattr(refs.manager, "working", None)
+        if store is None:
+            raise RetryDependencyMissingError("working store unavailable")
+        for invocation in tool_invocations:
+            store.append_tool(invocation)
+        store.set(working_key, working_value, session_id=session_id)
+
+    return _run_write(
+        registry,
+        "working",
+        lambda: _write_working_on(retry_refs),
+        retry=_write_working_on,
+        scope=retry_refs.scope_for("working"),
+    )
+
+
 async def _persist_memory(
     ctx: ExecutionContext,
     manager: Any,
@@ -1288,7 +1349,6 @@ async def _persist_memory(
         stage_long_term_write,
         stage_write,
     )
-    from bandi.memory.working import ToolInvocation
     from bandi.observability.write_failures import RetryDependencyMissingError
 
     registry = get_registry()
@@ -1410,6 +1470,18 @@ async def _persist_memory(
                 channels.append("project_md")
             except Exception as exc:  # noqa: BLE001 — 作用域记忆写入失败不阻断回合
                 logger.warning("%s markdown write failed: %s", scope_prefix, exc)
+        if _persist_working_memory(
+            ctx,
+            manager,
+            session_id,
+            turn_index,
+            registry,
+            retry_refs,
+            raw_input=raw_input,
+            final_message=final_message,
+            terminal=terminal,
+        ):
+            channels.append("working")
         await _emit_memory_written(ctx, session_id, turn_index, channels)
         return
 
@@ -1470,50 +1542,18 @@ async def _persist_memory(
         ):
             channels.append("episodic")
 
-    working_store = getattr(manager, "working", None)
-    if working_store is not None and raw_input.strip():
-        from bandi.memory.session_memory import build_turn_snapshot
-
-        tool_invocations = [
-            ToolInvocation(
-                name=r.tool_name,
-                success=r.success,
-                result_preview=(str(r.output) if r.output is not None else "")[:200],
-                error=r.error,
-                duration_ms=r.duration_ms,
-                session_id=session_id,
-                invocation_id=r.tool_call_id or None,
-            )
-            for r in ctx.tool_results or []
-        ]
-        working_key = f"turn:{turn_index}"
-        _meta = getattr(ctx, "meta", None)
-        _ledger = _meta.get("task_ledger") if isinstance(_meta, dict) else None
-        working_value = build_turn_snapshot(
-            raw_input=raw_input,
-            final_message=final_message,
-            terminal=terminal,
-            messages=getattr(ctx, "messages", None) or [],
-            turn_index=turn_index,
-            ledger_items=list(getattr(_ledger, "items", None) or []),
-        )
-
-        def _write_working_on(refs: _MemoryRetryRefs) -> None:
-            store = getattr(refs.manager, "working", None)
-            if store is None:
-                raise RetryDependencyMissingError("working store unavailable")
-            for invocation in tool_invocations:
-                store.append_tool(invocation)
-            store.set(working_key, working_value, session_id=session_id)
-
-        if _run_write(
-            registry,
-            "working",
-            lambda: _write_working_on(retry_refs),
-            retry=_write_working_on,
-            scope=retry_refs.scope_for("working"),
-        ):
-            channels.append("working")
+    if _persist_working_memory(
+        ctx,
+        manager,
+        session_id,
+        turn_index,
+        registry,
+        retry_refs,
+        raw_input=raw_input,
+        final_message=final_message,
+        terminal=terminal,
+    ):
+        channels.append("working")
 
     if not final_message:
         await _emit_memory_written(ctx, session_id, turn_index, channels)
@@ -2263,7 +2303,7 @@ async def run_agent_turn(
             ctx.meta["project_id"] = project_id or ""
             ctx.meta["employee_id"] = employee_id or ""
 
-        if hierarchy is None and project_id and employee_id:
+        if hierarchy is None and project_id:
             hierarchy = _build_hierarchy_manager(Path.home() / ".bandi" / "data", store)
             # 其内部 SQLite 连接（global/work_items），外部传入的不关
             hierarchy_owned = True

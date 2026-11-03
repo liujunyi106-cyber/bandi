@@ -436,6 +436,14 @@
       "maxTurns": "已达本轮最大步数，可重试或把任务拆小。",
       "unknown": "上一轮回复因网络或模型原因中断了，可重试本轮"
     },
+    "pendingSend": {
+      "label": "待发送",
+      "sendNow": "立即发送",
+      "edit": "编辑",
+      "delete": "删除",
+      "attachmentOnly": "附件",
+      "attachmentWait": "附件需等本轮结束后发送"
+    },
     "resume": {
       "hint": "上一轮回复因网络或模型原因中断了，可重试本轮",
       "action": "重试",
@@ -455,9 +463,10 @@
       "forkEmpty": "该会话还没有可派生的消息",
       "delete": "删除会话",
       "deleteTitle": "删除这个会话？",
-      "deleteHint": "会话消息与对话线程将被永久删除，无法恢复；员工记忆与产物保留。",
+      "deleteHint": "会话消息、对话线程与群聊记忆将被永久删除，无法恢复；员工记忆与产物保留。",
       "deleted": "已删除会话",
       "deleteFailed": "部分会话删除失败，请重试",
+      "groupMemoryPurgeFailed": "会话已删除，但群记忆清理失败，请稍后重试清理。",
       "revertToHere": "回滚到此消息",
       "pin": "置顶",
       "unpin": "取消置顶",
@@ -601,36 +610,6 @@
     "notifications": "通知",
     "clearNotifications": "清空消息",
     "noNotifications": "暂无通知"
-  },
-  "teamMemory": {
-    "section": "团队记忆待确认",
-    "source": "来源",
-    "adviceOnly": "仅建议",
-    "confirm": "批准并写入",
-    "reject": "不采纳",
-    "field": {
-      "reason": "原因",
-      "analysis": "复盘",
-      "output": "产出",
-      "files": "涉及文件",
-      "employee": "目标员工",
-      "skill": "建议技能",
-      "whatHappened": "发生了什么",
-      "lesson": "这次要记住的教训",
-      "willWrite": "批准后会写入",
-      "teamMemory": "团队记忆（同类任务可召回）",
-      "evidence": "证据文件",
-      "skillPendingName": "名称待确认，可批准后再改",
-      "legacyHint": "这条记录缺少结构化说明，请展开证据核对原文。",
-      "experience": "团队经验",
-      "skillToggle": "同时生成技能卡",
-      "skillToggleHint": "批准后写为该员工技能卡，供同类任务复用",
-      "skillName": "技能卡名称"
-    },
-    "done": {
-      "confirmed": "已批准进团队记忆",
-      "rejected": "已驳回"
-    }
   },
   "settings": {
     "nav": {
@@ -911,13 +890,8 @@
     "memory": {
       "title": "记忆草稿待批准"
     },
-    "skill": {
-      "title": "员工技能晋升待批准"
-    },
     "kind": {
       "personal": "草稿记忆",
-      "team": "团队记忆",
-      "skill": "技能晋升",
       "nominated": "长期记忆",
       "draft": "草稿记忆",
       "episodic": "情景记忆"

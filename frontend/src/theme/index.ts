@@ -1,5 +1,5 @@
 /**
-  * 功能：主题辅助（@base docs/前端设计规划.md 视觉 token / 主题范围）。
+  * 功能：主题辅助（）。
  * 色板与会话区子色板全部以 CSS 变量落在 `src/index.css`（Tailwind v4 `@theme`）
  */
 import type { DangerLevel, EmployeeTone } from "@/types";

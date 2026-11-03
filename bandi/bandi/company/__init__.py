@@ -42,9 +42,7 @@ from bandi.company.comms import (
     create_meeting,
     list_inbox,
     mark_read,
-    read_team_memory,
     send_message,
-    write_team_memory,
 )
 from bandi.company.communication import (
     CommunicationManager,
@@ -642,7 +640,6 @@ __all__ = [
     "projection_id_for_work_item",
     "prompt_contract_from_delegate_item",
     "prompt_contract_from_work_item",
-    "read_team_memory",
     "recruitment_plan_requires_confirmation",
     "refresh_dependents",
     "refresh_dependents_hook",
@@ -688,7 +685,6 @@ __all__ = [
     "work_item_identity_payload_from_metadata",
     "work_item_projection_id_from_metadata",
     "work_item_turn_type_from_metadata",
-    "write_team_memory",
     "OPCPackage",
     "OPCPackageManifest",
     "PackageAuthor",
