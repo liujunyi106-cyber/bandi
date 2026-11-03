@@ -18,9 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 3.11 仍受支持（pyproject requires-python），但 CI 上有个别用例挂起未定位，
-        # 先把门禁放在 3.12；本地/发布前仍按 3.11 跑一遍。
-        python: ["3.12"]
+        python: ["3.11", "3.12"]
     defaults:
       run:
         working-directory: bandi
