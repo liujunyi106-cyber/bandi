@@ -290,14 +290,11 @@ frontend/              # 前端
 
 ## 致谢
 
-Bandi 是独立产品。开发过程中参考了下列项目的设计思路，部分实现改编自其中若干项目：
-
-- **LeAgent**（Apache-2.0）——文件 / JSON / 规则 / 日期等工具的实现方式，记忆衰减与工具选择的评分权重，情景记忆与工作记忆的语义划分。
-- **OpenOPC**（MIT）——公司调度中的工作项流转、用户修正（rework）与组织工作项规划的行为约定。
-- **opencode**（MIT）——上下文预算与工具输出修剪的策略取舍、编辑匹配的回退链设计。
-- **StaffDeck**（AGPL-3.0）——知识库三层实体、OKF 概念框架与引用链的设计思路；相关模块已按本项目自身实现重写，未包含其代码。
-
-此外受益于 Agent Skills、Model Context Protocol 等社区规范。完整版权与许可证说明见 [NOTICE.md](NOTICE.md)。
+Bandi 是独立产品。开发中参考了 LeAgent、OpenOPC、opencode、StaffDeck 等项目的设计思路；同时借鉴 / 改编了
+LeAgent（Apache-2.0）的工具层实现与记忆评分权重、OpenOPC（MIT）的工作项流转与用户修正语义、
+opencode（MIT）的上下文预算与编辑匹配回退链（详见 NOTICE 中对应章节）。知识库三层与 OKF 概念框架参考
+StaffDeck（AGPL-3.0）的设计，相关模块已按本项目自身实现重写、未包含其代码。此外受益于 Agent Skills 与
+Model Context Protocol 等社区规范。完整版权与许可证说明见 [NOTICE.md](NOTICE.md)。
 
 ---
 

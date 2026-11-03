@@ -294,18 +294,13 @@ frontend/              # frontend
 
 ## Acknowledgements
 
-Bandi is an independent product. Its design borrows from the projects below, and parts of the
-implementation are adapted from a few of them:
-
-- **LeAgent** (Apache-2.0) — implementations of the file / JSON / rules / date tools, the scoring
-  weights used by memory decay and tool selection, and the episodic-vs-working memory split.
-- **OpenOPC** (MIT) — behaviour contracts for work-item flow, user rework and org work-item planning.
-- **opencode** (MIT) — context-budget and tool-output pruning trade-offs, and the edit-match fallback chain.
-- **StaffDeck** (AGPL-3.0) — the three-layer knowledge model, the OKF concept framework and the citation
-  chain; those modules were rewritten on our own implementation and contain none of its code.
-
-It also benefits from community conventions such as Agent Skills and the Model Context Protocol.
-Full copyright and license notices live in [NOTICE.md](NOTICE.md).
+Bandi is an independent product. Its design draws on LeAgent, OpenOPC, opencode and StaffDeck: parts of
+the tooling layer and the memory scoring weights are adapted from LeAgent (Apache-2.0), the work-item flow
+and rework semantics from OpenOPC (MIT), and the context-budget and edit-match fallback chain from
+opencode (MIT) — see the matching sections in NOTICE. The three-layer knowledge model and OKF concept
+framework follow StaffDeck's (AGPL-3.0) design; those modules were rewritten on our own implementation
+and contain none of its code. It also benefits from community conventions such as Agent Skills and the
+Model Context Protocol. Full copyright and license notices live in [NOTICE.md](NOTICE.md).
 
 ---
 
