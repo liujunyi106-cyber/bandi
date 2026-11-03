@@ -60,8 +60,8 @@ jobs:
       run:
         working-directory: frontend
     env:
-      # package.json 里钉的 pnpm 版本比 runner 上可用版本新，避免 corepack 严格校验直接失败
-      COREPACK_ENABLE_STRICT: "0"
+      # CI 只跑 lint 与单测，不需要 Electron 运行时二进制（下载慢且易受网络影响）
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
     steps:
       - uses: actions/checkout@v4
 

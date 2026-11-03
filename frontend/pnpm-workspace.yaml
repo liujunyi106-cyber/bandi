@@ -1,5 +1,5 @@
 # 功能：pnpm 工程设置。
 # 这两个包的构建脚本必须放行：electron 靠它下载运行时二进制，esbuild 靠它校验平台包。
-onlyBuiltDependencies:
-  - electron
-  - esbuild
+allowBuilds:
+  electron: true
+  esbuild: true
