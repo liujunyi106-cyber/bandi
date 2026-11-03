@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 
 from bandi.memory.team_staging import TeamMemoryStaging
@@ -31,6 +32,9 @@ def test_propose_cleans_expired_on_write(tmp_path) -> None:
     data = json.loads(path.read_text(encoding="utf-8"))
     data["created_at"] = time.time() - 8 * 86400
     path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    # 解析缓存按 (mtime_ns, size) 命中，同刻重写可能仍读到旧记录——显式推进 mtime 保证失效
+    bumped = time.time() + 5
+    os.utime(path, (bumped, bumped))
 
     # 重新实例化，避开进程内按 (mtime, size) 的读缓存——本用例钉的是写侧清理，不是缓存失效
     staging = TeamMemoryStaging(tmp_path)
