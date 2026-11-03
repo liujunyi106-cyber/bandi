@@ -40,7 +40,7 @@ dev = [
     "pytest-xdist>=3.6",
     "pytest-timeout>=2.3",
     "playwright>=1.40",
-    "ruff>=0.16.3,<0.17",
+    "ruff==0.16.3",
     "pip-audit>=2.7",
 ]
 
