@@ -55,6 +55,7 @@ jobs:
         #   可选依赖：未装 playwright 时 browser 工具不进注册表（2 个）
         #   路径大小写 / 并发替换：Windows runner 的 tmp 路径大小写与开发机不同（3 个）
         #   依赖版本：错误载荷长度随依赖文案变化（1 个）
+        #   用例顺序：读取到前序用例留下的配置单例（1 个）
         shell: pwsh
         run: |
           $deselect = @(
@@ -67,7 +68,8 @@ jobs:
             "tests/test_tools/test_bash.py::TestBashTool::test_default_cwd_anchors_project_root_when_in_context",
             "tests/test_tools/test_bash.py::TestBashTool::test_relative_cwd_resolved_against_project_root",
             "tests/test_contracts/test_contract_edit_match_chain.py::TestEditToolConcurrencyAndAtomicity::test_concurrent_edits_are_serialized",
-            "tests/test_contracts/test_contract_family_p_batches.py::test_failure_payload_bounded_global_and_per_tool"
+            "tests/test_contracts/test_contract_family_p_batches.py::test_failure_payload_bounded_global_and_per_tool",
+            "tests/test_contracts/test_contract_family_day137.py::test_resolve_llm_config_applies_profile_and_keeps_base_blanks"
           ) | ForEach-Object { "--deselect"; $_ }
           pytest tests -q -m "not heavy and not external_tool and not timing" @deselect
           exit $LASTEXITCODE
