@@ -53,7 +53,7 @@ async def test_ontology_schema_injected_into_system_prompt(home: Any) -> None:
     from bandi.ontology.triple_store import OntologyStore
 
     ontology = OntologyStore(open_ontology(str(home / "ontology.db")))
-    ontology.define_class({"id": "Project", "label": "项目"}, "T00:00:00")
+    ontology.define_class({"id": "Project", "label": "项目"}, "2026-01-01T00:00:00")
     store = SessionStore(str(home / "sess.db"))
     sid = store.create_session(mode="execute")
     provider = _RecordingProvider()

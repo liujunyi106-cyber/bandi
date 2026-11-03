@@ -82,7 +82,7 @@ async def anthropic_complete(
     url = _anthropic_url(base_url)
     headers = {
         "x-api-key": api_key,
-        "anthropic-version": "",
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
     }
     system, anthropic_msgs = _convert_to_anthropic(messages)
@@ -252,7 +252,7 @@ async def anthropic_stream(
     url = _anthropic_url(base_url)
     headers = {
         "x-api-key": api_key,
-        "anthropic-version": "",
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
     }
     system, anthropic_msgs = _convert_to_anthropic(messages)

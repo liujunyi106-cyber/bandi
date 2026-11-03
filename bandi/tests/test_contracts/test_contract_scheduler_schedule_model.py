@@ -37,13 +37,13 @@ def test_store_persists_periodic_spec_and_next_run() -> None:
         prompt="p",
         schedule_kind="periodic",
         schedule_spec={"unit": "daily", "hour": 9, "minute": 0},
-        effective_from="",
-        effective_until="",
+        effective_from="2026-11-01",
+        effective_until="2026-12-31",
     )
     saved = store.save(task, now=datetime(2026, 10, 30, 15, 0))
     assert saved.schedule_kind == "periodic"
     assert saved.schedule_spec == {"unit": "daily", "hour": 9, "minute": 0}
-    assert saved.effective_from == ""
+    assert saved.effective_from == "2026-11-01"
     assert saved.next_run_at == datetime(2026, 11, 1, 9, 0)
     reloaded = store.get("st-periodic")
     assert reloaded is not None and reloaded.schedule_spec == saved.schedule_spec
@@ -56,13 +56,13 @@ def test_create_and_patch_schedule_model_api() -> None:
             "name": "once",
             "prompt": "p",
             "schedule_kind": "once",
-            "schedule_spec": {"date": "", "hour": 10, "minute": 30},
+            "schedule_spec": {"date": "2099-01-02", "hour": 10, "minute": 30},
         },
     )
     assert created.status_code == 200
     body = created.json()
     assert body["schedule_kind"] == "once"
-    assert body["schedule_spec"]["date"] == ""
+    assert body["schedule_spec"]["date"] == "2099-01-02"
     assert body["next_run_at"]
 
     patched = client.patch(
@@ -123,7 +123,7 @@ def test_once_disables_after_run() -> None:
         cron="",
         prompt="p",
         schedule_kind="once",
-        schedule_spec={"date": "", "hour": 16, "minute": 0},
+        schedule_spec={"date": "2026-10-30", "hour": 16, "minute": 0},
     )
     saved = store.save(task, now=datetime(2026, 10, 30, 15, 0))
 

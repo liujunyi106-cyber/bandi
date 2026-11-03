@@ -546,7 +546,9 @@ class TestEpisodesSessionIndex:
                 recall_queries TEXT NOT NULL DEFAULT '[]'
             )"""
         )
-        raw.execute("INSERT INTO episodes (episode_id, summary, created_at) VALUES")
+        raw.execute(
+            "INSERT INTO episodes (episode_id, summary, created_at) VALUES ('legacy', '旧库行', '2020-01-01T00:00:00+00:00')"
+        )
         raw.commit()
         raw.close()
 

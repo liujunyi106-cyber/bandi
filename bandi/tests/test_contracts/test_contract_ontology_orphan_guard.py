@@ -24,7 +24,7 @@ import pytest
 from bandi.ontology.tools import OntologyToolContext, create_ontology_tools
 from bandi.tools.ontology_tool_adapter import build_ontology_tools
 
-NOW = "T00:00:00Z"
+NOW = "2026-10-15T00:00:00Z"
 
 
 class FakeConfirmUI:

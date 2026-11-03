@@ -80,7 +80,7 @@ class TestTracerContextPropagation:
 class TestSecretMaskNestedIntegration:
     def test_mask_dict_deep_nested_log_entry(self) -> None:
         log_entry = {
-            "timestamp": "T00:00:00",
+            "timestamp": "2026-01-01T00:00:00",
             "level": "INFO",
             "module": "auth",
             "message": "user login",

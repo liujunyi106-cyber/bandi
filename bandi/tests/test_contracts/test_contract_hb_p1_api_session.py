@@ -100,7 +100,7 @@ class TestLatestLeafInsertionOrder:
 
         store = SessionStore(str(tmp_path / "sess.db"))
         sid = store.create_session(mode="execute")
-        ts = "T10:00:00.000000"
+        ts = "2026-09-21T10:00:00.000000"
         # 先插入 id 字典序更大的（zzz），后插入更小（aaa）——同 created_at
         for entry_id, content in (("zzz-first", "first"), ("aaa-second", "second")):
             store._sqlite.execute(

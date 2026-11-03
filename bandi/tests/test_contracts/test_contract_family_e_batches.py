@@ -1042,8 +1042,8 @@ def test_expired_lease_reclaim_and_cas_rejects_stale(tmp_path: Path) -> None:
     assert ar._acquire_session_slot(cas_sid, cas_store, instance_id=_INSTANCE_A), "A 认领成功"
     stale_snapshot["execution_claim"] = {
         "instance_id": _INSTANCE_B,
-        "claimed_at": "T00:00:00+00:00",
-        "lease_expires_at": "T00:10:00+00:00",
+        "claimed_at": "2026-08-30T00:00:00+00:00",
+        "lease_expires_at": "2026-08-30T00:10:00+00:00",
     }
     assert not cas_store.update_session_if_metadata(cas_sid, stale_snapshot, stale_snapshot), (
         "CAS 必须拒绝陈旧快照覆盖（A 已认领）"

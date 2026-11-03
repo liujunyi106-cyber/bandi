@@ -63,14 +63,14 @@ def test_contract_format_uri_valid_accepted() -> None:
 def test_contract_format_date_time_invalid_rejected() -> None:
     """format: date-time 非法值必须被校验拦截。"""
     tool = _tool_with("date-time")
-    errs = tool.validate_params({"v": "T99:99:99Z"})
+    errs = tool.validate_params({"v": "2026-99-99T99:99:99Z"})
     assert errs, "format: date-time 非法值不得静默通过"
 
 
 def test_contract_format_date_time_valid_accepted() -> None:
     """format: date-time 合法值必须通过。"""
     tool = _tool_with("date-time")
-    errs = tool.validate_params({"v": "T12:00:00Z"})
+    errs = tool.validate_params({"v": "2026-08-30T12:00:00Z"})
     assert not errs, f"合法 date-time 不应报错: {errs}"
 
 
@@ -84,7 +84,7 @@ def test_contract_format_hostname_invalid_rejected() -> None:
 def test_contract_format_date_only_rejected() -> None:
     """format: date-time 必须拒绝 date-only（"" 无时间部分，非完整时间戳）。"""
     tool = _tool_with("date-time")
-    errs = tool.validate_params({"v": ""})
+    errs = tool.validate_params({"v": "2026-08-30"})
     assert errs, "date-only 不是合法 date-time，不得放行"
 
 

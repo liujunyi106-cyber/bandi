@@ -69,7 +69,7 @@ class TestWriteExternalModificationGuard:
                 "mtime": stat.st_mtime,
                 "content_sha256": "deadbeef" * 8,
                 "partial": False,
-                "read_at": "T00:00:00",
+                "read_at": "2026-10-06T00:00:00",
             }
         }
         time.sleep(0.05)
@@ -97,7 +97,7 @@ class TestWriteExternalModificationGuard:
                 "mtime": stat.st_mtime,
                 "content_sha256": hashlib.sha256(payload).hexdigest(),
                 "partial": False,
-                "read_at": "T00:00:00",
+                "read_at": "2026-10-06T00:00:00",
             }
         }
         time.sleep(0.05)

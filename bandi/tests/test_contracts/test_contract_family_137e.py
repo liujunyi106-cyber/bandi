@@ -157,8 +157,8 @@ def _write_profile(home: Path, employee_id: str, resources: list[dict]) -> Path:
         name="客服",
         status="active",
         resources=resources,
-        created_at="T00:00:00+00:00",
-        updated_at="T00:00:00+00:00",
+        created_at="2026-01-01T00:00:00+00:00",
+        updated_at="2026-01-01T00:00:00+00:00",
     )
     path = home / ".bandi" / "agents" / "profiles" / f"{employee_id}.profile.json"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -176,8 +176,8 @@ class TestEmployeeProfile:
                     "resource_type": "knowledge_base",
                     "resource_id": "kb-main",
                     "status": "active",
-                    "created_at": "T00:00:00+00:00",
-                    "updated_at": "T00:00:00+00:00",
+                    "created_at": "2026-01-01T00:00:00+00:00",
+                    "updated_at": "2026-01-01T00:00:00+00:00",
                 }
             ],
         )

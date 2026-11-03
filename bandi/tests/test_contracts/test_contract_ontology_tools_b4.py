@@ -39,7 +39,7 @@ import pytest
 
 from bandi.ontology.tools import OntologyToolContext, create_ontology_tools
 
-NOW = "T00:00:00Z"
+NOW = "2026-10-13T00:00:00Z"
 
 
 @pytest.fixture()

@@ -56,7 +56,7 @@ async def test_entity_reference_injected(home: Any) -> None:
 
     # 建三元组本体 + 写入一个 Project 实体（label=中文名，供 @提及 解析）
     ontology_store = OntologyStore(open_ontology(str(home / "ontology.db")))
-    ontology_store.define_class({"id": "Project", "label": "项目"}, "T00:00:00")
+    ontology_store.define_class({"id": "Project", "label": "项目"}, "2026-01-01T00:00:00")
     ontology_store.assert_entity(
         {
             "id": "proj-stellar",
@@ -64,7 +64,7 @@ async def test_entity_reference_injected(home: Any) -> None:
             "label": "恒星贸易项目",
             "comment": "恒星贸易的 ERP 迁移项目",
         },
-        "T00:00:00",
+        "2026-01-01T00:00:00",
     )
 
     provider = _RecordingProvider()

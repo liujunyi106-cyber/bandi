@@ -65,7 +65,7 @@ from bandi.ontology.types import (
     Violation,
 )
 
-NOW = "T00:00:00Z"
+NOW = "2026-10-13T00:00:00Z"
 
 
 def _g(

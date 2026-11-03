@@ -20,7 +20,7 @@ _META: dict[str, Any] = {
     "category": "long_term",
     "score": 0.5,
     "importance": 0.5,
-    "created_at": "T00:00:00",
+    "created_at": "2026-10-15T00:00:00",
 }
 
 

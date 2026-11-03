@@ -202,7 +202,7 @@ class TestOperationsAndMigration:
         )
         conn.execute(
             "INSERT INTO company_operations VALUES (?, ?, ?, ?, ?, ?, ?)",
-            ("old-op", "purge", "emp-old", "failed", "boom", "", ""),
+            ("old-op", "purge", "emp-old", "failed", "boom", "2026-01-01", "2026-01-01"),
         )
         conn.commit()
         conn.close()

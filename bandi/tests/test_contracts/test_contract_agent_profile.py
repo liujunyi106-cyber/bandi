@@ -363,8 +363,8 @@ def test_r18_binding_model_defaults() -> None:
     binding = AgentResourceBinding(
         resource_type=AgentResourceType.TOOL,
         resource_id="echo_stub",
-        created_at="T00:00:00+00:00",
-        updated_at="T00:00:00+00:00",
+        created_at="2026-09-14T00:00:00+00:00",
+        updated_at="2026-09-14T00:00:00+00:00",
     )
     assert binding.status == "active"
     assert binding.metadata == {}
@@ -382,16 +382,16 @@ def test_r19_status_values_are_constrained() -> None:
             employee_id="p1",
             name="n",
             status="bogus",
-            created_at="T00:00:00+00:00",
-            updated_at="T00:00:00+00:00",
+            created_at="2026-09-14T00:00:00+00:00",
+            updated_at="2026-09-14T00:00:00+00:00",
         )
     with pytest.raises(ValidationError):
         AgentResourceBinding(
             resource_type=AgentResourceType.TOOL,
             resource_id="echo_stub",
             status="bogus",
-            created_at="T00:00:00+00:00",
-            updated_at="T00:00:00+00:00",
+            created_at="2026-09-14T00:00:00+00:00",
+            updated_at="2026-09-14T00:00:00+00:00",
         )
 
 

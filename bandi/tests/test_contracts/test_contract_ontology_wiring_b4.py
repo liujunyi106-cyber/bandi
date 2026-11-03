@@ -49,7 +49,7 @@ def store(tmp_path: Path) -> Any:
 
 
 def _seed(store: OntologyStore) -> None:
-    now = "T00:00:00Z"
+    now = "2026-10-13T00:00:00Z"
     store.define_class({"id": "Person"}, now)
     store.define_class({"id": "Employee", "sub_class_of": ["Person"]}, now)
     store.define_class({"id": "Company"}, now)
@@ -117,7 +117,7 @@ class TestGraphPayload:
         类 id 受标识符语法约束（ASCII），中文展示名承载在 label；载荷的 type
         按「最具体类 → label 优先」解析。
         """
-        now = "T00:00:00Z"
+        now = "2026-10-13T00:00:00Z"
         store.define_class({"id": "SalesRep", "label": "销售代表"}, now)
         store.define_class({"id": "Employee", "label": "员工"}, now)
         store.assert_entity({"id": "rep_zhang", "classes": ["SalesRep"], "label": "张伟"}, now)
@@ -126,7 +126,7 @@ class TestGraphPayload:
         assert by_id["rep_zhang"]["type"] == "销售代表"
 
     def test_entity_without_class_falls_back(self, store: OntologyStore) -> None:
-        now = "T00:00:00Z"
+        now = "2026-10-13T00:00:00Z"
         store.assert_entity({"id": "loner"}, now)
         payload = build_graph_payload(store)
         assert next(e for e in payload["entities"] if e["id"] == "loner")["type"] == "unknown"
@@ -156,7 +156,7 @@ class TestGraphPayload:
 
     def test_truncation_is_explicit(self, store: OntologyStore) -> None:
         """破坏者：旧实现硬编码 limit=10000 静默截断——超限必须显式报。"""
-        now = "T00:00:00Z"
+        now = "2026-10-13T00:00:00Z"
         store.define_class({"id": "P"}, now)
         store.define_relation({"id": "rel"}, now)
         for i in range(12):

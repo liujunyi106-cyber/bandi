@@ -886,7 +886,7 @@ def test_incoming_claim_wins_when_provided(tmp_path) -> None:
     holder = store.get("wi-1")
     holder.metadata["execution_claim"] = {
         "instance_id": "inst-A",
-        "lease_expires_at": "T00:00:00+00:00",
+        "lease_expires_at": "2099-01-01T00:00:00+00:00",
     }
     store.save(holder)
 

@@ -452,7 +452,7 @@ def test_apply_merges_metadata_union_lineage_reliability(tmp_path: Any) -> None:
                 "entities": ["蓝鲸", "海洋"],
                 "reliability": 0.9,
                 "recall_count": 2,
-                "last_recalled_at": "T00:00:00+00:00",
+                "last_recalled_at": "2026-05-01T00:00:00+00:00",
             },
         ),
         "proj",
@@ -467,7 +467,7 @@ def test_apply_merges_metadata_union_lineage_reliability(tmp_path: Any) -> None:
                 "entities": ["蓝鲸", "哺乳动物"],
                 "reliability": 0.3,
                 "recall_count": 3,
-                "last_recalled_at": "T00:00:00+00:00",
+                "last_recalled_at": "2026-01-01T00:00:00+00:00",
                 "merged_from": ["older-1", "older-2"],
             },
         ),
@@ -485,7 +485,9 @@ def test_apply_merges_metadata_union_lineage_reliability(tmp_path: Any) -> None:
     )
     assert target.metadata["reliability"] == pytest.approx(0.9), "reliability 取 max"
     assert target.metadata["recall_count"] == 5, "recall_count 求和"
-    assert target.metadata["last_recalled_at"] == "T00:00:00+00:00", "last_recalled_at 取最新"
+    assert target.metadata["last_recalled_at"] == "2026-05-01T00:00:00+00:00", (
+        "last_recalled_at 取最新"
+    )
     lt.close()
 
 

@@ -365,7 +365,7 @@ def test_kind_dimension_partitions_quota(tmp_path) -> None:
 def test_last_recalled_prefers_recently_used(tmp_path) -> None:
     mem = LongTermMemory(str(tmp_path / "lt.db"))
     try:
-        _store(mem, "old-recalled", 0.2, metadata={"last_recalled_at": "T00:00:00+00:00"})
+        _store(mem, "old-recalled", 0.2, metadata={"last_recalled_at": "2026-08-30T00:00:00+00:00"})
         _store(mem, "old-never", 0.2)
         _store(mem, "high-imp", 0.9)
         mem.prune_partitioned(max_items=100, per_partition_max=2)

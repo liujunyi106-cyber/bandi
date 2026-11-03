@@ -83,12 +83,12 @@ _REMOTE = {
 
 
 def _payload():
-    return {"providers": _REMOTE, "fetched_at": "T00:00:00Z"}
+    return {"providers": _REMOTE, "fetched_at": "2026-09-10T00:00:00Z"}
 
 
 def _fresh_cache(tmp_path: Path) -> Path:
     cache = tmp_path / "models_cache.json"
-    save_cache(cache, {"providers": _REMOTE, "fetched_at": "T00:00:00Z"})
+    save_cache(cache, {"providers": _REMOTE, "fetched_at": "2026-09-10T00:00:00Z"})
     return cache
 
 

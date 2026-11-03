@@ -24,7 +24,9 @@ class TestIsoLocal:
         value = datetime(2026, 10, 27, 23, 35, 12)
         result = iso_local(value)
         assert OFFSET_SUFFIX.search(result)
-        assert result.startswith("T23:35:12"), "naive 值按本地口径解释，时钟读数不得被改写"
+        assert result.startswith("2026-10-27T23:35:12"), (
+            "naive 值按本地口径解释，时钟读数不得被改写"
+        )
 
     def test_aware_utc_converted_to_local(self) -> None:
         value = datetime(2026, 10, 27, 15, 35, 12, tzinfo=UTC)
@@ -33,16 +35,16 @@ class TestIsoLocal:
         assert result == iso_local(value.astimezone()), "aware 值必须换算到本地时区"
 
     def test_naive_string_normalized_with_offset(self) -> None:
-        result = iso_local("23:35:12.123456")
+        result = iso_local("2026-10-27 23:35:12.123456")
         assert OFFSET_SUFFIX.search(result), "会话库里的本地 naive 字符串必须补偏移"
-        assert result.startswith("T23:35:12.123456")
+        assert result.startswith("2026-10-27T23:35:12.123456")
 
     def test_aware_string_keeps_instant(self) -> None:
-        utc_text = "T15:35:12+00:00"
+        utc_text = "2026-10-27T15:35:12+00:00"
         assert iso_local(utc_text) == iso_local(datetime(2026, 10, 27, 15, 35, 12, tzinfo=UTC))
 
     def test_z_suffix_parsed_as_utc(self) -> None:
-        assert iso_local("T15:35:12Z") == iso_local("T15:35:12+00:00")
+        assert iso_local("2026-10-27T15:35:12Z") == iso_local("2026-10-27T15:35:12+00:00")
 
     def test_empty_and_unparsable(self) -> None:
         assert iso_local(None) == ""
@@ -56,4 +58,4 @@ class TestIsoLocal:
         local_naive = iso_local(datetime(2026, 10, 27, 23, 35, 12))
         as_utc = datetime(2026, 10, 27, 23, 35, 12, tzinfo=UTC).isoformat()
         assert local_naive != as_utc
-        assert local_naive[:19] == "T23:35:12"
+        assert local_naive[:19] == "2026-10-27T23:35:12"

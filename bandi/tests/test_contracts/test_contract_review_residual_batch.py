@@ -251,7 +251,7 @@ def test_whitespace_variant_duplicates_injected_once(tmp_path) -> None:
     class _Working:
         def search(self, q, limit=5, session_id=""):
             # 与 lt 除空白/换行外字符序列完全一致——折叠空白后必须同键
-            return [(ScratchHit("kv", "kw1", "threading\n管理并发共享状态", ""), 0.5)]
+            return [(ScratchHit("kv", "kw1", "threading\n管理并发共享状态", "2026-08-28"), 0.5)]
 
     mgr = MemoryManager(long_term=lt, working=_Working())
     out = mgr.search_unified("并发")

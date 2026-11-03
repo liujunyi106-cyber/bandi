@@ -15,7 +15,7 @@ from bandi.api.app import app
 client = TestClient(app)
 client.headers["Authorization"] = "Bearer test"
 
-NOW = "T00:00:00Z"
+NOW = "2026-10-13T00:00:00Z"
 
 
 @pytest.fixture(autouse=True)

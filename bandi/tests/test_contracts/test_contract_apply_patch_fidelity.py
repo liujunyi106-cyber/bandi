@@ -167,7 +167,7 @@ def test_external_modification_rejected(ws: Path) -> None:
         "k": {
             "resolved_path": str(f),
             "mtime": 1.0,
-            "read_at": "T00:00:00Z",
+            "read_at": "2020-01-01T00:00:00Z",
             "content_sha256": "deadbeef",
             "partial": False,
         }

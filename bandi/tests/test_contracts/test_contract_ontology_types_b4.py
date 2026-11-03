@@ -39,8 +39,8 @@ from bandi.ontology.types import (
     relation_of,
 )
 
-NOW = "T00:00:00Z"
-LATER = "T00:00:00Z"
+NOW = "2026-10-13T00:00:00Z"
+LATER = "2026-10-14T00:00:00Z"
 
 
 class TestFactKey:

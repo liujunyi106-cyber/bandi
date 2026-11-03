@@ -196,10 +196,10 @@ class TestDateCalculatorDifferenceDefault:
         from bandi.tools.util.date_calculator import DateCalculatorTool
 
         tool = DateCalculatorTool()
-        result = await tool.execute({"operation": "difference", "date": ""})
+        result = await tool.execute({"operation": "difference", "date": "2033-07-15"})
         today = _date.today()
         assert result["date1"] == today.isoformat(), "缺省时起点=今天（从今天到目标）"
-        assert result["date2"] == ""
+        assert result["date2"] == "2033-07-15"
         assert result["date2_defaulted"] is True
         assert result["difference"]["days"] == (_date(2033, 7, 15) - today).days
 
@@ -208,7 +208,9 @@ class TestDateCalculatorDifferenceDefault:
         from bandi.tools.util.date_calculator import DateCalculatorTool
 
         tool = DateCalculatorTool()
-        result = await tool.execute({"operation": "difference", "date": "", "date2": ""})
+        result = await tool.execute(
+            {"operation": "difference", "date": "2026-01-01", "date2": "2026-01-08"}
+        )
         assert result["difference"]["days"] == 7
         assert result.get("date2_defaulted") is not True
 

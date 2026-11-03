@@ -18,7 +18,7 @@ def _insert(db: Path, session_id: str, tokens_in: int, tokens_out: int, cost: fl
         " VALUES (?, ?, ?, 'deepseek-flash', ?, ?, ?)",
         (
             f"ev-{time.time_ns()}-{tokens_in}",
-            "12:00:00",
+            "2026-10-16 12:00:00",
             session_id,
             tokens_in,
             tokens_out,

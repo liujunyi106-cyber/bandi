@@ -557,7 +557,7 @@ class TestSecretaryRobustness:
         store = SecretaryStore(base_dir=tmp_path)
         path = tmp_path / "global.yaml"
         path.write_text(
-            "---\n- id: ok\n policy_type: rule\n content: fine\n source: a\n created_at: 2026-08-01T00:00:00Z\n"
+            "---\n- id: ok\n  policy_type: rule\n  content: fine\n  source: a\n  created_at: 2026-08-01T00:00:00Z\n"
             "- created_at: not-a-date\n  metadata: 'a string'\n",
             encoding="utf-8",
         )
@@ -612,7 +612,7 @@ class TestSecretaryRobustness:
         store = SecretaryStore(base_dir=tmp_path)
         path = tmp_path / "global.yaml"
         path.write_text(
-            "---\n- id: p1\n policy_type: rule\n content: null\n source: null\n created_at: 2026-08-01T00:00:00Z\n",
+            "---\n- id: p1\n  policy_type: rule\n  content: null\n  source: null\n  created_at: 2026-08-01T00:00:00Z\n",
             encoding="utf-8",
         )
         service = SecretaryService(base_dir=str(tmp_path / "s"))

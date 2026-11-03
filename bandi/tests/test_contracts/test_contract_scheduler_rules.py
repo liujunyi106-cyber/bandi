@@ -44,7 +44,7 @@ def test_interval_skips_unselected_weekdays() -> None:
 def test_once_and_effective_window() -> None:
     assert compute_next_run(
         kind="once",
-        spec={"date": "", "hour": 9, "minute": 15},
+        spec={"date": "2026-10-31", "hour": 9, "minute": 15},
         base=BASE,
     ) == datetime(2026, 10, 31, 9, 15)
     assert compute_next_run(
@@ -54,14 +54,14 @@ def test_once_and_effective_window() -> None:
         kind="periodic",
         spec={"unit": "daily", "hour": 9, "minute": 0},
         base=BASE,
-        effective_from="",
+        effective_from="2026-11-01",
     ) == datetime(2026, 11, 1, 9, 0)
     assert (
         compute_next_run(
             kind="periodic",
             spec={"unit": "daily", "hour": 9, "minute": 0},
             base=BASE,
-            effective_until="",
+            effective_until="2026-10-30",
         )
         is None
     )

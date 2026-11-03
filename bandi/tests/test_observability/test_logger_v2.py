@@ -13,7 +13,7 @@ Logger = _MemoLogger  # type: ignore[has-type]
 class TestLoggerV2:
     def test_log_entry_has_user_id_field(self) -> None:
         entry = LogEntry(
-            timestamp="T00:00:00",
+            timestamp="2026-01-01T00:00:00",
             level="INFO",
             module="test",
             message="hello",

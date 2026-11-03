@@ -55,7 +55,7 @@ def _ontology_tools(store: OntologyStore) -> dict[str, Any]:
 
 def _seed_ontology(store: OntologyStore) -> None:
     """本体侧种子：类 Customer + 实体「明远科技」+ 关系事实（独有词元寰宇控股）。"""
-    now = "T00:00:00Z"
+    now = "2026-10-14T00:00:00Z"
     store.define_class({"id": "Customer", "label": "客户"}, now)
     store.define_relation({"id": "parent_of", "domain": ["Customer"], "range": ["Customer"]}, now)
     store.assert_entity({"id": "mingyuan", "classes": ["Customer"], "label": "明远科技"}, now)

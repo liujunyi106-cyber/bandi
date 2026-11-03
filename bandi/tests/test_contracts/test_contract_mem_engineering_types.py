@@ -50,7 +50,7 @@ class TestEntityAndTemporalExtraction:
         assert len(result.entities) == len(set(result.entities))
 
     def test_temporal_patterns(self) -> None:
-        assert extract_memory_fields("上线。").temporal == ""
+        assert extract_memory_fields("2026-09-20 上线。").temporal == "2026-09-20"
         assert extract_memory_fields("9月20日见。").temporal == "9月20日"
         assert extract_memory_fields("昨天已完成部署。").temporal == "昨天"
 

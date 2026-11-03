@@ -90,7 +90,7 @@ def test_endpoint_returns_buckets_with_ratio(api_key: dict[str, str]) -> None:
                 "connectors": 1_000,
                 "skills": 1_000,
             },
-            "updated_at": "T07:00:00",
+            "updated_at": "2026-10-25T07:00:00",
         },
     )
 
