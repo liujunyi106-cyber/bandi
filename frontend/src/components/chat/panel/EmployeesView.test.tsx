@@ -182,7 +182,7 @@ describe("EmployeesView", () => {
     expect(await screen.findByTestId("employee-card-details")).toBeInTheDocument();
   });
 
-  it("普通会话：助理卡 =「助理」（2026-10-10 用户拍板秘书→助理）", async () => {
+  it("普通会话：助理卡 =「助理」", async () => {
     renderView("/");
     expect(await screen.findByTestId("panel-employee-secretary")).toBeInTheDocument();
     expect(screen.getByText("助理")).toBeInTheDocument();
@@ -197,7 +197,7 @@ describe("EmployeesView", () => {
     expect(screen.queryByText("AI 助手")).not.toBeInTheDocument();
   });
 
-  it("助理会话：助理卡显示「助理」（2026-10-10 秘书→助理）", async () => {
+  it("助理会话：助理卡显示「助理」", async () => {
     useChatStore.setState({
       activeSessionId: "s-secretary",
       sessions: [
@@ -225,7 +225,7 @@ describe("EmployeesView", () => {
     expect(screen.queryByTestId("panel-employee-secretary")).not.toBeInTheDocument();
   });
 
-  it("助理卡可收起/展开（真机反馈：原实现恒展开不可伸缩）", async () => {
+  it("助理卡可收起/展开", async () => {
     const user = userEvent.setup();
     renderView("/");
     expect(await screen.findByTestId("employee-card-details")).toBeInTheDocument();

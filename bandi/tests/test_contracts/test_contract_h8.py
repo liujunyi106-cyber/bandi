@@ -268,7 +268,7 @@ def test_contract_explain_response_contains_checkpoints(monkeypatch: pytest.Monk
     app_module = sys.modules["bandi.api.app"]
     assert fastapi_app is app_module.app
 
-    marker = [{"id": "cp-1", "turn_index": 2, "created_at": "2026-01-01T00:00:00Z"}]
+    marker = [{"id": "cp-1", "turn_index": 2, "created_at": "T00:00:00Z"}]
     store = MagicMock()
     store.get_session.return_value = {"session_id": "s-explain"}
     store.get_branch.return_value = []

@@ -12,7 +12,7 @@ from typing import Any, TextIO
 
 logger = logging.getLogger(__name__)
 
-PROTOCOL_VERSION = "2024-11-05"
+PROTOCOL_VERSION = ""
 SERVER_NAME = "bandi"
 SERVER_VERSION = "0.1.0"
 

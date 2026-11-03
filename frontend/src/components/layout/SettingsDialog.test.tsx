@@ -151,7 +151,7 @@ describe("SettingsDialog 模型档案（137c-A1）", () => {
     expect(container).toBeTruthy();
   });
 
-  it("应用按钮为黑底白字主按钮（default 变体，与全局主操作统一；2026-10-01 用户拍板）", async () => {
+  it("应用按钮为黑底白字主按钮", async () => {
     render(<SettingsDialog open onOpenChange={vi.fn()} />);
     openProfilesTab();
     await waitFor(() => expect(screen.getByTestId("profile-activate-p-b")).toBeInTheDocument());
@@ -284,7 +284,7 @@ describe("SettingsDialog 左侧导航与用量/缓存页签（R3）", () => {
   });
 });
 
-describe("SettingsDialog 反馈模型（2026-09-29）", () => {
+describe("SettingsDialog 反馈模型", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(settingsApi.profiles).mockResolvedValue({

@@ -55,7 +55,7 @@ function NavEntries({ items }: { items: NavItem[] }) {
                   isActive && "bg-primary/5 text-sidebar-accent-foreground!",
                 )}
               >
-                {/* 用户反馈：图标统一细描边（1.75，对齐顶栏左伸缩按钮的线感/参考源
+                {/* 用户反馈：图标统一细描边（1.75，对齐顶栏左伸缩按钮的线感
                     datafoundry 左栏 16px@1.6 的做法），避免 lucide 默认 2px 在 16px 下显糊 */}
                 <item.icon strokeWidth={1.75} />
                 <span>{t(item.labelKey)}</span>
@@ -132,7 +132,7 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
-        {/* 用户拍板：批量选择激活时隐藏通知/设置——批量分区接管侧栏底部并贴底 */}
+        {/*批量选择激活时隐藏通知/设置——批量分区接管侧栏底部并贴底 */}
         {bulkSelectionActive ? null : (
           <div className="flex items-center justify-end gap-1">
             <NotificationMenu />

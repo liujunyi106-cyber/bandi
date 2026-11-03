@@ -23,7 +23,7 @@ def test_cli_entity_create_and_list(home: Any) -> None:
     from bandi.ontology.triple_store import OntologyStore
 
     seed = OntologyStore(open_ontology(str(home / ".bandi" / "data" / "ontology.db")))
-    seed.define_class({"id": "Project", "label": "项目"}, "2026-01-01T00:00:00")
+    seed.define_class({"id": "Project", "label": "项目"}, "T00:00:00")
     seed.close()
 
     runner = CliRunner()

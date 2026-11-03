@@ -266,7 +266,7 @@ def test_failed_subagent_cleans_checkpoint(monkeypatch: Any) -> None:
             turn_index=1,
             state_json="{}",
             messages_json="",
-            created_at="2026-01-01T00:00:00+00:00",
+            created_at="T00:00:00+00:00",
         )
     )
     assert store.list_by_session(session_id), "前置 checkpoint 必须存在"
@@ -294,7 +294,7 @@ def test_failed_subagent_cleans_checkpoint(monkeypatch: Any) -> None:
             turn_index=1,
             state_json="{}",
             messages_json="",
-            created_at="2026-01-01T00:00:00+00:00",
+            created_at="T00:00:00+00:00",
         )
     )
 

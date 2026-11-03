@@ -355,7 +355,7 @@ export function ModelConfigDialog({
 
         {/* 用户反馈：页脚与上方分区过重 ⇒ 去灰底、分隔线改最浅 hairline */}
         <DialogFooter className="border-chat-hairline/60 bg-transparent mt-1 flex items-center gap-2">
-          {/* 用户拍板：本弹窗只负责「新增/编辑模型配置」——
+          {/*本弹窗只负责「新增/编辑模型配置」——
               设为当前（切换激活）与删除移到「设置」里做，弹窗内不再提供 */}
           <span className="flex-1" />
           <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>

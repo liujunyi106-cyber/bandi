@@ -65,7 +65,7 @@ describe("ProjectSpaceCard", () => {
     );
   });
 
-  it("触发位配色：常态与占位同色（浅灰）；hover / 菜单展开态变黑（2026-09-29 第三/五轮）", async () => {
+  it("触发位配色：常态与占位同色（浅灰）；hover / 菜单展开态变黑", async () => {
     useChatStore.setState({ activeProjectId: "coffee-shop" });
     render(<ProjectSpaceCard />);
     await waitFor(() =>

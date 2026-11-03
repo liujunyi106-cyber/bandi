@@ -30,8 +30,8 @@ def _removed_with_reads(paths: list[str]) -> list[Message]:
 def test_attachment_orders_by_real_read_time() -> None:
     removed = _removed_with_reads(["a.md", "b.md", "c.md"])
     read_state = {
-        "a.md": {"read_at": "2026-09-15T10:00:00+00:00"},
-        "b.md": {"read_at": "2026-09-15T12:00:00+00:00"},
+        "a.md": {"read_at": "T10:00:00+00:00"},
+        "b.md": {"read_at": "T12:00:00+00:00"},
         # c.md 仅被提及未读取
     }
 
@@ -60,8 +60,8 @@ def test_attachment_without_read_state_keeps_legacy_order() -> None:
 def test_attachment_ignores_paths_outside_removed_range() -> None:
     removed = _removed_with_reads(["kept.md"])
     read_state = {
-        "kept.md": {"read_at": "2026-09-15T10:00:00+00:00"},
-        "outside.md": {"read_at": "2026-09-15T11:00:00+00:00"},
+        "kept.md": {"read_at": "T10:00:00+00:00"},
+        "outside.md": {"read_at": "T11:00:00+00:00"},
     }
 
     attachment = build_post_compact_file_attachment(removed, read_state=read_state)

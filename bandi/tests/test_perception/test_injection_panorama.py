@@ -75,7 +75,7 @@ async def test_full_injection_panorama_single_turn(home: Any, tmp_path: Any) -> 
 
     # 实体
     ontology_store = OntologyStore(open_ontology(str(home / "ontology.db")))
-    ontology_store.define_class({"id": "Project", "label": "项目"}, "2026-01-01T00:00:00")
+    ontology_store.define_class({"id": "Project", "label": "项目"}, "T00:00:00")
     ontology_store.assert_entity(
         {
             "id": "proj-stellar",
@@ -83,7 +83,7 @@ async def test_full_injection_panorama_single_turn(home: Any, tmp_path: Any) -> 
             "label": "恒星贸易项目",
             "comment": "恒星贸易的 ERP 迁移项目",
         },
-        "2026-01-01T00:00:00",
+        "T00:00:00",
     )
     entity_store = ontology_store
 
@@ -154,7 +154,7 @@ async def test_injection_persists_in_second_turn(home: Any) -> None:
     from bandi.ontology.triple_store import OntologyStore
 
     entity_store = OntologyStore(open_ontology(str(home / "ontology.db")))
-    entity_store.define_class({"id": "Project", "label": "项目"}, "2026-01-01T00:00:00")
+    entity_store.define_class({"id": "Project", "label": "项目"}, "T00:00:00")
     entity_store.assert_entity(
         {
             "id": "proj-stellar",
@@ -162,7 +162,7 @@ async def test_injection_persists_in_second_turn(home: Any) -> None:
             "label": "恒星贸易项目",
             "comment": "恒星贸易的 ERP 迁移项目",
         },
-        "2026-01-01T00:00:00",
+        "T00:00:00",
     )
 
     store = SessionStore(str(home / "sess.db"))

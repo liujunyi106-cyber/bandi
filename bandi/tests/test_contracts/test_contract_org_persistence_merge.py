@@ -34,7 +34,7 @@ def test_save_org_merges_concurrent_cli_writer(tmp_path: Path) -> None:
     fresh, fresh_recruiter = _engine()
     load_org(fresh, fresh_recruiter, path)
     ids = {r.id for r in fresh.list_agents()}
-    assert "team_a_lead" in ids, "他进程新增角色不得被覆盖（SD07-R1）"
+    assert "team_a_lead" in ids, "他进程新增角色不得被覆盖"
     assert "team_b_lead" in ids
 
 

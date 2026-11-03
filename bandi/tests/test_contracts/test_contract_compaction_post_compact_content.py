@@ -54,7 +54,7 @@ def test_post_compact_falls_back_to_disk_when_tool_content_missing(
         )
         # 故意不提供 TOOL 消息（模拟更早被裁）
     ]
-    read_state = {"b.txt": {"resolved_path": str(target), "read_at": "2026-10-24T00:00:00"}}
+    read_state = {"b.txt": {"resolved_path": str(target), "read_at": "T00:00:00"}}
 
     attachment = build_post_compact_file_attachment(removed, read_state=read_state)
 

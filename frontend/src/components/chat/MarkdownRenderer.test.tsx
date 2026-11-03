@@ -33,12 +33,12 @@ describe("splitMermaidBlocks", () => {
     expect(splitMermaidBlocks("```MERMAID\nx\n```")[0]).toEqual({ type: "mermaid", code: "x" });
   });
 
-  it("语言行带图表类型（```mermaid flowchart LR）——类型并入代码（B6 真机容错）", () => {
+  it("语言行带图表类型（```mermaid flowchart LR）——类型并入代码", () => {
     const result = splitMermaidBlocks("```mermaid flowchart LR\nA-->B\n```");
     expect(result[0]).toEqual({ type: "mermaid", code: "flowchart LR\nA-->B" });
   });
 
-  it("裸围栏残渣段跳过（真机灰条根因：```mermaid 前后残留 ``` 不渲染空 pre）", () => {
+  it("裸围栏残渣段跳过", () => {
     const result = splitMermaidBlocks("```\n```mermaid\nA-->B\n```\n```");
     expect(result).toEqual([{ type: "mermaid", code: "A-->B" }]);
   });

@@ -111,7 +111,7 @@ async def test_contract_timeout_tree_kills_and_reaps() -> None:
         with pytest.raises(subprocess.TimeoutExpired):
             await tool.execute({"command": "ls", "timeout": 1})
     mock_tree.assert_called_once_with(mock_proc), "超时后必须调用树杀（带整个 proc）"
-    mock_proc.kill.assert_not_called(), "禁止回退到只杀首进程（P1-7 根因）"
+    mock_proc.kill.assert_not_called(), "禁止回退到只杀首进程"
     mock_proc.wait.assert_awaited_once(), "树杀后必须收割 root，防止残留句柄"
 
 
@@ -277,9 +277,7 @@ def test_contract_tree_kill_real_process_reaps_descendants() -> None:
 
             BashTool._kill_process_tree(root)
             assert root.wait(timeout=10) is not None, "root 未随树杀回收"
-            assert _stopped_ticking(heartbeat, 5.0), (
-                "后代心跳未停止——树杀没杀到整棵子树（P1-7 根因）"
-            )
+            assert _stopped_ticking(heartbeat, 5.0), "后代心跳未停止——树杀没杀到整棵子树"
         finally:
             child_pid = _child_pid(heartbeat) if os.path.exists(heartbeat) else None
             if child_pid is not None:
@@ -327,6 +325,4 @@ def test_contract_bash_finally_releases_job_on_communicate_exception() -> None:
             _asyncio.run(tool.execute({"command": "ls"}))
         except OSError:
             pass
-    assert 4242 in released, (
-        "communicate 异常冒泡后 finally 必须释放 job handle（接线缺口 FM-20 免疫）"
-    )
+    assert 4242 in released, "communicate 异常冒泡后 finally 必须释放 job handle"

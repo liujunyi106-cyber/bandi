@@ -169,7 +169,7 @@ _STRUCTURED_SUMMARY = (
     "## 进度\n### Done\n- [x] 触发超长\n"
     "### In Progress\n- [ ] 压缩重试\n"
     "### Blocked\n- (none)\n\n"
-    "## 关键决策\n- **复用 pipeline**: 与自动压缩同构\n\n"
+    "## 关键决策\n- **复用 pipeline**: \n\n"
     "## 下一步\n1. 断言产物\n\n"
     "## 关键上下文\n- 错误串 RuntimeError('reactive_e2e') 见 logs/rc.py\n"
 )
@@ -237,7 +237,7 @@ async def test_reactive_compact_retries_and_succeeds_with_boundary() -> None:
         for m in ctx.messages
         if m.role == MessageRole.SYSTEM and (m.content or "").startswith("[压缩边界]")
     ]
-    assert len(boundaries) == 1, "错误驱动压缩必须插入恰一条 [压缩边界]（与自动压缩同构）"
+    assert len(boundaries) == 1, "错误驱动压缩必须插入恰一条 [压缩边界]"
     summaries = [
         m
         for m in ctx.messages

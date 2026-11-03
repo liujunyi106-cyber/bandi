@@ -219,7 +219,7 @@ def test_contract_resolve_mentions_registered_filter() -> None:
 
     result4 = resolve_mentions("普通消息无提及", registered)
     assert result4.target_agents == []
-    assert result4.is_broadcast is True, "无 @ 命中 → broadcast 回退（对齐架构 §38.6）"
+    assert result4.is_broadcast is True, "无 @ 命中 → broadcast 回退"
 
 
 def test_contract_mention_keeps_registered_role_case(tmp_path) -> None:

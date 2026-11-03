@@ -20,7 +20,7 @@ function message(overrides: Partial<ChatMessage> = {}): ChatMessage {
   };
 }
 
-describe("MessageItem · 引用文件（2026-10-12 用户拍板：右栏打开/外链跳转）", () => {
+describe("MessageItem · 引用文件", () => {
   beforeEach(() => {
     usePanelStore.setState({ open: false, tabs: [], activeTabId: "" });
   });
@@ -203,7 +203,7 @@ describe("MessageItem", () => {
     expect(screen.getByText("已发送转向指令")).toBeInTheDocument();
   });
 
-  it("user 操作条精简：仅复制 + 编辑（无点赞/差评/更多/重发——2026-09-25 用户拍板）", () => {
+  it("user 操作条精简：仅复制 + 编辑", () => {
     render(
       <MessageItem
         message={message({ role: "user", content: "你好", entryId: "e1" })}
@@ -249,7 +249,7 @@ describe("MessageItem", () => {
     expect(onFeedback).toHaveBeenCalledWith(null);
   });
 
-  it("user 操作条：时间戳紧贴编辑按钮（无撑开分隔），且右对齐（2026-09-25 用户拍板）", () => {
+  it("user 操作条：时间戳紧贴编辑按钮（无撑开分隔），且右对齐", () => {
     render(
       <MessageItem
         message={message({
@@ -320,7 +320,7 @@ describe("MessageItem", () => {
     expect(onRevertStage).toHaveBeenCalledWith("e9");
   });
 
-  it("回复块时间戳：HH:mm 常显 + hover 精确时间（Day137b-1 参考源对齐）", () => {
+  it("回复块时间戳：HH:mm 常显 + hover 精确时间", () => {
     render(<MessageItem message={message({ createdAt: "2026-09-23T14:30:00" })} interactive />);
     const time = screen.getByTestId("message-time");
     expect(time).toHaveTextContent("14:30");
@@ -339,7 +339,7 @@ describe("MessageItem", () => {
     expect(screen.queryByTestId("streaming-cursor")).not.toBeInTheDocument();
   });
 
-  it("尝试调用阶段计时：秒数逐秒累加（2026-10-01 §4.3；0s 不显示）", () => {
+  it("尝试调用阶段计时：秒数逐秒累加", () => {
     vi.useFakeTimers();
     try {
       render(<MessageItem message={message({ content: "", done: false })} interactive />);
@@ -375,7 +375,7 @@ describe("MessageItem", () => {
     }
   });
 
-  it("有内容的流式回复：不渲染流式光标（2026-09-26 用户拍板移除蓝竖条）", () => {
+  it("有内容的流式回复：不渲染流式光标", () => {
     const { container } = render(
       <MessageItem message={message({ content: "正在生成中", done: false })} interactive />,
     );

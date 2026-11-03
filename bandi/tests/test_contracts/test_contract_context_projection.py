@@ -296,8 +296,8 @@ class TestStatesIntegration:
                 skill_id="发货技能",
                 node_id="确认订单",
                 status=SkillFrameStatus.ACTIVE,
-                created_at="2026-09-18T10:00:00",
-                updated_at="2026-09-18T10:00:00",
+                created_at="T10:00:00",
+                updated_at="T10:00:00",
             ),
             revision=1,
         )

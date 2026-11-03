@@ -12,7 +12,7 @@ describe("provider-labels", () => {
     expect(OFFICIAL_PROVIDERS).toContain("ollama");
   });
 
-  it("OFFICIAL_PROVIDERS 按字母序（2026-09-24 用户拍板：全段字母自动排序）", () => {
+  it("OFFICIAL_PROVIDERS 按字母序", () => {
     const sorted = [...OFFICIAL_PROVIDERS].sort((a, b) => a.localeCompare(b));
     expect(OFFICIAL_PROVIDERS).toEqual(sorted);
   });

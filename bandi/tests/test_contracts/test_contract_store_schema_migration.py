@@ -46,8 +46,8 @@ def _make_legacy_db(path: Path) -> None:
             json.dumps(["fs"]),
             json.dumps({"scope": "repo"}),
             1,
-            "2026-01-01T00:00:00+00:00",
-            "2026-01-01T00:00:00+00:00",
+            "T00:00:00+00:00",
+            "T00:00:00+00:00",
         ),
     )
     conn.execute(
@@ -58,8 +58,8 @@ def _make_legacy_db(path: Path) -> None:
             "LegacyQA",
             "[]",
             0,
-            "2026-01-01T00:00:00+00:00",
-            "2026-01-01T00:00:00+00:00",
+            "T00:00:00+00:00",
+            "T00:00:00+00:00",
         ),
     )
     conn.commit()

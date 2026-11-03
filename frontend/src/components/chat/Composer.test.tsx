@@ -159,7 +159,7 @@ describe("Composer", () => {
     expect(onStop).toHaveBeenCalledTimes(1);
   });
 
-  it("Esc 全局生效：焦点不在输入框（页面任意处）也停止（2026-09-24 真机反馈）", () => {
+  it("Esc 全局生效：焦点不在输入框（页面任意处）也停止", () => {
     const onStop = vi.fn();
     render(<Composer busy onSend={vi.fn()} onSteer={vi.fn()} onStop={onStop} />);
     fireEvent.keyDown(document.body, { key: "Escape" });
@@ -175,7 +175,7 @@ describe("Composer", () => {
     expect(onStop).not.toHaveBeenCalled();
   });
 
-  it("above 决策区：渲染在输入框上方且不改变输入框圆角（2026-09-25 用户拍板）", () => {
+  it("above 决策区：渲染在输入框上方且不改变输入框圆角", () => {
     render(
       <Composer
         busy={false}

@@ -48,7 +48,7 @@ class TestToolNameRoundTrip:
         restored = [message_from_entry(e) for e in entries if e.get("entry_type") == "message"]
         tool_msgs = [m for m in restored if m.role == MessageRole.TOOL]
         assert tool_msgs, "TOOL 消息必须存在于读回"
-        assert tool_msgs[0].name == "bash", "工具名必须往返保留（AUD1-X2）"
+        assert tool_msgs[0].name == "bash", "工具名必须往返保留"
 
     def test_message_without_name_restores_none(self, tmp_path: Path) -> None:
         store = _store(tmp_path)

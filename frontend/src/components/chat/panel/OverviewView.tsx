@@ -411,7 +411,7 @@ function SessionOverview({ sessionId }: { sessionId: string }) {
         <p className="text-chat-muted px-1 pb-1 text-[11px] font-medium">
           {t("chat.panel.planTitle")}
         </p>
-        {/* 用户拍板合并：任务只在一处呈现——SOP > 团队工作项（含领取者）> 会话 Todo */}
+        {/*合并：任务只在一处呈现——SOP > 团队工作项（含领取者）> 会话 Todo */}
         {sop ? (
           <SopSection sop={sop} />
         ) : !isSecretary && workItems && workItems.length > 0 ? (

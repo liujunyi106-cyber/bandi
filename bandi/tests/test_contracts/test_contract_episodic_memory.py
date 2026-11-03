@@ -82,8 +82,8 @@ def test_list_recent_orders_newest_first(tmp_path: Any) -> None:
     """
     （Windows ~15.6ms 粒度下连续 record 极易同值）。"""
     store = _store(tmp_path)
-    first = store.record(_ep("第一条经历", created_at="2026-08-25T00:00:00+00:00"))
-    second = store.record(_ep("第二条经历", created_at="2026-08-25T00:01:00+00:00"))
+    first = store.record(_ep("第一条经历", created_at="T00:00:00+00:00"))
+    second = store.record(_ep("第二条经历", created_at="T00:01:00+00:00"))
     recent = store.list_recent(limit=10)
 
     assert [e.episode_id for e in recent][:2] == [second.episode_id, first.episode_id]
@@ -93,7 +93,7 @@ def test_list_recent_same_timestamp_deterministic(tmp_path: Any) -> None:
     """
     DESC 兜底键）——多次读取顺序恒一致，消除 SQLite 同值返回序不定的 flaky。"""
     store = _store(tmp_path)
-    same_ts = "2026-08-25T08:00:00+00:00"
+    same_ts = "T08:00:00+00:00"
     eps = [store.record(_ep(f"同刻经历{i}", created_at=same_ts)) for i in range(4)]
 
     expected = sorted((e.episode_id for e in eps), reverse=True)
@@ -107,7 +107,7 @@ def test_search_same_score_deterministic(tmp_path: Any) -> None:
     """
     顺序恒定（Python sort 稳定但输入序不定时输出仍不定）。"""
     store = _store(tmp_path)
-    same_ts = "2026-08-25T08:00:00+00:00"
+    same_ts = "T08:00:00+00:00"
     eps = [
         store.record(_ep("蓝鲸栖息地研究要点", importance=0.9, created_at=same_ts))
         for _ in range(3)
@@ -389,10 +389,7 @@ def test_search_reaches_legacy_db_without_fts(tmp_path: Any) -> None:
         " recall_count INTEGER NOT NULL DEFAULT 0, last_recalled_at TEXT,"
         " created_at TEXT NOT NULL)"
     )
-    legacy_conn.execute(
-        "INSERT INTO episodes (episode_id, summary, created_at) VALUES "
-        "('legacy-1', '旧库蓝鲸栖息地研究笔记', '2026-08-25T00:00:00+00:00')"
-    )
+    legacy_conn.execute("INSERT INTO episodes (episode_id, summary, created_at) VALUES ")
     legacy_conn.commit()
     legacy_conn.close()
 

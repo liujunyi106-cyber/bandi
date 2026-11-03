@@ -88,10 +88,7 @@ class TestOldDbMigration:
             " last_recalled_at TEXT, created_at TEXT NOT NULL,"
             " recall_queries TEXT NOT NULL DEFAULT '[]')"
         )
-        conn.execute(
-            "INSERT INTO episodes (episode_id, project_id, summary, created_at) "
-            "VALUES ('legacy-1', 'p1', '迁移前旧记忆', '2026-01-01T00:00:00+00:00')"
-        )
+        conn.execute("INSERT INTO episodes (episode_id, project_id, summary, created_at) VALUES")
         conn.commit()
         conn.close()
 

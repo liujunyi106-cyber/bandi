@@ -30,7 +30,7 @@ describe("formatFullTime", () => {
   });
 });
 
-describe("formatRelativeTime（2026-09-25 用户拍板：含昨天等日期信息）", () => {
+describe("formatRelativeTime", () => {
   const now = new Date("2026-09-25T18:00:00");
 
   it("今天 → 仅 HH:mm", () => {

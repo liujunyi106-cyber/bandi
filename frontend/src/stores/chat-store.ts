@@ -305,7 +305,7 @@ export function applyProgressNode(
     }
     case "done":
     case "error": {
-      // 终态收尾（真机实证：done/error 落入 default 后省略收尾，快照回放的
+      // 终态收尾（done/error 落入 default 后省略收尾，快照回放的
       // running 节点永久「正在执行」——刷新后残留）；全部未结节点结为已结束。
       return next.map((node) => {
         if (node.kind === "thought" && node.status === "running") return settleThought(node);
@@ -665,7 +665,7 @@ export function entriesToMessages(sessionId: string, entries: SessionEntry[]): C
     if (!String(entry.content ?? "").trim()) continue;
     const attachments = parseEntryAttachments(entry.metadata);
     // 员工产出回写条目（后端 append_employee_reply）→ 带发送者身份渲染
-    // （头像 tone 走 senderRole、名字优先 senderName 快照）——与 live thread_message 注入同构
+    // （头像 tone 走 senderRole、名字优先 senderName 快照）——与 live thread_message 注入一致
     const employeeReply = parseEntryEmployeeReply(entry.metadata);
     messages.push({
       id: entry.id,

@@ -417,7 +417,7 @@ function BucketRow({ bucket, actions }: { bucket: Bucket; actions?: ProcessBlock
                       {t("chat.process.skipped")}
                     </span>
                   ) : null}
-                  {/* 用户拍板：行尾不再常驻耗时（如 12ms）——
+                  {/*行尾不再常驻耗时（如 12ms）——
                       该位置本应承载「展开/收起」，但工具行的展开入口是点击行打开右侧详情
                       （ProcessBlockActions.onShowDetail），与思考正文的行内展开并非同一机制；
                       两种都做会给出两个含义相近的入口。故此处不显示，

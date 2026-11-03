@@ -3312,15 +3312,12 @@ async def test_otel_bridge_terminated_closes_leaked_spans() -> None:
 
 
 def test_global_store_naive_timestamp_and_index(tmp_path: Any) -> None:
-    """契约（8.10， 修订）：事件时间为 naive 本地 ISO（无时区偏移——
-    单机本地产品口径拍板）；event_type 索引必须存在（query_events 不再全表扫描）。"""
+    """契约（8.10， 修订）：事件时间为 naive 本地 ISO；event_type 索引必须存在（query_events 不再全表扫描）。"""
     store = GlobalMemoryStore(tmp_path / "g.db")
     try:
         store.append_event("evt", {"n": 1})
         row = store.query_events("evt")[0]
-        assert "+" not in row["created_at"], (
-            f"时间戳必须 naive 本地（拍板口径，实际 {row['created_at']!r}）"
-        )
+        assert "+" not in row["created_at"], f"时间戳必须 naive 本地（实际 {row['created_at']!r}）"
         conn = sqlite3.connect(tmp_path / "g.db")
         try:
             names = {

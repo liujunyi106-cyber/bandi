@@ -156,10 +156,10 @@ def test_text_enum() -> None:
 @pytest.mark.asyncio
 async def test_date_add_subtract_roundtrip() -> None:
     tool = DateCalculatorTool()
-    add = await tool.execute({"operation": "add", "date": "2026-09-01", "days": 10})
-    assert add["result"] == "2026-09-11"
-    sub = await tool.execute({"operation": "subtract", "date": "2026-09-11", "days": 10})
-    assert sub["result"] == "2026-09-01"
+    add = await tool.execute({"operation": "add", "date": "", "days": 10})
+    assert add["result"] == ""
+    sub = await tool.execute({"operation": "subtract", "date": "", "days": 10})
+    assert sub["result"] == ""
     with pytest.raises(ValueError):
         await tool.execute({"operation": "add"})
 
@@ -170,19 +170,19 @@ async def test_date_business_days_chinese_holiday_and_add_business() -> None:
     bd = await tool.execute(
         {
             "operation": "add_business_days",
-            "date": "2026-09-30",
+            "date": "",
             "days": 3,
             "weekend_days": [5, 6],
-            "holidays": ["2026-10-01", "2026-10-02"],
+            "holidays": ["", ""],
         }
     )
     # 从 09-30(周三) 起：10/1(四)10/2(五) 排休、10/3(六)10/4(日) 周末
-    assert bd["result"] == "2026-10-07"
+    assert bd["result"] == ""
     cnt = await tool.execute(
         {
             "operation": "business_days",
-            "date": "2026-09-07",
-            "date2": "2026-09-10",
+            "date": "",
+            "date2": "",
         }
     )
     assert cnt["business_days"] == 3  # 周一~周三（周四=end 不含）
@@ -199,18 +199,18 @@ async def test_date_parse_format_compare_convert_timezone() -> None:
             "format": "%Y-%m-%d",
         }
     )
-    assert fmt["formatted"] == "2026-09-30"
-    cmp = await tool.execute({"operation": "compare", "date": "2026-01-01", "date2": "2026-02-01"})
+    assert fmt["formatted"] == ""
+    cmp = await tool.execute({"operation": "compare", "date": "", "date2": ""})
     assert cmp["comparison"] == "before"
     tz = await tool.execute(
         {
             "operation": "convert_timezone",
-            "date": "2026-09-06T08:00:00",
+            "date": "T08:00:00",
             "from_timezone": "UTC",
             "to_timezone": "Asia/Shanghai",
         }
     )
-    assert tz["result"].startswith("2026-09-06T16:00:00")
+    assert tz["result"].startswith("T16:00:00")
     assert float(tz["offset_hours"]) == 8.0
 
 
@@ -219,9 +219,7 @@ async def test_date_now_and_difference() -> None:
     tool = DateCalculatorTool()
     now = await tool.execute({"operation": "now", "to_timezone": "UTC"})
     assert "components" in now and "year" in now["components"]
-    diff = await tool.execute(
-        {"operation": "difference", "date": "2026-01-01", "date2": "2026-01-08"}
-    )
+    diff = await tool.execute({"operation": "difference", "date": "", "date2": ""})
     assert diff["difference"]["days"] == 7
 
 
@@ -900,7 +898,7 @@ def _seed_session_store(tmp_path: Path) -> tuple[str, str]:
     conn = sqlite3.connect(db_str)
     conn.execute(
         "INSERT OR REPLACE INTO sessions (id, title, mode, created_at, updated_at) VALUES (?,?,?,?,?)",
-        (sid, "决策会话", "execute", "2026-09-01T00:00:00", "2026-09-06T00:00:00"),
+        (sid, "决策会话", "execute", "T00:00:00", "T00:00:00"),
     )
     rows = [
         ("e0", "user", "请分析方案A"),
@@ -924,7 +922,7 @@ def _seed_session_store(tmp_path: Path) -> tuple[str, str]:
                 content,
                 None,
                 "{}",
-                "2026-09-06T00:00:00",
+                "T00:00:00",
             ),
         )
     conn.commit()
@@ -1047,8 +1045,8 @@ async def test_util_e2e_build_registry_real_tmp_workspace(tmp_path: Path) -> Non
     ctx = _ctx(tmp_path, project_root=str(ws), blob_data_dir=str(tmp_path / "blobs"))
 
     date = registry.get("date_calculator")
-    d = await date.execute({"operation": "add", "date": "2026-01-01", "days": 1}, ctx)
-    assert d["result"] == "2026-01-02"
+    d = await date.execute({"operation": "add", "date": "", "days": 1}, ctx)
+    assert d["result"] == ""
 
     # folder 真实目录建/写/树/删
     folder = registry.get("folder_operations")

@@ -24,7 +24,7 @@ def _episode(summary: str, *, importance: float = 0.9, recall: int = 5) -> Any:
         importance=importance,
         recall_count=recall,
         recall_queries=["q1", "q2"],
-        created_at="2026-10-10T00:00:00+00:00",
+        created_at="T00:00:00+00:00",
         project_id=None,
         employee_id=None,
         tags=[],

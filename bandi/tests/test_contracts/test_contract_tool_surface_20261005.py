@@ -182,9 +182,7 @@ class TestHallucinationJudgePromptExemption:
             provider=object(),
         )
         blob = " ".join(str(m.get("content", "")) for m in captured["messages"])
-        assert "自我介绍" in blob and "不计入" in blob, (
-            "judge 指令必须显式豁免问候/自我介绍（真机误杀根修）"
-        )
+        assert "自我介绍" in blob and "不计入" in blob, "judge 指令必须显式豁免问候/自我介绍"
         assert report.hallucination_score == 0.0
 
 
@@ -198,10 +196,10 @@ class TestDateCalculatorDifferenceDefault:
         from bandi.tools.util.date_calculator import DateCalculatorTool
 
         tool = DateCalculatorTool()
-        result = await tool.execute({"operation": "difference", "date": "2033-07-15"})
+        result = await tool.execute({"operation": "difference", "date": ""})
         today = _date.today()
         assert result["date1"] == today.isoformat(), "缺省时起点=今天（从今天到目标）"
-        assert result["date2"] == "2033-07-15"
+        assert result["date2"] == ""
         assert result["date2_defaulted"] is True
         assert result["difference"]["days"] == (_date(2033, 7, 15) - today).days
 
@@ -210,9 +208,7 @@ class TestDateCalculatorDifferenceDefault:
         from bandi.tools.util.date_calculator import DateCalculatorTool
 
         tool = DateCalculatorTool()
-        result = await tool.execute(
-            {"operation": "difference", "date": "2026-01-01", "date2": "2026-01-08"}
-        )
+        result = await tool.execute({"operation": "difference", "date": "", "date2": ""})
         assert result["difference"]["days"] == 7
         assert result.get("date2_defaulted") is not True
 

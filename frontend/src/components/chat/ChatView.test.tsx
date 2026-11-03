@@ -178,7 +178,7 @@ describe("ChatView 会话类型口径（线程回复注入）", () => {
     expect(screen.queryByTestId("live-employee-progress")).not.toBeInTheDocument();
   });
 
-  it("过程固化：员工回复注入时过程块随消息展示并清槽（Day137b-1）", async () => {
+  it("过程固化：员工回复注入时过程块随消息展示并清槽", async () => {
     useChatStore.setState({
       activeSessionId: "s-team",
       activeProjectId: "p1",
@@ -204,7 +204,7 @@ describe("ChatView 会话类型口径（线程回复注入）", () => {
     expect(useChatStore.getState().employeeProgress["p1::th-1::worker"]).toBeUndefined();
   });
 
-  it("发送 payload 携带当前对话模式（plan，Day137b-1）", async () => {
+  it("发送 payload 携带当前对话模式", async () => {
     useUiStore.setState({ chatMode: "plan" });
     useChatStore.setState({
       activeSessionId: "s-mode",
@@ -251,7 +251,7 @@ describe("ChatView 会话类型口径（线程回复注入）", () => {
     await waitFor(() => expect(useUiStore.getState().chatMode).toBe("plan"));
   });
 
-  it("停止：abort 404（后端无活动流）→ 本地兜底定稿，防「正在回复中」残留（2026-09-24）", async () => {
+  it("停止：abort 404（后端无活动流）→ 本地兜底定稿，防「正在回复中」残留", async () => {
     abortMock.mockRejectedValueOnce(new ApiError(404, "NO_ACTIVE_ABORT_CONTROLLER"));
     useChatStore.setState({
       activeSessionId: "s-stop",
@@ -372,7 +372,7 @@ describe("ChatView 会话类型口径（线程回复注入）", () => {
 
   // ①：多张决策卡并存时允许上下切换，且**切走再切回要保留已答内容**
   // （上一条 -3 用例管的是「卡 A 被移除、卡 B 抵达」不得残留；本条管的是「A/B 并存、用户只是切走」）
-  it("多张决策卡并存：切换到别的卡再切回，已答内容与分页游标仍在（§18.16①）", async () => {
+  it("多张决策卡并存：切换到别的卡再切回，已答内容与分页游标仍在", async () => {
     const paged = (id: string, prefix: string) => ({
       session_id: "s-multi",
       kind: "input",
@@ -615,7 +615,7 @@ describe("ChatView 137b-3b 失败工具节点级操作", () => {
     });
   }
 
-  it("失败工具行不再渲染重试/跳过操作（2026-10-15 用户拍板：子过程行内操作全部移除）", async () => {
+  it("失败工具行不再渲染重试/跳过操作", async () => {
     useChatStore.setState({
       activeSessionId: "s-team",
       activeProjectId: "p1",
@@ -638,7 +638,7 @@ describe("ChatView 137b-3b 失败工具节点级操作", () => {
   });
 });
 
-describe("ChatView 新建会话空态 + 秘书身份（2026-09-29 用户拍板）", () => {
+describe("ChatView 新建会话空态 + 秘书身份", () => {
   beforeEach(() => {
     wsHarness.handlers = {};
     vi.clearAllMocks();
@@ -752,7 +752,7 @@ describe("ChatView 新建会话空态 + 秘书身份（2026-09-29 用户拍板�
     expect(screen.queryByTestId("chat-secretary-hint")).not.toBeInTheDocument();
   });
 
-  it("助理会话：回复身份头为「助理」（2026-10-10 秘书→助理）", async () => {
+  it("助理会话：回复身份头为「助理」", async () => {
     vi.mocked(sessionsApi.detail).mockResolvedValueOnce({
       session: {},
       messages: [

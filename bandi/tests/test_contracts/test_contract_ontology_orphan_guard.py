@@ -1,20 +1,17 @@
-"""契约：ontology_assert 孤立实体守卫（本体合法性检查，@base 知识库
-`Palantir与本体论/Ontology构建方法论` 方案1「本体约束：不能凭空生成」+ 方案3
-「本体合法性检查」+ 方案4「人机协同：中置信度推荐+确认」）。
+"""契约：ontology_assert 孤立实体守卫。
 
 行为不变式：
 
 **纯逻辑层（ontology.tools）**
-  1. 只断言实体零事实 → `orphan_entities` 点名（本轮新增口径）
-  2. 实体与事实成对断言 → `orphan_entities` 为空（零打扰）
-  3. 预先存在的零度实体再次断言（非本轮新增）→ 不进 orphan
+ 1. 只断言实体零事实 → `orphan_entities` 点名（本轮新增口径）
+ 2. 实体与事实成对断言 → `orphan_entities` 为空（零打扰）
+ 3. 预先存在的零度实体再次断言（非本轮新增）→ 不进 orphan
 
 **适配层（tools.ontology_tool_adapter，人机协同）**
-  4. 有确认通道：确认保留 → 实体保留并记录 confirmed_orphans
-  5. 有确认通道：拒绝 → 回滚（store 中实体消失，render 说明）
-  6. 无确认通道（headless）→ fail-closed 直接回滚（与仓库 headless 拒绝惯例一致）
-  7. 破坏者：成对断言绝不触发确认（ask_confirmation 零调用）
-"""
+ 4. 有确认通道：确认保留 → 实体保留并记录 confirmed_orphans
+ 5. 有确认通道：拒绝 → 回滚（store 中实体消失，render 说明）
+ 6. 无确认通道（headless）→ fail-closed 直接回滚（与仓库 headless 拒绝惯例一致）
+ 7. 破坏者：成对断言绝不触发确认（ask_confirmation 零调用）"""
 
 from __future__ import annotations
 
@@ -27,7 +24,7 @@ import pytest
 from bandi.ontology.tools import OntologyToolContext, create_ontology_tools
 from bandi.tools.ontology_tool_adapter import build_ontology_tools
 
-NOW = "2026-10-15T00:00:00Z"
+NOW = "T00:00:00Z"
 
 
 class FakeConfirmUI:

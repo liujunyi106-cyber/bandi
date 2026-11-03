@@ -23,7 +23,7 @@ from bandi.tools.subprocess_tree import (
 
 logger = logging.getLogger(__name__)
 
-MCP_PROTOCOL_VERSION = "2024-11-05"
+MCP_PROTOCOL_VERSION = ""
 
 _MCP_RISK_LEVELS = ("low", "medium", "high", "critical")
 

@@ -133,7 +133,7 @@ describe("SessionPanel (v5)", () => {
     await waitFor(() => expect(usePanelStore.getState().fullscreen).toBe(false));
   });
 
-  it("破坏者：宽度手柄双击清除手动覆盖（2026-10-04：回窗口自适应，按作用域键）", () => {
+  it("破坏者：宽度手柄双击清除手动覆盖", () => {
     usePanelStore.getState().setWidth("session:s1", 500);
     renderPanel();
     fireEvent.doubleClick(screen.getByTestId("panel-resize-handle"));

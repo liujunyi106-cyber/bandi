@@ -353,7 +353,7 @@ def test_index_is_parsed_once_under_concurrency(
         json.dumps(
             {
                 "providers": {"openrouter": {"models": {"m": {"cost": {"input": 1.0}}}}},
-                "fetched_at": "2026-09-27T00:00:00Z",
+                "fetched_at": "T00:00:00Z",
             }
         ),
         encoding="utf-8",

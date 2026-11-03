@@ -424,9 +424,9 @@ function MessageItemComponent({
                   ) : null}
                 </p>
               ) : null}
-              {/* 用户拍板：移除回复末尾的流式光标（蓝竖条）——逐段出字本身即进度反馈，
+              {/*移除回复末尾的流式光标（蓝竖条）——逐段出字本身即进度反馈，
                   空内容期由上方「正在回复中…」状态行承担指示 */}
-              {/* 用户拍板：引用文件落在「回复卡片内」最下方，标蓝可点开（裸路径） */}
+              {/*引用文件落在「回复卡片内」最下方，标蓝可点开（裸路径） */}
               {!isUser && replyArtifacts?.length ? (
                 <div
                   className="text-chat-muted mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 border-t border-chat-hairline pt-1.5 text-xs"

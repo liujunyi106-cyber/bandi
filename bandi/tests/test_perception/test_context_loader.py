@@ -28,7 +28,7 @@ class TestContextLoader:
         from bandi.ontology.triple_store import OntologyStore
 
         ontology = OntologyStore(open_ontology(str(tmp_path / "o.db")))
-        ontology.define_class({"id": "Project", "label": "项目"}, "2026-01-01T00:00:00")
+        ontology.define_class({"id": "Project", "label": "项目"}, "T00:00:00")
         store = SessionStore(":memory:")
         loader = ContextLoader(store, ontology_store=ontology)
         assert loader._ontology_schema.startswith("# 本体")

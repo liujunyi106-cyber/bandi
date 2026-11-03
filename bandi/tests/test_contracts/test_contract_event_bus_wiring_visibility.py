@@ -64,7 +64,7 @@ class TestBootstrapVisibility:
         with caplog.at_level(logging.WARNING, logger="bandi.core.event_bus"):
             await bootstrap_event_bus(bus, deps)
         warnings = [r for r in caplog.records if r.levelno >= logging.WARNING]
-        assert warnings, "依赖缺失必须产生告警（否则伪接线不可见，FM-100）"
+        assert warnings, "依赖缺失必须产生告警"
         text = " ".join(r.getMessage() for r in warnings)
         assert "未建立" in text or "伪接线" in text, f"告警须点明未建立订阅：{text!r}"
         assert "LLM_RESPONSE" in text, (

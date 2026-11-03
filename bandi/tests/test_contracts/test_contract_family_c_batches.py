@@ -1512,9 +1512,7 @@ def test_checkpoint_store_upserts_wal_and_migrates_legacy(tmp_path: Path) -> Non
             created_at TEXT NOT NULL
         )"""
     )
-    conn.execute(
-        "INSERT INTO checkpoints VALUES ('old-1','s1',5,'{}','', '2026-08-30T00:00:00+00:00')"
-    )
+    conn.execute("INSERT INTO checkpoints VALUES")
     conn.commit()
     conn.close()
 

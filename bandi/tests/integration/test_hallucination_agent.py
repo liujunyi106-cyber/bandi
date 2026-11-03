@@ -20,7 +20,7 @@ from bandi.tools.ontology_tool_adapter import build_ontology_tools
 from bandi.tools.registry import ToolRegistry
 from tests.integration.helpers import MockProvider, RecordingBus
 
-_NOW = "2026-01-01T00:00:00"
+_NOW = "T00:00:00"
 
 
 @pytest.fixture

@@ -135,7 +135,7 @@ class TestConceptSearchFullBody:
             title="测试概念",
             description="",
             content_md=f"---\ntitle: x\n---\n\n{filler}量子纠缠引擎的说明",
-            updated_at="2026-01-01",
+            updated_at="",
         )
         hits = search_concepts("量子纠缠引擎", [row])
         assert hits, "第 2400 字符之后的正文命中不得被静默丢弃"

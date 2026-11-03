@@ -132,9 +132,7 @@ class ComputerUseConfig(
     allow_sensitive_windows: bool = False
 
 
-class FeatureFlagsConfig(
-    BaseModel
-):  # 功能：特性门控配置（CC-24 tool_groups：组名→开关，未列出的组默认开放）
+class FeatureFlagsConfig(BaseModel):  # 功能：特性门控配置
     tool_groups: dict[str, bool] = Field(default_factory=dict)
 
 
@@ -217,7 +215,7 @@ class VerifierPolicyConfig(BaseModel):  # 功能：验证器策略配置（启�
 class AgentConfig(
     BaseModel
 ):  # 功能：Agent 模式/迭代上限/压缩阈值/上下文窗口/Token 预算/折叠阈值配置
-    mode: str = "execute"  # plan | execute（双模式，u 日拍板）
+    mode: str = "execute"  # plan | execute
     max_iterations: int = 15
     stream_to_ui: bool = True
     compression_threshold: float = 0.85

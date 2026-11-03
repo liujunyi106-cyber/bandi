@@ -126,7 +126,7 @@ describe("panel-store", () => {
     expect(usePanelStore.getState().view).toBe("files");
   });
 
-  it("setWidth 按会话钳制（260~640；2026-10-03 min 两轮下调 320→280→260）", () => {
+  it("setWidth 按会话钳制", () => {
     usePanelStore.getState().setWidth("s1", 100);
     expect(usePanelStore.getState().widthBySession.s1).toBe(260);
     usePanelStore.getState().setWidth("s1", 9999);
@@ -135,7 +135,7 @@ describe("panel-store", () => {
     expect(usePanelStore.getState().widthBySession.s1).toBe(PANEL_WIDTH_DEFAULT + 10);
   });
 
-  it("resetWidth 清除手动覆盖（2026-10-04：双击手柄回窗口自适应）", () => {
+  it("resetWidth 清除手动覆盖", () => {
     usePanelStore.getState().setWidth("s1", 420);
     expect(usePanelStore.getState().widthBySession.s1).toBe(420);
     usePanelStore.getState().resetWidth("s1");

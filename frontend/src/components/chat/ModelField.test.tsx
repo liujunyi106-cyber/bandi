@@ -39,7 +39,7 @@ function openMenu(jsx: React.ReactElement) {
   return screen.getByTestId("composer-model-menu");
 }
 
-describe("ModelField（Day137b-2b）", () => {
+describe("ModelField", () => {
   it("无档案无模型 → 字段显示「配置模型」；有模型 → 显示模型名", () => {
     const { rerender } = render(
       <ModelField
@@ -259,7 +259,7 @@ describe("ModelField（Day137b-2b）", () => {
     expect(onOpenConfig).toHaveBeenCalledTimes(2);
   });
 
-  it("当前生效行（档案态）点击 → onOpenConfig(edit)（编辑该档案，非新建——第八轮拍板）", () => {
+  it("当前生效行（档案态）点击 → onOpenConfig(edit)", () => {
     const onOpenConfig = vi.fn();
     openMenu(
       <ModelField
@@ -344,7 +344,7 @@ describe("ModelField（Day137b-2b）", () => {
     expect(screen.queryByTestId("session-model-input")).not.toBeInTheDocument();
   });
 
-  it("模型区无分割线，仅底部「配置模型」入口有上边框（2026-09-29 用户拍板）", () => {
+  it("模型区无分割线，仅底部「配置模型」入口有上边框", () => {
     openMenu(
       <ModelField
         model="deepseek-v4-pro"

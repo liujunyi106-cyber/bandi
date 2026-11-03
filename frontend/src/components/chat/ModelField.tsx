@@ -161,7 +161,7 @@ export function ModelField({
             </div>
           )}
 
-          {/* 用户拍板：模型列表与「当前模型」同属模型区，不画分割线；
+          {/*模型列表与「当前模型」同属模型区，不画分割线；
               仅底部「配置模型」入口用上边框区分（功能区 vs 模型区）。 */}
           {employeeLocked ? (
             <p className="text-chat-muted px-2.5 py-2 text-[11px] leading-relaxed">

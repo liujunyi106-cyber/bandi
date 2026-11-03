@@ -42,7 +42,7 @@ describe("SessionTools", () => {
     expect(screen.queryByTestId("t-search-box")).not.toBeInTheDocument();
   });
 
-  it("工具按钮与顶栏收缩按钮同尺寸/同色值（size-8 + muted/accent 色板——2026-09-24 真机反馈）", () => {
+  it("工具按钮与顶栏收缩按钮同尺寸/同色值", () => {
     // jsdom 无布局——钉与 SidebarTrigger 一致的尺寸与色值类（防回归为 size-6 无色值）
     render(<SessionTools items={ITEMS} testId="t" />);
     for (const id of ["t-search", "t-history"]) {

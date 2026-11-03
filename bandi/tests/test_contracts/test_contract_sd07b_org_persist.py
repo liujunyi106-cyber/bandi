@@ -33,10 +33,7 @@ def _legacy_db_with_employee(tmp_path: Path) -> Path:
         )
         """
     )
-    conn.execute(
-        "INSERT INTO org_employees VALUES "
-        "('e1', '旧员工', 'r1', '', '', '', '[]', '{}', 'active', '2026-01-01', '2026-01-01')"
-    )
+    conn.execute("INSERT INTO org_employees VALUES ")
     conn.commit()
     conn.close()
     return db

@@ -220,7 +220,7 @@ export function SidebarContextList() {
     [projects],
   );
   // 任务区 = 普通会话（无项目 + 无主项目会话兜底；无主=项目被删后回归任务区，数据不丢可见）
-  // 用户二次拍板：带项目归属的会话不进任务区（在项目空间/项目面板查看）
+  // 带项目归属的会话不进任务区（在项目空间/项目面板查看）
   const taskSessions = useMemo(
     () =>
       [
@@ -779,7 +779,7 @@ export function SidebarContextList() {
                         <span className="min-w-0 flex-1 truncate">
                           {project.name || project.project_id}
                         </span>
-                        {/* 用户拍板：删除项目条目右侧的成员数显示 */}
+                        {/*删除项目条目右侧的成员数显示 */}
                       </button>
                       {/* 右侧槽位（与会话行同口径）：非悬浮显示任务状态；悬浮时
                           「更多」按钮浮现，状态点左移让位 */}
@@ -930,7 +930,7 @@ export function SidebarContextList() {
         ) : null}
       </div>
 
-      {/* 用户拍板：批量操作改为面板内分区（贴合面板两边，非弹窗） */}
+      {/*批量操作改为面板内分区（贴合面板两边，非弹窗） */}
       {selectionMode ? (
         <div
           className="border-primary/5 bg-card shrink-0 border-t px-2 py-2"

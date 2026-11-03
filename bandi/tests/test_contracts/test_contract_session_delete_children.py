@@ -56,7 +56,7 @@ def test_delete_expired_removes_children(tmp_path: Path) -> None:
     session_id = store.create_session()
     _seed(store, session_id)
 
-    store.update_session(session_id, updated_at="2000-01-01T00:00:00+00:00")
+    store.update_session(session_id, updated_at="T00:00:00+00:00")
     assert store.delete_expired(ttl_days=0) == 1
     assert _counts(store, session_id)["session_entries_archive"] == 0
     store.close()

@@ -858,7 +858,7 @@ def _mk_scores(path: Any) -> Any:
     class _Working:
         def search(self, q, limit=5, session_id=""):
             return [
-                (ScratchHit("kv", "kw1", "蓝鲸工作草稿片段内容摘要", "2026-08-28"), 0.5),
+                (ScratchHit("kv", "kw1", "蓝鲸工作草稿片段内容摘要", ""), 0.5),
             ]
 
     mgr = MemoryManager(long_term=lt, working=_Working())

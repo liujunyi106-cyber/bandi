@@ -153,7 +153,7 @@ class TestSubagentIdempotencyAssembly:
             second = await manager.spawn("write a plan note again", tool_registry=_registry())
             assert second.success, second.message
             assert target.read_text(encoding="utf-8") == "hello", (
-                "HB-P1 A7 后幂等键含会话维度——子代理每次 spawn 为新会话，"
+                "A7 后幂等键含会话维度——子代理每次 spawn 为新会话，"
                 "跨会话同参不是同一次操作（允许重写）；同会话恢复语义由 "
                 "test_contract_cross_process_resume 覆盖"
             )

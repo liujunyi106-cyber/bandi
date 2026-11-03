@@ -1016,7 +1016,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
   };
 
   /** 功能：头像行内置「更多操作 ⋯」（三类行统一入口，菜单内容按行类型区分）。
-      2026-10-09 用户拍板：与会话行同口径——平时隐形，条目悬浮 / 聚焦时浮现。 */
+与会话行同口径——平时隐形，条目悬浮 / 聚焦时浮现。 */
   const moreMenu = (scope: string, items: React.ReactNode) => {
     const hoverKey = `entry:${scope}`;
     return (
@@ -1081,8 +1081,8 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
         <span className="min-w-0 flex-1 truncate text-sm font-medium">
           {project?.name || projectId}
         </span>
-        {/* 用户拍板：保留原「功能」icon（选择团队/选择员工；无团队灰色禁用）
-            2026-10-02 用户拍板：仅项目群聊会话显示（DM / 项目内秘书会话隐藏） */}
+        {/*保留原「功能」icon（选择团队/选择员工；无团队灰色禁用）
+仅项目群聊会话显示（DM / 项目内秘书会话隐藏） */}
         {showFeatureMenu ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -1121,7 +1121,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
         </button>
       </div>
 
-      {/* 用户拍板：搜索框常驻（与下方不设分割线）；聚焦即呈现历史任务 */}
+      {/*搜索框常驻（与下方不设分割线）；聚焦即呈现历史任务 */}
       <div className="shrink-0 px-2 pt-2 pb-3">
         <div className="border-chat-hairline bg-card flex items-center gap-1.5 rounded-md border px-2 py-1.5">
           <Search className="text-chat-muted size-3.5 shrink-0" />
@@ -1190,7 +1190,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
             {showSecretaryEntry ? (
               <>
                 {/* 秘书
-用户拍板：右侧按钮位置与下方会话行 ⋯ **上下对齐**——
+右侧按钮位置与下方会话行 ⋯ **上下对齐**——
                 右侧内边距用 pr-1（会话行同值），不用 px-2（否则 ⋯ 右移 4px 错位）。 */}
                 <div
                   data-testid="panel-secretary-entry"
@@ -1335,7 +1335,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
         )}
       </div>
 
-      {/* 用户拍板：与任务面板批量操作同款（面板内分区 + 按钮组，非弹窗） */}
+      {/*与任务面板批量操作同款（面板内分区 + 按钮组，非弹窗） */}
       {bulk ? (
         <div
           data-testid="panel-bulk-bar"

@@ -182,7 +182,7 @@ class TestConfirmScope:
             digest = params_digest({"path": "a.txt"})
             assert granted.is_granted("s-once-c", "write", digest), "批准的具体调用必须命中"
             assert not granted.is_granted("s-once-c", "write", params_digest({"path": "b.txt"})), (
-                "改参数即另一次调用，必须重新审批（P0-6）"
+                "改参数即另一次调用，必须重新审批"
             )
             assert not granted.is_granted("s-other", "write", digest), "once 不得跨会话继承"
         finally:

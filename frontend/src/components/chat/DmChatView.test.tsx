@@ -1,5 +1,5 @@
 ﻿/**
- * 功能：DmChatView 行为测试（Day137：员工名/头像 + 任务状态徽标 + 空员工引导 +
+ * 功能：DmChatView 行为测试（员工名/头像 + 任务状态徽标 + 空员工引导 +
  * 线程消息过滤（参与方/项目）与切换竞态守卫）。
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -139,7 +139,7 @@ describe("DmChatView", () => {
     expect(await screen.findByTestId("dm-task-badge")).toHaveTextContent("空闲");
   });
 
-  it("员工执行过程块：thread_progress 归并后实时展示（不依赖任务轮询；Day137b-1 插队批）", async () => {
+  it("员工执行过程块：thread_progress 归并后实时展示", async () => {
     useChatStore.setState({
       employeeProgress: {
         "company::::dev": [
@@ -605,7 +605,7 @@ describe("DmChatView", () => {
  * 模型控件，锁定态无从显示（本仓库 「传了 ≠ 有入口」同一类）。
  * 下面钉的是「渲染出了控件」这个行为，而不是「某 prop 被传了」。
  */
-describe("DmChatView 单聊控制条与 ⊕ 菜单（2026-09-30 用户拍板）", () => {
+describe("DmChatView 单聊控制条与 ⊕ 菜单", () => {
   beforeEach(() => {
     mocked.employees.mockResolvedValue({
       employees: [
@@ -619,7 +619,7 @@ describe("DmChatView 单聊控制条与 ⊕ 菜单（2026-09-30 用户拍板）"
     });
   });
 
-  it("渲染控制条并显示该员工实际使用的模型（§18.15② 有 UI 入口）", async () => {
+  it("渲染控制条并显示该员工实际使用的模型", async () => {
     render(
       <MemoryRouter>
         <DmChatView targetRole="dev" />

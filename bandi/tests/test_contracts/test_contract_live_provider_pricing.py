@@ -34,7 +34,7 @@ def _reset_index() -> None:
 
 def _write_cache(path: Path, providers: dict[str, Any]) -> Path:
     path.write_text(
-        json.dumps({"providers": providers, "fetched_at": "2026-09-27T00:00:00Z"}),
+        json.dumps({"providers": providers, "fetched_at": "T00:00:00Z"}),
         encoding="utf-8",
     )
     return path

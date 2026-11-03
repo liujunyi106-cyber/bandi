@@ -96,7 +96,7 @@ def test_execution_create_get_roundtrip(store: WorkflowStore) -> None:
         user_id="u_1",
         status=ExecutionStatus.RUNNING,
         inputs={"text": "你好"},
-        started_at="2026-09-06T10:00:00",
+        started_at="T10:00:00",
     )
     store.create_execution(execution)
     got = store.get_execution("ex_1")

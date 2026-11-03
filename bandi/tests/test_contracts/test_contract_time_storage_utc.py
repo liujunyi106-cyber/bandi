@@ -73,7 +73,7 @@ class TestUtcWrites:
 class TestLegacyMigration:
     def test_naive_rows_rewritten_to_utc_same_instant(self, tmp_path: Path) -> None:
         db_path = tmp_path / "legacy.db"
-        naive = "2026-10-31T13:45:12.123456"
+        naive = "T13:45:12.123456"
         _seed(
             db_path,
             _SESSIONS_DDL,
@@ -90,7 +90,7 @@ class TestLegacyMigration:
 
     def test_migration_is_idempotent(self, tmp_path: Path) -> None:
         db_path = tmp_path / "legacy2.db"
-        naive = "2026-10-31T08:00:00"
+        naive = "T08:00:00"
         _seed(
             db_path,
             _SESSIONS_DDL,
@@ -107,7 +107,7 @@ class TestLegacyMigration:
 
     def test_migration_skips_aware_values(self, tmp_path: Path) -> None:
         db_path = tmp_path / "legacy3.db"
-        aware = "2026-10-31T05:45:12.123456+00:00"
+        aware = "T05:45:12.123456+00:00"
         _seed(
             db_path,
             _SESSIONS_DDL,
@@ -125,18 +125,18 @@ class TestLegacyMigration:
             db_path,
             _SESSIONS_DDL,
             "INSERT INTO sessions (id, title, mode, created_at, updated_at) VALUES (?,?,?,?,?)",
-            ("s-old", "旧", "execute", "2026-10-31T13:45:12", "2026-10-31T13:45:12"),
+            ("s-old", "旧", "execute", "T13:45:12", "T13:45:12"),
         )
         store = SessionStore(db_path)
         store.create_session(title="新")
         conn = sqlite3.connect(db_path)
         conn.execute(
             "UPDATE sessions SET updated_at = ? WHERE id = 's-old'",
-            (datetime.fromisoformat("2026-10-31T05:45:12").astimezone(UTC).isoformat(),),
+            (datetime.fromisoformat("T05:45:12").astimezone(UTC).isoformat(),),
         )
         conn.execute(
             "UPDATE sessions SET updated_at = ? WHERE title = '新'",
-            (datetime.fromisoformat("2026-10-31T06:00:00").astimezone(UTC).isoformat(),),
+            (datetime.fromisoformat("T06:00:00").astimezone(UTC).isoformat(),),
         )
         conn.commit()
         conn.close()
@@ -151,7 +151,7 @@ class TestLegacyMigration:
             _JOURNAL_DDL,
             "INSERT INTO work_item_journal (work_item_id, session_id, event, detail, created_at) "
             "VALUES (?,?,?,?,?)",
-            ("wi-1", "", "created", "{}", "2026-10-31T13:45:12"),
+            ("wi-1", "", "created", "{}", "T13:45:12"),
         )
         store = WorkItemStore(str(db_path))
         entries = store.list_journal("wi-1")
@@ -161,7 +161,7 @@ class TestLegacyMigration:
 class TestApiExit:
     def test_iso_local_restores_original_local_instant(self, tmp_path: Path) -> None:
         db_path = tmp_path / "exit.db"
-        naive = "2026-10-31T13:45:12"
+        naive = "T13:45:12"
         _seed(
             db_path,
             _SESSIONS_DDL,
@@ -181,7 +181,7 @@ class TestMigratorUnit:
         conn.execute(_SESSIONS_DDL)
         conn.execute(
             "INSERT INTO sessions (id, title, created_at, updated_at) VALUES (?,?,?,?)",
-            ("s", "t", "2026-10-31T05:45:12+00:00", "2026-10-31T05:45:12+00:00"),
+            ("s", "t", "T05:45:12+00:00", "T05:45:12+00:00"),
         )
         assert migrate_naive_timestamps(conn, {"sessions": ("created_at", "updated_at")}) == 0
         conn.close()
@@ -192,13 +192,11 @@ class TestMigratorUnit:
         conn.execute(_SESSIONS_DDL)
         conn.execute(
             "INSERT INTO sessions (id, title, created_at, updated_at) VALUES (?,?,?,?)",
-            ("s", "t", "2026-10-31 13:45:12", "2026-10-31 13:45:12"),
+            ("s", "t", "13:45:12", "13:45:12"),
         )
         assert migrate_naive_timestamps(conn, {"sessions": ("created_at", "updated_at")}) == 2
         value = conn.execute("SELECT created_at FROM sessions").fetchone()[0]
-        assert datetime.fromisoformat(value) == datetime.fromisoformat(
-            "2026-10-31 13:45:12"
-        ).astimezone(UTC)
+        assert datetime.fromisoformat(value) == datetime.fromisoformat("13:45:12").astimezone(UTC)
         conn.close()
 
     def test_counts_rewritten_cells(self, tmp_path: Path) -> None:
@@ -206,7 +204,7 @@ class TestMigratorUnit:
         conn.execute(_SESSIONS_DDL)
         conn.execute(
             "INSERT INTO sessions (id, title, created_at, updated_at) VALUES (?,?,?,?)",
-            ("s", "t", "2026-10-31T13:45:12", "2026-10-31T13:46:12"),
+            ("s", "t", "T13:45:12", "T13:46:12"),
         )
         assert migrate_naive_timestamps(conn, {"sessions": ("created_at", "updated_at")}) == 2
         conn.close()

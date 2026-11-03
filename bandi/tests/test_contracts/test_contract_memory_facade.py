@@ -316,7 +316,7 @@ async def test_rework_writes_lesson_to_global() -> None:
     assert globals_written, f"rework 必须写 global lesson（实际 {hierarchy.saved}）"
     blob = "\n".join(globals_written)
     assert "验证失败原因X" in blob, "lesson 必须含失败原因"
-    assert "蓝鲸" not in blob, "AUD3-11 摘要化：lesson 不得含任务描述（跨项目信息面）"
+    assert "蓝鲸" not in blob, "摘要化：lesson 不得含任务描述（跨项目信息面）"
 
 
 @pytest.mark.asyncio

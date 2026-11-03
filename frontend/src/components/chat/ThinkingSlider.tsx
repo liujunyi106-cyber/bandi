@@ -149,7 +149,7 @@ export function ThinkingSlider({
  灰色竖条刻度层。
                 刻度 left 按 range thumb 中心公式对齐（thumb 14px）。
                 填充宽度：关闭档 = 0；**最大档 = 100%（必须填满——否则白钮右侧留 7px 缺口，
-                2026-09-24 三轮反馈）**；中间档 = thumb 中心对齐。 */}
+三轮反馈）**；中间档 = thumb 中心对齐。 */}
             <div className="thinking-shell">
               <div
                 aria-hidden
@@ -183,7 +183,7 @@ export function ThinkingSlider({
                   容器 px-[6px] + justify-between 使刻度中心 = 7 + i*(W-14)/(n-1)，
                   与 range thumb 中心（半径 7px）精确对齐，且落点无亚像素小数
                   （旧式 calc(% + nudge px) 每条小数位不同 → 抗锯齿把 2px 线糊成 2~3px）。
-                  首尾与当前档渲染透明占位以保持等距（用户拍板首尾不放实心竖条）。 */}
+ 首尾与当前档渲染透明占位以保持等距。 */}
               <div
                 aria-hidden
                 className="pointer-events-none absolute inset-0 z-20 flex items-center justify-between px-[6px]"

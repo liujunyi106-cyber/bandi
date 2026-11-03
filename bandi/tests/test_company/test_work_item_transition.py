@@ -213,7 +213,7 @@ class TestComputeDoomedWorkItemIds:
                 "dependency_work_item_ids": ["child"],
                 "dependency_settlement": {
                     "failed": ["child"],
-                    "settled_at": "2026-08-05T00:00:00",
+                    "settled_at": "T00:00:00",
                 },
             },
         )
@@ -389,7 +389,7 @@ class TestHasPendingSettlementRelease:
             phase=Phase.READY,
             metadata={
                 "dependency_work_item_ids": ["child"],
-                "dependency_settlement": {"failed": ["child"], "settled_at": "2026-08-05T00:00:00"},
+                "dependency_settlement": {"failed": ["child"], "settled_at": "T00:00:00"},
             },
         )
         assert has_pending_settlement_release(_by_id(parent, child)) is False
@@ -725,7 +725,7 @@ class TestRefreshDependents:
             phase=Phase.READY,
             metadata={
                 "dependency_work_item_ids": ["child"],
-                "dependency_settlement": {"failed": ["child"], "settled_at": "2026-08-05T00:00:00"},
+                "dependency_settlement": {"failed": ["child"], "settled_at": "T00:00:00"},
             },
         )
         child = _item("child", phase=Phase.FAILED)
@@ -740,7 +740,7 @@ class TestRefreshDependents:
                 "dependency_work_item_ids": ["child1", "child2"],
                 "dependency_settlement": {
                     "failed": ["child1"],
-                    "settled_at": "2026-08-05T00:00:00",
+                    "settled_at": "T00:00:00",
                 },
             },
         )
@@ -758,7 +758,7 @@ class TestRefreshDependents:
                 "dependency_work_item_ids": ["child1", "child2"],
                 "dependency_settlement": {
                     "failed": ["child1"],
-                    "settled_at": "2026-08-05T00:00:00",
+                    "settled_at": "T00:00:00",
                 },
             },
         )
@@ -776,7 +776,7 @@ class TestRefreshDependents:
                 "dependency_work_item_ids": ["child1", "child2"],
                 "dependency_settlement": {
                     "failed": ["child1"],
-                    "settled_at": "2026-08-05T00:00:00",
+                    "settled_at": "T00:00:00",
                 },
             },
         )
@@ -841,7 +841,7 @@ class TestRefreshDependents:
                 "dependency_settlement": {
                     "failed": ["fail"],
                     "stuck": ["leaf"],
-                    "settled_at": "2026-08-05T00:00:00",
+                    "settled_at": "T00:00:00",
                 }
             },
         )
@@ -883,7 +883,7 @@ class TestRefreshDependents:
                 "dependency_settlement": {
                     "failed": ["fail"],
                     "stuck": ["leaf-a", "leaf-b"],
-                    "settled_at": "2026-08-05T00:00:00",
+                    "settled_at": "T00:00:00",
                 }
             },
         )

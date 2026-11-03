@@ -33,7 +33,7 @@ class TestIncompleteStreamFallsBack:
         src = _inner_source()
         needle = 'response.finish_reason in ("incomplete", "error") and not ('
         at = src.find(needle)
-        assert at > 0, "未找到流式分支的 incomplete 守卫（FM-102 修复缺失？）"
+        assert at > 0, "未找到流式分支的 incomplete 守卫"
         return at
 
     def test_incomplete_with_no_content_is_treated_as_failed_attempt(self) -> None:

@@ -45,7 +45,6 @@ coverage
 .tmp
 
 # 本机 npm 缓存重定向（WorkBuddy 沙箱下 AppData 缓存写入被拒 → EPERM；
-# 见 交付文档收集/Day135-交付文档.md §未完成项）
 .npm-cache
 
 # electron-builder extraResources 暂存目录（sidecar 构建产物，不入库）

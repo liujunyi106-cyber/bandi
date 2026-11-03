@@ -208,7 +208,7 @@ async def test_ontology_assert_approved_writes_only_ontology(
     pending = MemoryPendingStore(tmp_path)
     ontology = OntologyStore(open_ontology(tmp_path / "ontology.db"))
     # 预置关系词表——ontology_assert 拒绝未声明谓词（TBox 白名单语义）
-    ontology.define_relation({"id": "invests_in"}, "2026-10-14T00:00:00+00:00")
+    ontology.define_relation({"id": "invests_in"}, "T00:00:00+00:00")
     tools = build_ontology_tools(OntologyToolContext(store=ontology))
     tool_registry = ToolRegistry()
     for tool in tools:

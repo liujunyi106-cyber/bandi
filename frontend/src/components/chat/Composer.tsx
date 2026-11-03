@@ -1064,7 +1064,7 @@ export function Composer({
                   title={t("chat.composer.stop")}
                   onClick={armStop}
                 >
-                  {/* 用户拍板：中断 icon 用方形（lucide Square 自带 rx=2 小圆角）实心 */}
+                  {/*中断 icon 用方形（lucide Square 自带 rx=2 小圆角）实心 */}
                   <Square className="size-3.5 fill-current" />
                 </Button>
               ) : (
@@ -1075,7 +1075,7 @@ export function Composer({
                   title={t("chat.composer.send")}
                   onClick={submit}
                 >
-                  {/* 用户拍板：纸飞机右移 1px 视觉居中（原 -2px 过左） */}
+                  {/*纸飞机右移 1px 视觉居中（原 -2px 过左） */}
                   <Send className="size-3.5 -translate-x-[1px] translate-y-[1px] fill-current" />
                 </Button>
               )}

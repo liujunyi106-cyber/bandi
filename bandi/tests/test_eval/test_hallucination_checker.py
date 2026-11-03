@@ -71,11 +71,9 @@ def _make_lookup(*labels):
     from pathlib import Path
 
     store = OntologyStore(open_ontology(str(Path(tempfile.mkdtemp()) / "o.db")))
-    store.define_class({"id": "Task"}, "2026-01-01T00:00:00")
+    store.define_class({"id": "Task"}, "T00:00:00")
     for index, label in enumerate(labels):
-        store.assert_entity(
-            {"id": f"e{index}", "classes": ["Task"], "label": label}, "2026-01-01T00:00:00"
-        )
+        store.assert_entity({"id": f"e{index}", "classes": ["Task"], "label": label}, "T00:00:00")
     return OntologyEntityLookup(store)
 
 

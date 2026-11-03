@@ -24,7 +24,7 @@ from bandi.ontology.migrate import MigrationReport, migrate_legacy, rollback_mig
 from bandi.ontology.spec import open_ontology
 from bandi.ontology.triple_store import OntologyStore
 
-NOW = "2026-10-13T00:00:00Z"
+NOW = "T00:00:00Z"
 
 _LEGACY_DDL = (
     """

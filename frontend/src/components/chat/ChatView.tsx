@@ -954,7 +954,7 @@ export function ChatView() {
             onClear={() => void clearRevert()}
           />
         ) : null}
-        {/* 用户拍板：会话内搜索/历史提问已移至顶栏（AppHeader 渲染，与连接状态同排） */}
+        {/*会话内搜索/历史提问已移至顶栏（AppHeader 渲染，与连接状态同排） */}
 
         {activeRound ? <GroupRoundBar round={activeRound} /> : null}
 
@@ -1013,7 +1013,7 @@ export function ChatView() {
         {/* 员工执行的实时过程已挪入消息流尾部（MessageList children——随滚动，
             不再固定挤占消息区）；此处原独立渲染块删除 */}
 
-        {/* 用户拍板：新建会话英雄区——品牌字段 + 输入框组垂直居中
+        {/*新建会话英雄区——品牌字段 + 输入框组垂直居中
             （不再显示秘书头像；秘书提示改挂在输入框下方 below 槽） */}
         <div
           className={cn(
@@ -1118,7 +1118,7 @@ export function ChatView() {
                   ) : null}
                   {pendingInteraction ? (
                     <div className="flex flex-col gap-1" data-testid="interaction-stack">
-                      {/* 用户拍板：卡序指示从卡外（本处原「待决策 N 项 · 第 N 项」条）
+                      {/*卡序指示从卡外（本处原「待决策 N 项 · 第 N 项」条）
                           挪进 InteractionCard 头部（倒计时左侧，形如 1/2） */}
                       <InteractionCard
                         key={pendingInteraction.interaction_id}
@@ -1159,7 +1159,7 @@ export function ChatView() {
             }
             below={isNewSession ? <ProjectSpaceCard /> : undefined}
           />
-          {/* 用户拍板：秘书提示在「整个会话框 + 项目空间卡」之外（壳外、面板居中）；
+          {/*秘书提示在「整个会话框 + 项目空间卡」之外（壳外、面板居中）；
             第五轮：与会话框/卡片间距再收（负 margin 抵消 Composer 组件底部留白 pb-5） */}
           {showSecretaryHint ? (
             <p

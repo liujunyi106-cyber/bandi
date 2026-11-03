@@ -46,7 +46,7 @@ def test_high_importance_low_relevance_episodic_does_not_outrank_full_relevance_
     class _Working:
         def search(self, q, limit=5, session_id=""):
             # 满相关 relevance=1.0，无 importance 放大
-            return [(ScratchHit("kv", "kw1", "满相关工作草稿片段内容", "2026-08-28"), 1.0)]
+            return [(ScratchHit("kv", "kw1", "满相关工作草稿片段内容", ""), 1.0)]
 
     mgr = MemoryManager(long_term=lt, episodic=_Episodic(), working=_Working())
     out = mgr.search_unified("蓝鲸", session_id="s1", scoring="classified")
@@ -90,7 +90,7 @@ def test_fusion_default_episodic_importance_can_outrank_working(tmp_path: Path) 
 
     class _Working:
         def search(self, q, limit=5, session_id=""):
-            return [(ScratchHit("kv", "kw1", "满相关工作草稿片段内容", "2026-08-28"), 1.0)]
+            return [(ScratchHit("kv", "kw1", "满相关工作草稿片段内容", ""), 1.0)]
 
     mgr = MemoryManager(long_term=lt, episodic=_Episodic(), working=_Working())
     out = mgr.search_unified("蓝鲸", session_id="s1")

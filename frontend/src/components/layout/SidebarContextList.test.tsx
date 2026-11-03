@@ -148,7 +148,7 @@ describe("SidebarContextList", () => {
     expect(screen.getByText("普通任务一")).toBeInTheDocument();
   });
 
-  it("点项目行默认打开该项目最新会话记录（Day137b-1 用户拍板）", async () => {
+  it("点项目行默认打开该项目最新会话记录", async () => {
     const projectSessions = [
       {
         id: "s-old",

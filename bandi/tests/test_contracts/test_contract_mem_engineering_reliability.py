@@ -396,7 +396,7 @@ async def test_memory_source_passes_question_hint_to_unified(monkeypatch: Any) -
         intent_hint="execute",
     )
     assert captured["question_hint"] == "history_conclusion", (
-        "生产链 intent_hint 恒 plan/execute，四问分类不得被短路（修主链 FM-1）"
+        "生产链 intent_hint 恒 plan/execute，四问分类不得被短路"
     )
     assert captured["intent_hint"] == "execute", "执行意图必须继续透传（plan/execute 偏置不丢）"
 

@@ -9,10 +9,10 @@ import pytest
 from bandi.tools.base import ToolPermissionContext
 
 _ROWS = [
-    {"dept": "销售", "name": "张伟", "amount": 100, "date": "2026-01-05"},
-    {"dept": "销售", "name": "李娜", "amount": None, "date": "2026-01-06"},
-    {"dept": "工程", "name": "王强", "amount": 300, "date": "2026-01-07"},
-    {"dept": "工程", "name": "赵敏", "amount": 200, "date": "2026-01-08"},
+    {"dept": "销售", "name": "张伟", "amount": 100, "date": ""},
+    {"dept": "销售", "name": "李娜", "amount": None, "date": ""},
+    {"dept": "工程", "name": "王强", "amount": 300, "date": ""},
+    {"dept": "工程", "name": "赵敏", "amount": 200, "date": ""},
 ]
 
 
@@ -312,7 +312,7 @@ async def test_transform_cast_datetime() -> None:
         _ctx(),
     )
     assert result["success"] is True
-    assert result["data"][0]["date"] == "2026-01-05"
+    assert result["data"][0]["date"] == ""
 
 
 @pytest.mark.asyncio
@@ -541,7 +541,7 @@ async def test_transform_cast_datetime_with_null_no_nat_string() -> None:
     _, _, transform, *_ = _tools()
     result = await transform.execute(
         {
-            "data": [{"dt": "2026-01-05"}, {"dt": None}],
+            "data": [{"dt": ""}, {"dt": None}],
             "transformations": [{"type": "cast", "column": "dt", "target_type": "datetime"}],
         },
         _ctx(),

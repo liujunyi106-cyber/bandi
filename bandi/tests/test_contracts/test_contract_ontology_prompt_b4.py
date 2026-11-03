@@ -24,7 +24,7 @@ from pathlib import Path
 from bandi.ontology.prompt import MAX_TBOX_TERMS, render_ontology_section
 from bandi.ontology.types import ClassTerm, Entity, Fact, GraphView, RelationTerm
 
-NOW = "2026-10-13T00:00:00Z"
+NOW = "T00:00:00Z"
 
 
 def _g(terms: dict | None = None, entities: dict | None = None, facts: dict | None = None):

@@ -417,7 +417,7 @@ describe("chat store keyed stream merge", () => {
   });
 });
 
-describe("Day137b-1 过程消息数据源（记忆行 / 任务台账）", () => {
+describe("过程消息数据源（记忆行 / 任务台账）", () => {
   beforeEach(resetStore);
 
   it("applyMemoryWritten 追加记忆写入行（相邻同类型去重防重复帧）", () => {
@@ -473,7 +473,7 @@ describe("Day137b-1 过程消息数据源（记忆行 / 任务台账）", () => 
   });
 });
 
-describe("Day137b-1 插队批（员工执行过程 thread_progress）", () => {
+describe("插队批（员工执行过程 thread_progress）", () => {
   beforeEach(resetStore);
 
   it("applyProgressNode：thinking 累积 + 工具 start→progress→result 归并", () => {
@@ -795,7 +795,7 @@ describe("会话回收（removeSessionLocal）", () => {
   });
 });
 
-describe("abortLocalStream（2026-09-24 真机反馈：停止后残留兜底）", () => {
+describe("abortLocalStream", () => {
   beforeEach(resetStore);
 
   it("有内容的挂起消息 → 定稿 done + 槽释放（保留已产出部分）", () => {
@@ -984,7 +984,7 @@ describe("137b-3c 过程条目还原（detail 解析恢复）", () => {
   });
 });
 
-describe("draftReferences（@ 引用项目文件草稿——2026-09-29）", () => {
+describe("draftReferences", () => {
   it("增删清 + 同路径去重（不叠加 chips）", () => {
     useChatStore.setState({ draftReferences: [] });
     useChatStore.getState().addDraftReference({ path: "a.md", name: "a.md" });
@@ -998,7 +998,7 @@ describe("draftReferences（@ 引用项目文件草稿——2026-09-29）", () =
   });
 });
 
-describe("entriesToMessages · checkpoint 条目不进对话（2026-10-12 排查）", () => {
+describe("entriesToMessages · checkpoint 条目不进对话", () => {
   it("role=null / content=空的 checkpoint 条目被过滤（不渲染空壳）", () => {
     const entries = [
       {

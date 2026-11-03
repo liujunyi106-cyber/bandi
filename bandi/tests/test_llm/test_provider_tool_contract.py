@@ -183,7 +183,7 @@ class TestGoogleToolCallIdConsistency:
         ]
         calls = _extract_tool_calls(parts)
         ids = [c.id for c in calls]
-        assert ids[0].startswith("fc_read"), f"id 必须与流式同构（fc_{{name}} 前缀）: {ids}"
+        assert ids[0].startswith("fc_read"), f"id 必须与流式一致（fc_{{name}} 前缀）: {ids}"
         assert len(set(ids)) == 3, f"同名工具多次调用 id 必须唯一: {ids}"
 
     @pytest.mark.asyncio

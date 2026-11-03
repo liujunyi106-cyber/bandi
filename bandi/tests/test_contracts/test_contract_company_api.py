@@ -336,7 +336,7 @@ class TestApiDispatcherPersistCallable:
             )
         )
         org_json = tmp_path / ".bandi" / "company" / "org.json"
-        assert org_json.exists(), "装配后的 org 变更必须自动写 org.json（AR-14）"
+        assert org_json.exists(), "装配后的 org 变更必须自动写 org.json"
         payload = json.loads(org_json.read_text(encoding="utf-8"))
         employee_ids = [e["employee_id"] for e in payload.get("employees", [])]
         assert "auto-persist-1" in employee_ids, f"org.json 必须含新员工: {payload}"

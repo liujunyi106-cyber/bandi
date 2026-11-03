@@ -570,7 +570,7 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
                     data-chat-anchor-key={message.message_id}
                     className={cn("flex w-full flex-col", isUser ? "items-end" : "items-start")}
                   >
-                    {/* 用户拍板：用户消息不带「我」标签；员工行 = 头像 + 姓名 + 时间戳 */}
+                    {/*用户消息不带「我」标签；员工行 = 头像 + 姓名 + 时间戳 */}
                     {!isUser ? (
                       <span
                         data-testid="dm-message-meta"
@@ -627,7 +627,7 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
                 );
               })
             )}
-            {/* 用户拍板：正在执行显示在员工头像下方、与头像左缘对齐；
+            {/*正在执行显示在员工头像下方、与头像左缘对齐；
               插队批：thread_progress 帧到达即展示实时过程块（有过程帧优先于静态提示） */}
             {progressNodes.length > 0 || awaitingReply ? (
               <div className="flex flex-col gap-0.5" data-testid="dm-running">
@@ -711,10 +711,10 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
           </div>
         </div>
       ) : null}
-      {/* 用户拍板：对话框与其它会话统一（公共 Composer）；单聊不显示模式控件。
+      {/*对话框与其它会话统一（公共 Composer）；单聊不显示模式控件。
 busy 从过程槽派生 ⇒ 中断按钮出现；onStop 走 E-6 abort（原 noop 失效）。
-用户拍板：开 enhanced 拿到控制条（模型/思考模式）+ ⊕ 的上传与@引用文件；
-          2026-10-02：单聊不消费「选择员工」（@团队成员仅项目群聊会话提供）——allowTeamPicker=false。 */}
+开 enhanced 拿到控制条（模型/思考模式）+ ⊕ 的上传与@引用文件；
+单聊不消费「选择员工」（@团队成员仅项目群聊会话提供）——allowTeamPicker=false。 */}
       <Composer
         busy={employeeBusy}
         disabled={retiredLocked}

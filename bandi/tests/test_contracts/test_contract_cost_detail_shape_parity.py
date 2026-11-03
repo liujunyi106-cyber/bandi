@@ -98,7 +98,7 @@ class TestCostDetailShapeParity:
     def test_no_legacy_nested_shape(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         """钉住不再回退到嵌套 `session_cost` 形状（缺陷的直接表征）。"""
         empty = _empty_tracker_case(monkeypatch, tmp_path, tracker_present=False)
-        assert "session_cost" not in empty, "不得返回嵌套 session_cost 键（FM-98 缺陷形状）"
+        assert "session_cost" not in empty, "不得返回嵌套 session_cost 键"
 
 
 class TestCostDetailRealEmptySession:

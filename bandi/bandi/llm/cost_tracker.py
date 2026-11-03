@@ -28,7 +28,7 @@ _MAX_COST_ENTRIES = 10_000
 
 
 @dataclass
-class CostEntry:  # 功能：单次 LLM 调用成本记录（token/费用/模型 + 七-P2-4 拆解字段）
+class CostEntry:  # 功能：单次 LLM 调用成本记录
     session_id: str
     timestamp: float
     provider: str

@@ -254,7 +254,7 @@ it("总行文案：不再显示「过程消息」字段名，完成态只留「�
   });
 });
 
-describe("ProcessBlock 失败工具行（2026-10-15 行内操作移除）", () => {
+describe("ProcessBlock 失败工具行", () => {
   const failedNode = () =>
     toolNode("t1", "bash", { status: "error", detail: "boom", toolCallId: "call_9" });
 
@@ -272,7 +272,7 @@ describe("ProcessBlock 失败工具行（2026-10-15 行内操作移除）", () =
     expect(screen.queryByTestId("process-item-resend")).not.toBeInTheDocument();
   });
 
-  it("分类行无悬浮灰态（2026-10-15：hover 背景移除，箭头仍可旋转点击）", () => {
+  it("分类行无悬浮灰态", () => {
     render(<ProcessBlock nodes={[failedNode()]} />);
     fireEvent.click(screen.getByTestId("process-toggle"));
     const row = screen.getByTestId("process-bucket-tool");

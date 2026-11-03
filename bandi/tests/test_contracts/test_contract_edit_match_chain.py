@@ -38,7 +38,7 @@ def _read_state(*, path: Path, mtime: float, sha256: str, partial: bool = False)
     """功能：构造 read_state 记录（Edit 外部修改检测消费形态）。"""
     return {
         str(path): {
-            "read_at": "2026-09-18T00:00:00+00:00",
+            "read_at": "T00:00:00+00:00",
             "mtime": mtime,
             "size": path.stat().st_size,
             "resolved_path": str(path.resolve()),

@@ -419,7 +419,7 @@ export function InteractionCard({
                 );
               })
             : null}
-          {/* 用户拍板：有选项时**同时**保留自由输入框（选项覆盖不到的答案直接手打）；
+          {/*有选项时**同时**保留自由输入框（选项覆盖不到的答案直接手打）；
               无选项时必给输入框（否则无从作答）。allow_custom=false 且带选项时才只留按钮 */}
           {allowCustom || currentChoices.length === 0 ? (
             <input
@@ -437,7 +437,7 @@ export function InteractionCard({
               }
             />
           ) : null}
-          {/* 用户拍板：去掉「（部分作答）」按钮备注与左下角未答提示——
+          {/*去掉「（部分作答）」按钮备注与左下角未答提示——
               确定按钮统一文案，未答语义由 Agent 侧 note 处理，不在卡上提示用户 */}
           <div className="mt-1 flex items-center justify-end gap-2">
             {cancelButton}

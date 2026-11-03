@@ -185,8 +185,8 @@ async def test_run_work_item_sop_progress_end_to_end(
             "skill_id": "sk_hb2_e2e",
             "node_id": "n1",
             "status": SkillFrameStatus.ACTIVE,
-            "created_at": "2026-09-21T00:00:00",
-            "updated_at": "2026-09-21T00:00:00",
+            "created_at": "T00:00:00",
+            "updated_at": "T00:00:00",
         },  # type: ignore[arg-type]
     )
     save_frames(stack, str(frames_dir))

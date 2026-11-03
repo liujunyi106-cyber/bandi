@@ -927,8 +927,8 @@ class TestSopProgress:
             node_id="n1",
             status=SkillFrameStatus.ACTIVE,
             slots={"secret_field": "不应外泄的槽位值"},
-            created_at="2026-09-25T00:00:00",
-            updated_at="2026-09-25T00:00:00",
+            created_at="T00:00:00",
+            updated_at="T00:00:00",
         )
         save_frames(SkillFrameStack(scope_id=scope, active=frame, pending=[], completed=[]))
         resp = r6x137b3_client.get(f"/api/sessions/{sid}/sop")

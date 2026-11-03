@@ -91,4 +91,4 @@ async def test_verifier_wired_when_safety_enabled(home: Any) -> None:
     verifier = getattr(ctx, "verifier", None)
     assert verifier is not None, "safety.enabled 时 Verifier 必须注入 ctx（验证闸门生效）"
     assert verifier.policy.enabled is True
-    assert verifier.policy.fail_open is False, "fail-open 拍板为不放行"
+    assert verifier.policy.fail_open is False, "fail-open 为不放行"

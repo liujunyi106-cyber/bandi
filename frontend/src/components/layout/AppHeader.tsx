@@ -158,7 +158,7 @@ export function AppHeader({
 
         {/* 右侧组：搜索/历史提问 + 连接提示 + 右栏开合 */}
         <div className="flex shrink-0 items-center gap-1">
-          {/* 用户拍板：会话内搜索/历史提问移到顶栏，与连接状态指示同排对齐 */}
+          {/*会话内搜索/历史提问移到顶栏，与连接状态指示同排对齐 */}
           {headerToolTestId && headerToolItems.length > 0 ? (
             <SessionTools items={headerToolItems} testId={headerToolTestId} />
           ) : null}

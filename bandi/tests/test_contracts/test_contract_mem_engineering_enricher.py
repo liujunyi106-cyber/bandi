@@ -281,13 +281,13 @@ def test_find_facts_with_real_triple_store(tmp_path: Any) -> None:
     from bandi.ontology.triple_store import OntologyStore
 
     store = OntologyStore(open_ontology(str(tmp_path / "ontology.db")))
-    store.define_class({"id": "Note"}, "2026-01-01T00:00:00")
+    store.define_class({"id": "Note"}, "T00:00:00")
     for eid, label in (
         ("a1", "蓝鲸项目甲文档"),
         ("b1", "蓝鲸项目乙文档"),
         ("g1", "蓝鲸项目全局文档"),
     ):
-        store.assert_entity({"id": eid, "classes": ["Note"], "label": label}, "2026-01-01T00:00:00")
+        store.assert_entity({"id": eid, "classes": ["Note"], "label": label}, "T00:00:00")
 
     enricher = EntityGraphEnricher(OntologyEntityLookup(store), project_id="proj-a")
     facts = enricher.find_facts([EntityRef(name="蓝鲸项目")], limit=10)
