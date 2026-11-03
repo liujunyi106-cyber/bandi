@@ -234,7 +234,7 @@ class TestBashTool:
             ):
                 ctx = ToolPermissionContext(extra={"project_root": str(proj)})
                 await tool.execute({"command": "pwd"}, context=ctx)
-            assert mocked.call_args.kwargs.get("cwd") == str(proj), (
+            assert Path(mocked.call_args.kwargs.get("cwd") or "").resolve() == proj.resolve(), (
                 "project_root 会话缺省 cwd 必须锚定项目根（与 fs 工具一致）"
             )
         finally:
@@ -264,7 +264,9 @@ class TestBashTool:
             ):
                 ctx = ToolPermissionContext(extra={"project_root": str(proj)})
                 await tool.execute({"command": "pwd", "cwd": "sub"}, context=ctx)
-            assert mocked.call_args.kwargs.get("cwd") == str(proj / "sub")
+            assert (
+                Path(mocked.call_args.kwargs.get("cwd") or "").resolve() == (proj / "sub").resolve()
+            )
         finally:
             ws.rmdir()
             shutil.rmtree(proj)

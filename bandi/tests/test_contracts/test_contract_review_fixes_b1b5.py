@@ -10,6 +10,7 @@ GlobalMemoryStore / repair_tool_arguments / subagent 装配 / google_stream。
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from typing import Any
 
 import pytest
@@ -23,6 +24,12 @@ from bandi.observability.audit_reporter import AuditFilter, AuditReporter
 from bandi.observability.trace_explainer import TraceExplainer
 from bandi.tools.permissions_pipeline import PermissionsPipeline
 from bandi.tools.registry import ToolRegistry
+
+# 功能：部分用例断言「本地时间相对 UTC 的偏移」，在 UTC 机器上无从体现
+requires_non_utc_local = pytest.mark.skipif(
+    datetime.now().astimezone().utcoffset() == timedelta(0),
+    reason="用例依赖非 UTC 的本地时区",
+)
 
 
 class _AutoApprove:
@@ -231,6 +238,7 @@ async def test_rf9_recovery_syncs_seen_window(tmp_path: Any) -> None:
         bus2.disable_persistence()
 
 
+@requires_non_utc_local
 def test_rf10_search_normalizes_mixed_timestamps(tmp_path: Any) -> None:
     """契约：旧本地 naive 与新 UTC ISO 混排时按真实时间
     DESC（字符串序会颠倒：本地 10:00 = UTC 02:00 应排 UTC 04:00 之后）。"""

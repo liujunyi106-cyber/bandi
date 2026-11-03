@@ -180,11 +180,12 @@ Electron 打包配置在 `frontend/electron-builder.yml`，需要出安装包时
 ### Docker（只跑后端内核）
 
 ```bash
-docker compose up --build
+cp deploy/.env.example deploy/.env     # 填 BANDI_API_KEY 与模型三项
+docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
 容器只承载 FastAPI 内核（`127.0.0.1:8766`），数据落在具名卷 `bandi-data`；前端和桌面壳仍在本机运行，
-连过去就是同一套 API。
+连过去就是同一套 API。开发形态、数据迁移与常见问题见 [deploy/README.md](deploy/README.md)。
 
 ### macOS / Linux 用户
 

@@ -41,6 +41,16 @@ from bandi.tools.base import BaseTool, ToolPermissionContext
 from bandi.tools.executor import ToolExecutor
 from bandi.tools.registry import ToolRegistry
 
+
+# 功能：LLM 档案单例是进程级的，用例之间必须复位到临时路径，
+# 否则上一个用例激活的档案、甚至本机真实的 ~/.bandi/llm_profiles.json 都会污染下一个
+@pytest.fixture(autouse=True)
+def _isolate_llm_profile_store(tmp_path: Path):
+    reset_store_singleton(tmp_path / "llm_profiles.json")
+    yield
+    reset_store_singleton(tmp_path / "llm_profiles_after.json")
+
+
 # 功能：契约——公司员工执行的记忆维度必须跟随「工作项的项目归属」
 #
 # ① `company_mode._build_runtime` 取 `self.communication.project_id`，而生产调度器

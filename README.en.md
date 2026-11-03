@@ -181,11 +181,13 @@ Packaging config lives in `frontend/electron-builder.yml`; run `electron-builder
 ### Docker (backend kernel only)
 
 ```bash
-docker compose up --build
+cp deploy/.env.example deploy/.env     # fill in BANDI_API_KEY and the three model values
+docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
 The container serves the FastAPI kernel on `127.0.0.1:8766` with data in the `bandi-data` volume; the
-frontend and the desktop shell still run on the host and talk to that same API.
+frontend and the desktop shell still run on the host and talk to that same API. Dev mode, data migration
+and FAQ live in [deploy/README.md](deploy/README.md).
 
 ### macOS / Linux
 

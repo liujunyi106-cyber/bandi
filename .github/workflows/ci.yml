@@ -49,29 +49,18 @@ jobs:
         run: ruff format --check .
 
       - name: Tests (fast track)
-        # 以下用例在开发机通过、在干净的 CI runner 上依赖环境假设，先显式排除并跟踪：
-        #   终端宽度：rich 在无 TTY 时按 80 列渲染，帮助文本被截断（2 个）
-        #   时区：断言里写死了本地 = UTC+8（2 个）
-        #   可选依赖：未装 playwright 时 browser 工具不进注册表（2 个）
-        #   路径大小写 / 并发替换：Windows runner 的 tmp 路径大小写与开发机不同（3 个）
-        #   依赖版本：错误载荷长度随依赖文案变化（1 个）
-        #   用例顺序：读取到前序用例留下的配置单例（1 个）
+        # 仍有两类用例只在开发机稳定，暂按节点排除并跟踪：
+        #   并发替换：Windows 上 os.replace 偶发 WinError 5（文件被杀软/索引占用）
+        #   依赖文案：错误载荷长度断言随依赖版本变化（167 vs 164）
+        # 其余历史问题已修：终端宽度改为显式 COLUMNS、时区用例改为 UTC 机器自动跳过、
+        # playwright 进 dev 依赖、路径断言改用 resolve()、档案单例按用例复位。
         shell: pwsh
         run: |
           $deselect = @(
-            "tests/test_cli/test_cli.py::test_company_reorg_help",
-            "tests/test_contracts/test_contract_family_p_batches.py::TestCliMaintenanceEntry::test_maintain_command_registered_with_config_defaults",
-            "tests/test_contracts/test_contract_review_fixes_b1b5.py::test_rf10_search_normalizes_mixed_timestamps",
-            "tests/test_contracts/test_contract_time_serialization.py::TestIsoLocal::test_breaker_naive_not_shifted_as_utc",
-            "tests/test_contracts/test_contract_tool_retry_semantics.py::test_non_retryable_names_are_real_registered_tools",
-            "tests/test_contracts/test_contract_tools_review_followup.py::test_contract_browser_driver_cleaned_on_launch_failure",
-            "tests/test_tools/test_bash.py::TestBashTool::test_default_cwd_anchors_project_root_when_in_context",
-            "tests/test_tools/test_bash.py::TestBashTool::test_relative_cwd_resolved_against_project_root",
             "tests/test_contracts/test_contract_edit_match_chain.py::TestEditToolConcurrencyAndAtomicity::test_concurrent_edits_are_serialized",
-            "tests/test_contracts/test_contract_family_p_batches.py::test_failure_payload_bounded_global_and_per_tool",
-            "tests/test_contracts/test_contract_family_day137.py::test_resolve_llm_config_applies_profile_and_keeps_base_blanks"
+            "tests/test_contracts/test_contract_family_p_batches.py::test_failure_payload_bounded_global_and_per_tool"
           ) | ForEach-Object { "--deselect"; $_ }
-          pytest tests -q -m "not heavy and not external_tool and not timing" @deselect
+          pytest tests -q -m "not heavy and not external_tool and not timing" --timeout=180 @deselect
           exit $LASTEXITCODE
 
   frontend:
@@ -114,4 +103,20 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build backend image
-        run: docker build -t bandi-kernel:ci .
+        run: docker build -f deploy/Dockerfile -t bandi-kernel:ci .
+
+      - name: Smoke test container
+        run: |
+          docker run -d --name bandi-smoke -p 18766:8766 -e BANDI_API_KEY=smoke bandi-kernel:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18766/health > /dev/null; then
+              echo "kernel healthy"
+              docker rm -f bandi-smoke
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "kernel did not become healthy"
+          docker logs bandi-smoke
+          docker rm -f bandi-smoke
+          exit 1

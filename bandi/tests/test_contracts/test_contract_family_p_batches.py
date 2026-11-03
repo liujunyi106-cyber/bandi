@@ -5715,8 +5715,10 @@ class TestCliMaintenanceEntry:
         """maintain 命令注册；参数默认 0 = 用配置值（与 API 装配同源，不硬编码第二份阈值）。"""
         from bandi.cli.app import app
 
-        # 帮助输出宽度随终端变化，显式给足宽度，避免窄终端把选项截断
-        result = CliRunner().invoke(app, ["maintain", "--help"], terminal_width=200)
+        # 帮助表格按终端宽度折行；无 TTY 的 CI 上默认 80 列会把选项截断，显式指定宽度
+        result = CliRunner().invoke(
+            app, ["maintain", "--help"], env={"COLUMNS": "200", "TERM": "dumb"}
+        )
 
         assert result.exit_code == 0, f"maintain 命令未注册：{result.output}"
         assert "--ttl-days" in result.output

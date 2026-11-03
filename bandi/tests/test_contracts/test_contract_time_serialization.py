@@ -4,11 +4,19 @@
 from __future__ import annotations
 
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+
+import pytest
 
 from bandi.utils.timefmt import iso_local
 
 OFFSET_SUFFIX = re.compile(r"[+-]\d{2}:\d{2}$")
+
+# 功能：本文件多条用例断言「本地时间与 UTC 的差异」，UTC 机器上该差异为 0
+requires_non_utc_local = pytest.mark.skipif(
+    datetime.now().astimezone().utcoffset() == timedelta(0),
+    reason="用例依赖非 UTC 的本地时区",
+)
 
 
 class TestIsoLocal:
@@ -44,6 +52,7 @@ class TestIsoLocal:
         assert iso_local("   ") == ""
         assert iso_local("not-a-timestamp") == "not-a-timestamp", "不可解析值原样返回，不吞数据"
 
+    @requires_non_utc_local
     def test_breaker_naive_not_shifted_as_utc(self) -> None:
         """破坏者：若把本地 naive 当 UTC，输出时钟读数会整体偏移（-8h）。"""
         local_naive = iso_local(datetime(2026, 10, 27, 23, 35, 12))
