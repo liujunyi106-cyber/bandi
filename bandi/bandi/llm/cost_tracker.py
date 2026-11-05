@@ -28,7 +28,7 @@ _MAX_COST_ENTRIES = 10_000
 
 
 @dataclass
-class CostEntry:  # 功能：单次 LLM 调用成本记录
+class CostEntry:  # 功能：单次 LLM 调用成本记录（token/费用/模型 + 七-P2-4 拆解字段）
     session_id: str
     timestamp: float
     provider: str
@@ -192,6 +192,7 @@ class CostTracker:  # 功能：成本追踪器（记录调用/聚合统计/预�
            USD 换算覆盖）；`source = "catalog"`。
         3. 都没有 ⇒ `(None, "unpriced")`（调用方按预算下限估计并记 unpriced）。
 
+        ⚠️ `openai_compat`（未知 OpenAI 兼容网关的兜底名）**不做别名映射**——猜错
         provider 会错价，宁可回落目录价。
         """
         from bandi.llm.model_catalog import ModelPricing

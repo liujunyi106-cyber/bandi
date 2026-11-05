@@ -161,9 +161,9 @@ export function ProjectSpaceCard() {
 
   return (
     <>
-      {/* 对齐：上传按钮（⊕）为卡片内首个 `size-8` 圆圈，其左缘落在
+      {/* 2026-09-29 对齐：上传按钮（⊕）为卡片内首个 `size-8` 圆圈，其左缘落在
           composer 的 px-4(16px) + 卡片 px-2(8px) = 24px；本槽（composer-below）无水平
- 内边距 ⇒ 补 9px 让 icon 左缘与圆圈左缘同一条竖线。 */}
+          内边距 ⇒ 补 9px 让 icon 左缘与圆圈左缘同一条竖线（真机实测 pl-2 时差 1px）。 */}
       <div className="flex items-center pl-[9px] pb-1.5" data-testid="project-space-card">
         <Popover open={menuOpen} onOpenChange={setMenuOpen}>
           <PopoverTrigger asChild>
@@ -179,11 +179,11 @@ export function ProjectSpaceCard() {
                 "text-chat-muted/55 hover:text-chat-ink data-[state=open]:text-chat-ink",
               )}
             >
-              {/* icon 与字段同色同透明度（用户反馈「太深」——此前 icon 用
+              {/* 2026-09-29：icon 与字段同色同透明度（用户反馈「太深」——此前 icon 用
                   满不透明 muted、字段用 ink，两处都偏重） */}
               <FolderOpen className="size-4 shrink-0 opacity-90" />
               <span className="max-w-[18rem] truncate">{label}</span>
-              {/* 默认向下（ChevronDown），展开后旋转指向菜单侧——此前恒 ChevronUp */}
+              {/* 2026-09-29：默认向下（ChevronDown），展开后旋转指向菜单侧——此前恒 ChevronUp */}
               <ChevronDown
                 className={cn("size-3.5 shrink-0 transition-transform", menuOpen && "rotate-180")}
               />

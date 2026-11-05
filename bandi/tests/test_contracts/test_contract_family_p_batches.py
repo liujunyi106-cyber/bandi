@@ -3312,12 +3312,15 @@ async def test_otel_bridge_terminated_closes_leaked_spans() -> None:
 
 
 def test_global_store_naive_timestamp_and_index(tmp_path: Any) -> None:
-    """契约（8.10， 修订）：事件时间为 naive 本地 ISO；event_type 索引必须存在（query_events 不再全表扫描）。"""
+    """契约（8.10， 修订）：事件时间为 naive 本地 ISO（无时区偏移——
+    单机本地产品口径拍板）；event_type 索引必须存在（query_events 不再全表扫描）。"""
     store = GlobalMemoryStore(tmp_path / "g.db")
     try:
         store.append_event("evt", {"n": 1})
         row = store.query_events("evt")[0]
-        assert "+" not in row["created_at"], f"时间戳必须 naive 本地（实际 {row['created_at']!r}）"
+        assert "+" not in row["created_at"], (
+            f"时间戳必须 naive 本地（拍板口径，实际 {row['created_at']!r}）"
+        )
         conn = sqlite3.connect(tmp_path / "g.db")
         try:
             names = {
@@ -3698,7 +3701,8 @@ def test_fusion_weight_priority_and_soft_quota_rules() -> None:
 
 @pytest.mark.asyncio
 async def test_half_life_relevance_and_freshness_note(tmp_path: Path) -> None:
-    """契约（4.8）：episodic 默认半衰期 90 天（90 天龄 decay≈0.5）；部分命中"""
+    """契约（4.8）：episodic 默认半衰期 90 天（90 天龄 decay≈0.5）；部分命中
+    相关度线性映射 [0.3,1.0]；陈旧经历（>1 天）注入附新鲜度警告。"""
     from bandi.context.sources.memory_source import MemoryContextSource
     from bandi.memory.episodic import hit_relevance
 
@@ -4490,7 +4494,7 @@ def test_skill_rollback_api_and_cli(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_consecutive_mentions_merge_into_same_thread(tmp_path: Path) -> None:
     """契约（9.12）：未显式携带 thread_id 的连续 @ 同角色消息归并同线程
-    @ 不同角色集合仍分线程。"""
+    （兑现 Day129 登记债务）；@ 不同角色集合仍分线程。"""
     from bandi.api.company_chat import handle_chat_message
 
     comms = _comms(tmp_path)
@@ -5294,7 +5298,7 @@ def test_static_prefix_lru_bounded_and_stable() -> None:
 def test_note_recall_tracks_unique_queries_and_promotes(tmp_path: Path) -> None:
     """契约（登记收口 10.7 第三维）：召回查询指纹按去重有界记录——同一查询
     重复召回不增指纹；**带真实信号**（importance ≥ 0.5）的复用情节可晋升；
-    纯基准普通轮（0.4）即便被多查询召回也不提。"""
+    纯基准普通轮（0.4）即便被多查询召回也不提（真机 recall 噪音收敛）。"""
     from bandi.memory.consolidation import consolidate_episodes
     from bandi.memory.episodic import Episode, EpisodicStore
     from bandi.memory.long_term import LongTermMemory
@@ -5326,7 +5330,7 @@ def test_note_recall_tracks_unique_queries_and_promotes(tmp_path: Path) -> None:
 
 def test_mcp_surface_has_no_ontology_query_duplicate() -> None:
     """契约：MCP 工具面不暴露本体查询——Agent 面已有原生 ontology_query（六模式同源），
-    自桥接的 MCP 重复面只会制造同名工具噪音。"""
+    自桥接的 MCP 重复面只会制造同名工具噪音（真机曾见模型绕行调用 `bandi_bandi_ontology_query`）。"""
     from bandi.mcp_server import server as server_module
 
     tools = server_module.default_tools()
@@ -5689,10 +5693,7 @@ class TestCliMaintenanceEntry:
         """maintain 命令注册；参数默认 0 = 用配置值（与 API 装配同源，不硬编码第二份阈值）。"""
         from bandi.cli.app import app
 
-        # 帮助表格按终端宽度折行；无 TTY 的 CI 上默认 80 列会把选项截断，显式指定宽度
-        result = CliRunner().invoke(
-            app, ["maintain", "--help"], env={"COLUMNS": "200", "TERM": "dumb"}
-        )
+        result = CliRunner().invoke(app, ["maintain", "--help"])
 
         assert result.exit_code == 0, f"maintain 命令未注册：{result.output}"
         assert "--ttl-days" in result.output
@@ -5701,7 +5702,7 @@ class TestCliMaintenanceEntry:
 
 
 # ==================== p2p3_cleanup ====================
-# 功能：契约——全量/清理（死配置删除 + 工具参数边界）
+# 功能：契约——全量审查 /清理（死配置删除 + 工具参数边界）
 
 
 def test_config_dead_field_removed_and_budget_wired() -> None:

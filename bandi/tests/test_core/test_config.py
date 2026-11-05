@@ -49,6 +49,7 @@ class TestLLMConfig:
 
     def test_fallback_chain_defaults_empty(self) -> None:
         # 功能：本地产品不预设降级链——模板不含该字段时不得自动带上跨厂商候选
+        # （2026-10-09 用户拍板：用户自己配置才降级；内置默认会让每个用户白烧数次注定失败的请求）
         cfg = LLMConfig()
         assert cfg.fallback_chain == [], "默认降级链必须为空"
 

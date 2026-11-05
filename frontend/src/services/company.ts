@@ -1,5 +1,5 @@
 /**
- * 功能：公司域 API（）。
+ * 功能：公司域 API（@base docs/API契约.md；//端点消费）。
  * 覆盖：项目（含成员动态解析）/ 收件箱（按项目）/ 讨论线程（列表·详情）/ 数字员工列表。
  */
 import { api } from "@/services/api";
@@ -165,7 +165,7 @@ export interface GroupRoundSlot {
   work_item_id: string;
 }
 
-/* 群聊回合快照 */
+/** 群聊回合快照（GET /api/company/rounds 与 group_round 帧同构） */
 export interface GroupRoundSnapshot {
   round_id: string;
   session_id: string;
@@ -178,7 +178,7 @@ export interface GroupRoundSnapshot {
   updated_at?: number;
 }
 
-/* 附件上传记录。 */
+/** 附件上传记录（端点返回；Day137b-2 前端消费）。 */
 export interface UploadRecord {
   upload_id: string;
   name: string;
@@ -187,7 +187,7 @@ export interface UploadRecord {
   path: string;
 }
 
-/* 项目文件条目。 */
+/** 项目文件条目（@文件引用数据源——Day137b-2）。 */
 export interface ProjectFile {
   path: string;
   name: string;
@@ -312,6 +312,7 @@ export const companyApi = {
       `/company/projects/${encodeURIComponent(projectId)}/teams`,
       { team_id: teamId },
     ),
+  /** 功能：组织角色列表（工作项岗位 id → 展示名映射）。 */
   roles: () => api.get<{ roles: Array<{ id: string; name: string }> }>("/company/roles"),
   /** 功能：WorkItem 查询（hideChat=false 时连纯对话卡一起返回）。 */
   workItems: (role = "", hideChat = true) => {
@@ -375,7 +376,7 @@ export const companyApi = {
   /** 功能：用系统默认程序打开本地文件/目录（越界 403）。 */
   /** 预留：/api/fs/open 的 API 绑定；启用时机 UI 需系统打开时（当前 UI 已改右栏文件页签）。 */
   openLocalPath: (path: string) => api.post<{ opened: string }>("/fs/open", { path }),
-  /* 功能：对话附件上传。 */
+  /** 功能：对话附件上传（multipart；返回 upload_id 引用——端点，Day137b-2）。 */
   upload: (file: File, projectId = "") => {
     const form = new FormData();
     form.append("file", file);

@@ -127,7 +127,7 @@ describe("KnowledgePage 图谱页", () => {
     const before = graphGroup.getAttribute("transform");
 
     // 小图 fitToBounds 已顶到 MAX_SCALE，放大方向会被夹取 → 用缩小方向（deltaY>0）验证监听生效
-    // 重负载下 act 调度可能慢/监听挂载晚：轮询派发直至视图变化
+    // 重负载下 act 调度可能慢/监听挂载晚：轮询派发直至视图变化（上限 8s，Day139/Day136 偶发假红）
     await waitFor(
       () => {
         const wheelEvent = new Event("wheel", { bubbles: true, cancelable: true });

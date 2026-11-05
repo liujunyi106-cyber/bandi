@@ -5,7 +5,10 @@ import { BrowserRouter } from "react-router-dom";
 import App from "@/App";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { KernelGate } from "@/components/layout/KernelGate";
+import { isDesktopShell } from "@/lib/desktop";
 import "@/index.css";
+
+if (isDesktopShell) document.documentElement.classList.add("desktop-shell");
 
 const container = document.getElementById("root");
 if (!container) throw new Error("root container not found in index.html");

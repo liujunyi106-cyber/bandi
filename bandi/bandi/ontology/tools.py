@@ -1,4 +1,4 @@
-"""本体四工具：define / assert / query / retract。
+"""本体四工具：define / assert / query / retract（复刻 dsh-ontology `src/tools.ts`，727 行）。
 
 面向模型的四个工具，每个返回规范 JSON 值（便于程序化消费），人读解释只放在
 `render()` 里。
@@ -33,7 +33,7 @@ from bandi.ontology.engine import (
 from bandi.ontology.triple_store import OntologyStore
 from bandi.ontology.types import DerivedFact, Violation
 
-# 六模式（对照表 -3）
+# 六模式（对照表 §4.2-3）
 QUERY_MODES = ("schema", "stats", "entities", "facts", "neighbors", "path")
 # 邻域/路径的深度钳制区间与默认值
 MIN_DEPTH = 1
@@ -114,7 +114,7 @@ def _resolve_depth(requested: Any) -> int:
     )
 
 
-# 工具入参用驼峰，引擎与存储用 snake_case——在此归一。
+# 工具入参用驼峰（对齐参考源的 JSON 形态），引擎与存储用 snake_case——在此归一。
 _CAMEL_TO_SNAKE = {
     "subClassOf": "sub_class_of",
     "rangeKind": "range_kind",

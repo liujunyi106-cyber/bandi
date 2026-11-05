@@ -1,5 +1,5 @@
 /**
-  * 功能：Composer @ 引用菜单。
+ * 功能：Composer @ 引用菜单（对话附件 / 项目文件 / 员工派单 三组——Day137b-2）。
  * 纯展示 + onSelect；过滤与键盘导航由 Composer 处理。
  */
 import { AtSign, FileText, User } from "lucide-react";

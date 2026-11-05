@@ -178,7 +178,7 @@ describe("ChatView 会话类型口径（线程回复注入）", () => {
     expect(screen.queryByTestId("live-employee-progress")).not.toBeInTheDocument();
   });
 
-  it("过程固化：员工回复注入时过程块随消息展示并清槽", async () => {
+  it("过程固化：员工回复注入时过程块随消息展示并清槽（Day137b-1）", async () => {
     useChatStore.setState({
       activeSessionId: "s-team",
       activeProjectId: "p1",
@@ -204,7 +204,7 @@ describe("ChatView 会话类型口径（线程回复注入）", () => {
     expect(useChatStore.getState().employeeProgress["p1::th-1::worker"]).toBeUndefined();
   });
 
-  it("发送 payload 携带当前对话模式", async () => {
+  it("发送 payload 携带当前对话模式（plan，Day137b-1）", async () => {
     useUiStore.setState({ chatMode: "plan" });
     useChatStore.setState({
       activeSessionId: "s-mode",
@@ -251,7 +251,7 @@ describe("ChatView 会话类型口径（线程回复注入）", () => {
     await waitFor(() => expect(useUiStore.getState().chatMode).toBe("plan"));
   });
 
-  it("停止：abort 404（后端无活动流）→ 本地兜底定稿，防「正在回复中」残留", async () => {
+  it("停止：abort 404（后端无活动流）→ 本地兜底定稿，防「正在回复中」残留（2026-09-24）", async () => {
     abortMock.mockRejectedValueOnce(new ApiError(404, "NO_ACTIVE_ABORT_CONTROLLER"));
     useChatStore.setState({
       activeSessionId: "s-stop",
@@ -370,9 +370,9 @@ describe("ChatView 会话类型口径（线程回复注入）", () => {
     });
   });
 
-  // ①：多张决策卡并存时允许上下切换，且**切走再切回要保留已答内容**
+  // §18.16①：多张决策卡并存时允许上下切换，且**切走再切回要保留已答内容**
   // （上一条 -3 用例管的是「卡 A 被移除、卡 B 抵达」不得残留；本条管的是「A/B 并存、用户只是切走」）
-  it("多张决策卡并存：切换到别的卡再切回，已答内容与分页游标仍在", async () => {
+  it("多张决策卡并存：切换到别的卡再切回，已答内容与分页游标仍在（§18.16①）", async () => {
     const paged = (id: string, prefix: string) => ({
       session_id: "s-multi",
       kind: "input",
@@ -615,7 +615,7 @@ describe("ChatView 137b-3b 失败工具节点级操作", () => {
     });
   }
 
-  it("失败工具行不再渲染重试/跳过操作", async () => {
+  it("失败工具行不再渲染重试/跳过操作（2026-10-15 用户拍板：子过程行内操作全部移除）", async () => {
     useChatStore.setState({
       activeSessionId: "s-team",
       activeProjectId: "p1",
@@ -638,7 +638,7 @@ describe("ChatView 137b-3b 失败工具节点级操作", () => {
   });
 });
 
-describe("ChatView 新建会话空态 + 秘书身份", () => {
+describe("ChatView 新建会话空态 + 秘书身份（2026-09-29 用户拍板）", () => {
   beforeEach(() => {
     wsHarness.handlers = {};
     vi.clearAllMocks();
@@ -752,7 +752,7 @@ describe("ChatView 新建会话空态 + 秘书身份", () => {
     expect(screen.queryByTestId("chat-secretary-hint")).not.toBeInTheDocument();
   });
 
-  it("助理会话：回复身份头为「助理」", async () => {
+  it("助理会话：回复身份头为「助理」（2026-10-10 秘书→助理）", async () => {
     vi.mocked(sessionsApi.detail).mockResolvedValueOnce({
       session: {},
       messages: [
@@ -1064,5 +1064,132 @@ describe("ChatView 执行中待发送条目", () => {
     };
     expect(payload.attachments?.[0]?.upload_id).toBe("u1");
     await waitFor(() => expect(useChatStore.getState().pendingSendsBySession.s1).toBeUndefined());
+  });
+});
+
+describe("ChatView 群聊/DM 路由（群聊不落 target_role）", () => {
+  const groupProject = {
+    projects: [
+      {
+        project_id: "p1",
+        name: "承接项目",
+        root_dir: "",
+        team_ids: ["t1"],
+        dissolved_team_ids: [],
+        created_at: "",
+        updated_at: "",
+        members: [
+          {
+            team_id: "t1",
+            role_id: "worker",
+            role_name: "在职岗位",
+            employee_id: "e1",
+            employee_name: "在职员工",
+            employee_status: "active",
+          },
+        ],
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    wsHarness.handlers = {};
+    vi.mocked(sessionSocket.send).mockClear();
+    mocked.employees.mockResolvedValue({
+      employees: [{ employee_id: "e1", name: "在职员工", role_id: "worker", status: "active" }],
+    });
+    mocked.projects.mockResolvedValue(groupProject as never);
+    mocked.workItems.mockResolvedValue({ items: [], column_counts: {} });
+  });
+
+  it("已有群聊会话 @员工：消息走群聊，不带 DM target_role", async () => {
+    useChatStore.setState({
+      activeSessionId: "s-group",
+      activeProjectId: "p1",
+      sessions: [session("s-group", "group")],
+      messagesBySession: { "s-group": [] },
+      streams: {},
+    });
+    render(
+      <MemoryRouter>
+        <ChatView />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(mocked.projects).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: "@在职员工 你好" } });
+    fireEvent.keyDown(textarea, { key: "Enter" });
+
+    await waitFor(() => expect(sessionSocket.send).toHaveBeenCalled());
+    const payload = vi.mocked(sessionSocket.send).mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect(String(payload.message)).toContain("@在职员工");
+    expect(payload.target_role).toBeUndefined();
+    expect(payload.session_origin).not.toBe("employee_dm");
+  });
+
+  it("新建会话选择员工：转为 @提及，不建 DM 会话", async () => {
+    useChatStore.setState({
+      activeSessionId: null,
+      activeProjectId: "p1",
+      sessions: [],
+      messagesBySession: {},
+      streams: {},
+      pendingSessionOrigin: "",
+    });
+    render(
+      <MemoryRouter>
+        <ChatView />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(mocked.projects).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    fireEvent.click(screen.getByTestId("composer-plus"));
+    fireEvent.click(await screen.findByTestId("composer-plus-employee"));
+    fireEvent.click(await screen.findByTestId("employee-picker-item-worker"));
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: "你好" } });
+    fireEvent.keyDown(textarea, { key: "Enter" });
+
+    await waitFor(() => expect(sessionSocket.send).toHaveBeenCalled());
+    const payload = vi.mocked(sessionSocket.send).mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect(String(payload.message)).toContain("@在职员工");
+    expect(payload.target_role).toBeUndefined();
+    expect(payload.session_origin).not.toBe("employee_dm");
+  });
+
+  it("员工私聊会话发送：保留 target_role 与 employee_dm 来源", async () => {
+    useChatStore.setState({
+      activeSessionId: "s-dm",
+      activeProjectId: "p1",
+      sessions: [
+        {
+          ...session("s-dm", "employee_dm"),
+          target_role: "worker",
+          employee_id: "e1",
+          employee_name: "在职员工",
+        } as SessionSummary,
+      ],
+      messagesBySession: { "s-dm": [] },
+      streams: {},
+    });
+    render(
+      <MemoryRouter>
+        <ChatView />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(mocked.projects).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, { target: { value: "你好" } });
+    fireEvent.keyDown(textarea, { key: "Enter" });
+
+    await waitFor(() => expect(sessionSocket.send).toHaveBeenCalled());
+    const payload = vi.mocked(sessionSocket.send).mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect(payload.target_role).toBe("worker");
+    expect(payload.session_origin).toBe("employee_dm");
   });
 });

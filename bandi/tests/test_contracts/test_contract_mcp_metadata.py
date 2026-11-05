@@ -66,7 +66,7 @@ def test_contract_mcp_metadata_standard_annotations_map() -> None:
     )
     assert tool.is_read_only is True
     assert tool.is_idempotent is True
-    assert tool.is_concurrency_safe is True, "readOnlyHint 隐式并发安全"
+    assert tool.is_concurrency_safe is True, "readOnlyHint 隐式并发安全（cc-haha 语义）"
 
     destructive = _build_sync("del", _tool("del", annotations={"destructiveHint": True}))
     assert destructive.is_destructive is True

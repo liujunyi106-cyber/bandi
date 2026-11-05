@@ -84,10 +84,7 @@ def test_company_reorg_help() -> None:
     from bandi.cli.app import app
 
     runner = CliRunner()
-    # 帮助表格按终端宽度折行；无 TTY 的 CI 上默认 80 列会把选项截断，显式指定宽度
-    result = runner.invoke(
-        app, ["company", "reorg", "--help"], env={"COLUMNS": "200", "TERM": "dumb"}
-    )
+    result = runner.invoke(app, ["company", "reorg", "--help"])
     assert result.exit_code == 0
     assert "--replace" in result.stdout
 

@@ -1,5 +1,5 @@
 /**
-  * 功能：单页壳共享 WebSocket 客户端（）。
+ * 功能：单页壳共享 WebSocket 客户端（@base docs/前端设计规划.md §8）。
  * - 视图切换不重连（模块级单例，全 App 共用一条连接）
  * - 断线自动重连：指数退避 + 抖动，attempt 有上限后转 closed 并等外部手动重连
  * - 事件订阅：按帧 `type` 分发（on(type, handler)），另有全局 onFrame
@@ -336,7 +336,7 @@ function parseFrame(data: unknown): WsFrame | null {
  */
 export const socket = new BandiSocket({ seqResume: true });
 
-/** 会话级共享实例。 */
+/** 会话级共享实例（ChatView 对话流；第二条常驻连接，切页/切会话不重连——方案 A 拍板）。 */
 export const sessionSocket = new BandiSocket({
   url: resolveWsUrl(SESSION_WS_PATH),
   // 10.10：会话通道启用 seq/resume——断线重连后补发终态帧（done/error），消除「消息永久

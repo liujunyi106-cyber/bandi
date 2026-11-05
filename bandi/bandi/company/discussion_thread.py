@@ -154,6 +154,7 @@ class ThreadManager:
     """管理讨论线程：创建/追加消息/按 agent 过滤/hydrate 恢复。线程互 @ 与用户可见对话链容器。
 
     on_message：线程事件回调（thread_created / thread_message），沿 CommunicationManager
+    on_message_sent 先例——WS 实时广播接线点；回调失败不阻断线程写（附属产物）。
     """
 
     def __init__(
@@ -168,7 +169,7 @@ class ThreadManager:
         self._on_message = on_message
 
     def bind_on_message(self, on_message: Any | None) -> None:
-        """
+        """后绑定事件回调（沿 subagent.bind_registry/UserInputTool.bind_ui 先例）。
 
         装配点（api/app.py）在 hydrate 后注入 WS 广播回调；None 注入即解除。
         """

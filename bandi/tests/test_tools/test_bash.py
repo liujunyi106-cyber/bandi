@@ -234,7 +234,7 @@ class TestBashTool:
             ):
                 ctx = ToolPermissionContext(extra={"project_root": str(proj)})
                 await tool.execute({"command": "pwd"}, context=ctx)
-            assert Path(mocked.call_args.kwargs.get("cwd") or "").resolve() == proj.resolve(), (
+            assert mocked.call_args.kwargs.get("cwd") == str(proj), (
                 "project_root 会话缺省 cwd 必须锚定项目根（与 fs 工具一致）"
             )
         finally:
@@ -264,9 +264,7 @@ class TestBashTool:
             ):
                 ctx = ToolPermissionContext(extra={"project_root": str(proj)})
                 await tool.execute({"command": "pwd", "cwd": "sub"}, context=ctx)
-            assert (
-                Path(mocked.call_args.kwargs.get("cwd") or "").resolve() == (proj / "sub").resolve()
-            )
+            assert mocked.call_args.kwargs.get("cwd") == str(proj / "sub")
         finally:
             ws.rmdir()
             shutil.rmtree(proj)
@@ -471,7 +469,7 @@ class TestBashTool:
 
 
 def test_rm_separated_flags_denied() -> None:
-    """修复：rm -r -f 分离 flag 必须 DENY（修复前交集空降 WARN）。"""
+    """审查修复：rm -r -f 分离 flag 必须 DENY（修复前交集空降 WARN）。"""
     from bandi.tools.bash import BashTool
 
     result = BashTool._match_patterns("rm", ["-r", "-f", "/tmp/x"])

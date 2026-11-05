@@ -1,5 +1,5 @@
 /**
-  * 功能：Button（shadcn radix-nova）组件层冒烟。
+ * 功能：Button（shadcn radix-nova）组件层冒烟（@base Day135 §5 组件层测试补齐）。
  */
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";

@@ -189,7 +189,7 @@ class ReorgChangeSet:
 
 @dataclass
 class ReorgMigrationPlan:
-    """"""
+    """组织变更的迁移影响面（任务/checkpoint/handoff/员工与角色映射）。"""
 
     affected_task_ids: list[str] = field(default_factory=list)
     affected_checkpoint_ids: list[str] = field(default_factory=list)

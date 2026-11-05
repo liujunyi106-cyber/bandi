@@ -17,7 +17,7 @@ def _ep(summary: str, **dims: Any) -> Episode:
 
 
 class TestTeamDimensionPartition:
-    """team_id 与 project/employee 的正交维度——IS NULL 分区语义。"""
+    """team_id 与 project/employee 同构的正交维度——IS NULL 分区语义。"""
 
     def test_team_episode_readable_by_team_filter(self, tmp_path: Path) -> None:
         store = _store(tmp_path)

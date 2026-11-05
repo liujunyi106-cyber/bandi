@@ -31,12 +31,12 @@ _INTERACTION_STATUS_RESOLVED = "resolved"
 _INTERACTION_STATUS_REJECTED = "rejected"
 _INTERACTION_STATUS_EXPIRED = "expired"
 # 对齐 approval.py _DENIAL_TTL_SECONDS：交互默认窗口 1800s——提问/确认类卡片
-# 曾按 300s 设计，员工链路实证「用户在办别的事、回来卡已死」后答复被弃
+# 曾按 300s 设计，员工链路真机实证「用户在办别的事、回来卡已死」后答复被弃
 # （员工侧降级默认口径继续）；与 permission 挂起窗口同口径给足人工决策时间。
 _DEFAULT_INTERACTION_TTL = 1800.0
 
 # 交互帧推送超时：客户端不可达/半开连接上 `ws.send_json` 可能永久阻塞——
-# 实证：推送阻塞会让整轮在 executing 态永久僵尸。
+# 真机实证（2026-10-15）：推送阻塞会让整轮在 executing 态永久僵尸。
 # 推送超时 = 该挂起不成立（用户永远看不到卡），立即拒绝并 fail-closed。
 _FRAME_SEND_TIMEOUT = 5.0
 
@@ -51,7 +51,7 @@ PERMISSION_INTERACTION_TTL = 1800.0
 
 
 class UserInteraction(Protocol):
-    """前端无关的用户交互接口。CLI/桌面端都实现此 Protocol（全 async，-J 对齐）。
+    """前端无关的用户交互接口。CLI/桌面端都实现此 Protocol（全 async，§十八-J 对齐）。
 
     可选扩展（CorrectedError 等价物）：实现
     `ask_permission_with_feedback(tool_name, args, risk) -> (bool, str)` 时
@@ -363,7 +363,7 @@ class HTTPUserInteraction:
         # permission 挂起窗口独立于 wait_timeout：授权卡出现在长执行轮中途，
         # 短窗口会「人回来卡已死、轮次被静默拒绝烧完」；测试可注入短值。
         self._permission_ttl = permission_ttl
-        # 交互帧推送超时：实证推送阻塞会让整轮永久僵尸（executing 态零事件）。
+        # 交互帧推送超时：真机实证推送阻塞会让整轮永久僵尸（executing 态零事件）。
         self._frame_send_timeout = frame_send_timeout
         # 员工执行会话 id：权限卡展示在 origin 聊天，但 session 授权必须写给执行会话。
         self._executor_session_id = executor_session_id

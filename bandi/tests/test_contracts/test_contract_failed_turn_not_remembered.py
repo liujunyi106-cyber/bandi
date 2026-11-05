@@ -1,6 +1,6 @@
 """契约：失败回合不得进入经历层（污染长期记忆的防线）。
 
-背景：MODEL_ERROR 回合的 "all LLM candidates failed
+背景（L1 真机）：MODEL_ERROR 回合的 "all LLM candidates failed (capability +
 config chain): Client error…" 被当作「回答」写入 episodic，随后被 consolidation
 当作高价值情节晋升进长期记忆，污染召回。
 """
@@ -17,7 +17,7 @@ from bandi.agent.base import TerminalReason
 from bandi.core.agent_runner import _EPISODIC_ELIGIBLE_TERMINALS, _persist_memory
 from bandi.memory.ingest_review import review_episodic_ingest, review_ingest
 
-# L1 取样的两条污染样本（消息中心 episodic_consolidation 条目原文）
+# L1 真机取样的两条污染样本（消息中心 episodic_consolidation 条目原文）
 POLLUTED_MODEL_ERROR = (
     "你好呀，你能帮我做什么？ → 回答: all LLM candidates failed "
     "(capability + config chain): Client error '400 Bad Request' for url "
@@ -41,7 +41,7 @@ def test_interrupted_answer_rejected() -> None:
 def test_long_term_ingest_rejects_failed_turn() -> None:
     """契约：长期记忆直写路径（agent_runner `turn:` 项）同样拒失败文本。
 
-    L1 实锤：long_term.db 里存在 id=`turn:sess-...:1`、content 为
+    L1 真机实锤：long_term.db 里存在 id=`turn:sess-...:1`、content 为
     "all LLM candidates failed…" 的条目——该路径走 review_ingest 而非
     review_episodic_ingest，两处必须都拦。
     """

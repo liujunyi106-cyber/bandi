@@ -1,6 +1,6 @@
 """契约：交互帧投递 fail-closed（P1）+ WS 路径 abort 注册（P2）+ 挂起交互重放（P3）。
 
-背景
+背景（2026-10-15 真机实证）：
 - P1 交互帧 `ws.send_json` 在客户端已离开的半开连接上永久阻塞 → 整轮 executing 僵尸
   （事件日志零条目、1800s TTL 形同虚设）。
 - P2 WS 聊天路径从不注册 AbortController → `POST /abort` 恒 404，停止按钮永远无效

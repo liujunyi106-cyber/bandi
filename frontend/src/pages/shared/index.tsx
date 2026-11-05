@@ -1,5 +1,5 @@
 /**
-  * 功能：共享会话只读页（shared/:token，）。
+ * 功能：共享会话只读页（shared/:token，@base docs/前端设计规划.md §6 收口补遗 + ）。
  * 拉取 GET /api/shared/{token}（无需登录凭证的口令式只读视图）→ 消息列表只读渲染。
  */
 import { useEffect, useState } from "react";

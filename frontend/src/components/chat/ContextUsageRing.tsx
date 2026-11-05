@@ -64,7 +64,7 @@ export function ContextUsageRing({ sessionId, refreshKey = 0 }: ContextUsageRing
   }, [open, load]);
 
   // 无快照（重启后尚未跑过一轮 / 老会话）时显示占位符而不是 0.0%——
-  // 「0」是真量值，与「还没测过」必须区分开
+  // 「0」是真实测量值，与「还没测过」必须区分开
   const measured = Boolean(usage?.available);
   const ratio = clampRatio(usage?.ratio ?? 0);
   const buckets = BUCKETS.map((meta) => {

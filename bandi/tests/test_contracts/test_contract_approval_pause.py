@@ -279,7 +279,7 @@ async def test_employee_workspace_auto_allow(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_employee_workspace_auto_allow_with_ui_channel(tmp_path: Path) -> None:
-    """契约：员工装配 UI 交互通道（多问卡/权限卡）后，工作区内文件
+    """契约（真机修复）：员工装配 UI 交互通道（多问卡/权限卡）后，工作区内文件
     操作同样免审批——gate 写确认缓存，pipeline 的 UI 询问缓存命中放行（不弹卡）；
     工作区外不写缓存（仍由 UI 询问挂起——fail-closed 语义不丢）。"""
     from bandi.core.message import ToolCall

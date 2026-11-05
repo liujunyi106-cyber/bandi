@@ -1,5 +1,5 @@
 /**
-  * 功能：右栏 v5 外壳测试（视图切换下拉 / 页签开合 / 收起 / 全屏 / 宽度重置——）。
+ * 功能：右栏 v5 外壳测试（视图切换下拉 / 页签开合 / 收起 / 全屏 / 宽度重置——@base §8）。
  * .2：作用域视图集（员工单聊 = 概览/文件）；宽度/收起记忆按作用域键。
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -133,7 +133,7 @@ describe("SessionPanel (v5)", () => {
     await waitFor(() => expect(usePanelStore.getState().fullscreen).toBe(false));
   });
 
-  it("破坏者：宽度手柄双击清除手动覆盖", () => {
+  it("破坏者：宽度手柄双击清除手动覆盖（2026-10-04：回窗口自适应，按作用域键）", () => {
     usePanelStore.getState().setWidth("session:s1", 500);
     renderPanel();
     fireEvent.doubleClick(screen.getByTestId("panel-resize-handle"));

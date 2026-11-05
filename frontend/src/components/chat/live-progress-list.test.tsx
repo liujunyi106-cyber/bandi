@@ -1,9 +1,9 @@
 /**
-  * 功能：员工过程块三处缺陷的行为契约。
+ * 功能：员工过程块三处缺陷的行为契约（真机反馈驱动）。
  *
  * ① 过程时长显示原始毫秒（`42125ms`）——应人类可读且与消息头计时同风格；
  * ② 团队/项目会话执行期间**完全没有过程块**（单聊有、主会话无）——
- * 槽里有节点却无视图渲染，用户全程只看占位信息；
+ *    槽里有节点却无视图渲染，用户全程只看占位信息；
  * ③ 多员工协作时只有最后落消息的那个员工的过程被固化，其余并发员工的中间过程丢失。
  *
  * 契约钉行为不钉实现：断言「看得见的节点」与「固化后不再重复出现」。
@@ -14,7 +14,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LiveProgressList, fallbackRoleVisible } from "@/components/chat/LiveProgressList";
 import { ProcessBlock } from "@/components/chat/ProcessBlock";
 import { formatDurationMs } from "@/components/chat/process-display";
-import type { WorkItemSummary } from "@/services/company";
+import { companyApi, type WorkItemSummary } from "@/services/company";
 import { useChatStore, type ProcessNode } from "@/stores/chat-store";
 
 vi.mock("@/hooks/use-employees", () => ({
@@ -216,5 +216,54 @@ describe("④ 挂起多问卡/权限卡 → 过程块显示「等待你的决策
     });
     expect(screen.queryByTestId("live-progress-waiting")).not.toBeInTheDocument();
     view.unmount();
+  });
+});
+
+describe("⑤ 文件信息不刷屏、fallback 按线程隔离", () => {
+  beforeEach(() => {
+    useChatStore.setState({
+      employeeProgress: {},
+      employeeProgressDone: {},
+      employeeProgressText: {},
+    });
+  });
+
+  it("有流式文本也不渲染 live-employee-text（文件信息不进消息流）", () => {
+    useChatStore.setState({
+      employeeProgress: {
+        "p1::th1::dev": [toolNode("t1", "web_search", { status: "running" })],
+      },
+      employeeProgressText: { "p1::th1::dev": "正在读取 a.md b.md c.md" },
+    });
+    render(<LiveProgressList projectId="p1" threadId="th1" />);
+    expect(screen.queryByTestId("live-employee-text")).not.toBeInTheDocument();
+    expect(screen.queryByText("正在读取 a.md b.md c.md")).not.toBeInTheDocument();
+  });
+
+  it("fallback 只渲染当前线程的 running 员工（不串其他 thread）", async () => {
+    const spy = vi.spyOn(companyApi, "workItems").mockResolvedValue({
+      items: [
+        {
+          id: "w1",
+          title: "t",
+          phase: "running",
+          project_id: "p1",
+          thread_id: "th1",
+          assignee_role: "dev",
+        },
+        {
+          id: "w2",
+          title: "t",
+          phase: "running",
+          project_id: "p1",
+          thread_id: "th2",
+          assignee_role: "qa",
+        },
+      ],
+    } as unknown as Awaited<ReturnType<typeof companyApi.workItems>>);
+    render(<LiveProgressList projectId="p1" threadId="th1" />);
+    expect(await screen.findByText("开发")).toBeInTheDocument();
+    expect(screen.queryByText("测试")).not.toBeInTheDocument();
+    spy.mockRestore();
   });
 });

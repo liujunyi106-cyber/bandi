@@ -1,5 +1,5 @@
 /**
-  * 功能：全局 UI 态（zustand，）。
+ * 功能：全局 UI 态（zustand，@base docs/前端设计规划.md §2 状态管理 / §8 持久化）。
  * 只放 UI 全局态（语言、侧栏、WS 状态指示）+ 顶栏会话工具栏槽（会话视图发布
  * 顶栏消费的临时槽位，不持久化、不复制业务数据源）；业务数据走服务层 hooks。
  * 持久化 key 前缀 `bandi:`。
@@ -17,10 +17,10 @@ export interface HeaderToolItem {
   content: string;
 }
 
-/* 功能：对话模式。 */
+/** 功能：对话模式（后端 resolve_initial_mode 双模式；Day137b-1 Composer 切换器）。 */
 export type ChatMode = "execute" | "plan";
 
-/** 功能：项目面板宽度。 */
+/** 功能：项目面板宽度（拍板拖拽； 拍板自适应——override 语义）。 */
 export const PROJECT_PANEL_WIDTH_DEFAULT = 224;
 // 二轮：176 → 160（桌面最小窗口 1024 下给对话区让位；中文 4-5 字名仍可容纳）
 export const PROJECT_PANEL_WIDTH_MIN = 160;
@@ -45,13 +45,13 @@ interface UiState {
   sidebarCollapsed: boolean;
   /** 内核 WS 当前状态（顶栏/状态栏指示用）。 */
   wsStatus: WsStatus;
-  /* 会话级 WS 状态。 */
+  /** 会话级 WS 状态（Day136 第二条常驻连接；顶栏并示）。 */
   sessionWsStatus: WsStatus;
   /** 对话模式（plan=只读规划 / execute=执行；持久记忆用户选择）。 */
   chatMode: ChatMode;
-  /* 会话级模型覆盖。 */
+  /** 会话级模型覆盖（控制条；空 = 跟随全局——Day137b-2）。 */
   sessionModel: string;
-  /* 会话级思考模式。 */
+  /** 会话级思考模式（控制条；空 = 关闭——Day137b-2）。 */
   sessionThinking: string;
   /**
    * 左栏「任务」段折叠态。常驻 store：左栏 offcanvas 折叠会卸载上下文列表区
@@ -74,7 +74,7 @@ interface UiState {
   /** 模型档案数据版本（设置页「应用」档案后自增 → 会话框模型控制条重取；
    * 此前只有 Composer 内模型弹窗会通知，设置页切换后控制条不刷新）。 */
   modelsVersion: number;
-  /** 项目面板宽度「手动覆盖」。 */
+  /** 项目面板宽度「手动覆盖」（拖拽值；null = 窗口自适应—— 拍板）。 */
   projectPanelWidthOverride: number | null;
   /** 功能：已激活「助理」条目的项目——新建会话空态选择项目后写入（条目不再常驻）。 */
   assistantEntryProjects: string[];

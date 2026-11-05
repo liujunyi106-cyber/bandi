@@ -1,5 +1,5 @@
 /**
- * 功能：会话域 API（）。
+ * 功能：会话域 API（@base docs/API契约.md / 后端 api/app.py sessions 端点）。
  * 覆盖：列表（含 project_id 项目维度）/ 详情（消息条目）/ 重命名 / 删除 /
  * fork / revert 三级（stage·commit·clear）/ 分享 + 共享查看 / 转向（steer·inject）/
  * 中断（abort）/ 挂起交互应答（confirm·clarify）。
@@ -60,7 +60,7 @@ export interface InteractionFrame {
   session_id: string;
   kind: string;
   payload: Record<string, unknown>;
-  /* 剩余倒计时秒数。 */
+  /** 剩余倒计时秒数（Day137b-1；缺省 = 后端未提供，不显示倒计时）。 */
   expires_in?: number;
   /** 孤儿标记（重放端点标注：执行已结束、进程内无挂起方——答复无处唤醒）。 */
   orphaned?: boolean;
@@ -146,7 +146,7 @@ export const sessionsApi = {
     api.post<{ queued: boolean }>(`/sessions/${sessionId}/steer`, { message }),
   inject: (sessionId: string, message: string) =>
     api.post<{ injected: boolean }>(`/sessions/${sessionId}/inject`, { message }),
-  /* 功能：强制压缩会话。 */
+  /** 功能：强制压缩会话（单块全量摘要 → fork 新会话；原会话保留——Day137b-2）。 */
   compact: (sessionId: string) =>
     api.post<{
       compacted: boolean;

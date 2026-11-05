@@ -6,7 +6,7 @@
 
     「暂不支持的：写入/创建文件、数据处理、图表生成、团队组建」
 
-而这些工具全部存在
+而这些工具全部存在（L1 真机实测 write 13 次 / excel_generate 11 次 /
 chart_generator 8 次）。数据集 rubric `capability-honesty-v1` 直接判负。
 """
 

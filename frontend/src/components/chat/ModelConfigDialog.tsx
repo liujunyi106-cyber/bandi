@@ -1,5 +1,5 @@
 /**
-  * 功能：模型配置弹窗——provider/模型/API Key/Base URL
+ * 功能：模型配置弹窗（Day137b-2b ）——provider/模型/API Key/Base URL
  * + 高级项折叠区（灰字段，默认收起）。编辑态额外提供 设为当前 / 删除。
  * 掩码约定：编辑态回显的是 API 掩码值；未改动直接保存时后端按掩码识别并保留原 key。
  */
@@ -197,7 +197,7 @@ export function ModelConfigDialog({
             <span className="text-chat-muted text-xs">
               {t("chat.composer.controls.profileProvider")}
             </span>
-            {/* 用户反馈：供应商下拉长度须与下方输入框一致
+            {/* 2026-09-24 用户反馈：供应商下拉长度须与下方输入框一致
                 （Input 为 w-full，SelectTrigger 默认 w-fit） */}
             <Select
               value={customProvider ? CUSTOM_PROVIDER : form.provider}
@@ -353,9 +353,9 @@ export function ModelConfigDialog({
           ) : null}
         </div>
 
-        {/* 用户反馈：页脚与上方分区过重 ⇒ 去灰底、分隔线改最浅 hairline */}
+        {/* 2026-09-24 用户反馈：页脚与上方分区过重 ⇒ 去灰底、分隔线改最浅 hairline */}
         <DialogFooter className="border-chat-hairline/60 bg-transparent mt-1 flex items-center gap-2">
-          {/*本弹窗只负责「新增/编辑模型配置」——
+          {/* 2026-09-24 用户拍板：本弹窗只负责「新增/编辑模型配置」——
               设为当前（切换激活）与删除移到「设置」里做，弹窗内不再提供 */}
           <span className="flex-1" />
           <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>

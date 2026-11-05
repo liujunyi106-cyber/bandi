@@ -329,7 +329,7 @@ class TestOnThinking:
         body = tool_msgs[0].content
         assert "line 1999" in body and "line 2000" not in body, "应按行数截断（保留 1-2000）"
         assert "显示第 1-2000 行" in body, "须说明截断范围"
-        assert "重新调用 bash" in body, "须给出取回出路"
+        assert "重新调用 bash" in body, "须给出取回出路（真机 2026-09-28 缺陷④）"
 
     @pytest.mark.asyncio
     async def test_high_risk_output_under_byte_cap_not_truncated(self) -> None:

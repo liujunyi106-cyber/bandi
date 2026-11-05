@@ -11,15 +11,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { EmployeeIdentityHeader } from "@/components/chat/EmployeeIdentityHeader";
 import { ProcessBlock } from "@/components/chat/ProcessBlock";
 import { APPROVAL_FRAME_PREFIX } from "@/hooks/use-company-approvals";
 import { useEmployees } from "@/hooks/use-employees";
 import { useT } from "@/i18n";
-import { employeeTone, resolveEmployeeName } from "@/lib/employee";
 import { cn } from "@/lib/utils";
 import { companyApi, type WorkItemSummary } from "@/services/company";
 import { useChatStore } from "@/stores/chat-store";
-import { toneClass } from "@/theme";
 
 import { useLiveEmployeeProgress } from "@/hooks/use-live-employee-progress";
 import { normalizeProjectScope } from "@/lib/progress-key";
@@ -30,6 +29,11 @@ export function fallbackRoleVisible(item: WorkItemSummary, finishedAt?: number):
   if (!finishedAt || !item.created_at) return true;
   const created = Date.parse(item.created_at.replace(" ", "T"));
   return !(Number.isFinite(created) && created <= finishedAt);
+}
+
+/** 功能：fallback 占位的去重键，按线程 + 员工隔离，避免跨线程互相消隐。 */
+function finishedKey(threadId: string, roleId: string): string {
+  return `${threadId}::${roleId}`;
 }
 
 export function LiveProgressList({
@@ -43,7 +47,6 @@ export function LiveProgressList({
 }) {
   const { employees } = useEmployees();
   const live = useLiveEmployeeProgress(projectId, threadId);
-  const progressTexts = useChatStore((state) => state.employeeProgressText);
   const activeSessionId = useChatStore((state) => state.activeSessionId);
   const interactions = useChatStore((state) => state.interactions);
   const t = useT();
@@ -62,6 +65,7 @@ export function LiveProgressList({
         .workItems()
         .then((result) => {
           if (cancelled) return;
+          const wantedThread = String(threadId ?? "");
           const roles = Array.from(
             new Set(
               result.items
@@ -69,8 +73,14 @@ export function LiveProgressList({
                   (item) =>
                     item.phase === "running" &&
                     item.project_id === projectId &&
+                    (!wantedThread || String(item.thread_id ?? "") === wantedThread) &&
                     Boolean(item.assignee_role) &&
-                    fallbackRoleVisible(item, finishedRolesRef.current[String(item.assignee_role)]),
+                    fallbackRoleVisible(
+                      item,
+                      finishedRolesRef.current[
+                        finishedKey(wantedThread, String(item.assignee_role))
+                      ],
+                    ),
                 )
                 .map((item) => String(item.assignee_role)),
             ),
@@ -84,7 +94,7 @@ export function LiveProgressList({
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [projectId]);
+  }, [projectId, threadId]);
   // 员工挂起于多问卡/权限卡（等用户决策）——过程块据此显示「等待你的决策…」，
   // 不再让用户误以为系统卡死；答复后（卡消失）恢复「正在执行…」。
   const waitingForUser = useMemo(
@@ -104,12 +114,15 @@ export function LiveProgressList({
         frame.data && typeof frame.data === "object" ? (frame.data as Record<string, unknown>) : {};
       if (normalizeProjectScope(String(data.project_id ?? "")) !== normalizeProjectScope(projectId))
         return;
+      const wantedThread = String(threadId ?? "");
+      const incomingThread = String(data.thread_id ?? "");
+      if (wantedThread && incomingThread && incomingThread !== wantedThread) return;
       const sender = String(data.sender ?? "").trim();
       if (!sender) return;
-      finishedRolesRef.current[sender] = Date.now();
+      finishedRolesRef.current[finishedKey(wantedThread, sender)] = Date.now();
       setRunningRoles((prev) => prev.filter((role) => role !== sender));
     });
-  }, [projectId]);
+  }, [projectId, threadId]);
   useEffect(() => {
     if (!projectId) return;
     return socket.on("thread_progress", (frame) => {
@@ -123,18 +136,22 @@ export function LiveProgressList({
           : {};
       if (String(event.type ?? "") !== "started") return;
       const roleId = String(data.role_id ?? "").trim();
-      if (roleId) delete finishedRolesRef.current[roleId];
+      if (roleId) delete finishedRolesRef.current[finishedKey(String(threadId ?? ""), roleId)];
     });
-  }, [projectId]);
+  }, [projectId, threadId]);
   // 功能：员工过程已出现（头像/名字/执行中）→ 立即清掉「已转交员工」过渡注记
   useEffect(() => {
     if (!activeSessionId) return;
     if (live.length === 0 && runningRoles.length === 0) return;
     useChatStore.getState().clearTransientNotes(activeSessionId);
   }, [activeSessionId, live.length, runningRoles.length]);
-  // 回复已落位的员工即使轮询状态尚未收敛，也不得再以 fallback 占位复活。
+  // 回复已落位的员工即使轮询状态尚未收敛，也不得再以 fallback 占位复活；
+  // 同一员工已有真实流式行时不再渲染 fallback（其他员工仍可见）。
+  const liveRoleIds = new Set(live.map((item) => item.roleId));
+  const scopeThread = String(threadId ?? "");
   const visibleRunningRoles = runningRoles.filter(
-    (roleId) => !finishedRolesRef.current[roleId],
+    (roleId) =>
+      !finishedRolesRef.current[finishedKey(scopeThread, roleId)] && !liveRoleIds.has(roleId),
   );
   if (live.length === 0 && visibleRunningRoles.length === 0) return null;
   // 全部活跃员工过程均渲染（并行/连续调度时需要看到其他员工的过程块与身份头；
@@ -148,30 +165,32 @@ export function LiveProgressList({
     >
       {live.length === 0
         ? visibleRunningRoles.map((roleId) => {
-            const name = resolveEmployeeName(employees, roleId);
+            const employee =
+              employees.find((item) => item.role_id === roleId) ??
+              employees.find((item) => item.employee_id === roleId);
+            const name = employee?.name ?? "";
             return (
               <div
                 key={`pending::${roleId}`}
                 data-testid="live-employee-progress-item"
                 data-role-id={roleId}
-                className="flex w-full items-center gap-2"
+                className="flex w-full flex-col items-start"
               >
-                <span
-                  className={cn(
-                    "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium",
-                    toneClass(employeeTone(roleId)),
-                  )}
-                >
-                  {name.slice(0, 1)}
+                {name ? (
+                  <EmployeeIdentityHeader name={name} metadata={employee?.metadata} />
+                ) : null}
+                <span className="text-chat-muted flex items-center gap-1 text-xs">
+                  <span className="bg-primary/60 size-1.5 animate-pulse rounded-full" />
+                  {t("chat.dm.running")}
                 </span>
-                <span className="text-chat-ink text-sm">{name}</span>
-                <span className="bg-primary/60 size-1.5 animate-pulse rounded-full" />
-                <span className="text-chat-muted text-xs">{t("chat.dm.running")}</span>
               </div>
             );
           })
         : visible.map((item) => {
-        const name = resolveEmployeeName(employees, item.roleId);
+        const employee =
+          employees.find((candidate) => candidate.role_id === item.roleId) ??
+          employees.find((candidate) => candidate.employee_id === item.roleId);
+        const name = employee?.name ?? "";
         return (
           <div
             key={`${item.threadId}::${item.roleId}`}
@@ -182,36 +201,18 @@ export function LiveProgressList({
           >
             {/* 员工身份头与固化后的员工消息行同口径（头像 size-6/text-xs 对齐
                 MessageItem） */}
-            <span className="text-chat-muted mb-1 flex items-center gap-2 text-sm">
-              <span
-                className={cn(
-                  "flex size-6 items-center justify-center rounded-full text-xs font-medium",
-                  toneClass(employeeTone(item.roleId)),
-                )}
-              >
-                {name.slice(0, 1)}
-              </span>
-              {name}
-            </span>
+            {name ? (
+              <EmployeeIdentityHeader
+                name={name}
+                metadata={employee?.metadata}
+                testId="live-employee-progress-identity"
+              />
+            ) : null}
             {/* 过程块与头像左侧对齐（不缩进到姓名右缘） */}
             <div className="w-full">
               {/* forceRunning：消息未落前恒「正在执行」（过程节点全完成≠回复完成；
                   完成态与总时长由固化后的回复卡片承担） */}
               <ProcessBlock nodes={item.nodes} forceRunning />
-              {progressTexts[
-                `${normalizeProjectScope(projectId)}::${item.threadId}::${item.roleId}`
-              ] ? (
-                <p
-                  data-testid="live-employee-text"
-                  className="text-chat-ink mt-1 whitespace-pre-wrap break-words text-sm"
-                >
-                  {
-                    progressTexts[
-                      `${normalizeProjectScope(projectId)}::${item.threadId}::${item.roleId}`
-                    ]
-                  }
-                </p>
-              ) : null}
               {waitingForUser ? (
                 <p
                   data-testid="live-progress-waiting"

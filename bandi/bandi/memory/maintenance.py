@@ -58,6 +58,7 @@ def _promote_to_long_term(
 
     from bandi.memory.decay import explicit_flags as _explicit_promotion_flags
     from bandi.memory.distill import distill_for_episode
+    from bandi.memory.ingest_review import is_noise_memory
     from bandi.memory.staging import (
         MemoryWriteGate,
         get_pending_store,
@@ -71,7 +72,19 @@ def _promote_to_long_term(
     token = set_write_origin("background")
     try:
         for episode in episodes:
+            summary_noise = is_noise_memory(episode.summary)
+            if summary_noise:
+                logger.debug(
+                    "promotion skipped as noise: %s (%s)", episode.episode_id, summary_noise
+                )
+                continue
             distilled = distill_for_episode(episode, distiller)
+            content_noise = is_noise_memory(distilled.content)
+            if content_noise:
+                logger.debug(
+                    "promotion skipped as noise: %s (%s)", episode.episode_id, content_noise
+                )
+                continue
             item = MemoryItem(
                 item_id=f"consolidated:{episode.episode_id}",
                 content=distilled.content,
@@ -237,6 +250,7 @@ def promote_notable_episodes(
     checked_promoted: set[str] = set()
     candidates: dict[str, Episode] = {}
     from bandi.memory.consolidation import PROMOTION_REJECTED_TAG, _turn_recorded_inputs
+    from bandi.memory.ingest_review import is_noise_memory
 
     dedup_inputs: set[str] | None = None
     for project_id, employee_id in episodic.list_scopes():
@@ -251,6 +265,9 @@ def promote_notable_episodes(
             for episode in page:
                 if PROMOTION_REJECTED_TAG in episode.tags:
                     # 用户已拒绝晋升——维护路径同样粘滞跳过
+                    continue
+                if is_noise_memory(episode.summary):
+                    # 审批等待/回执/寒暄/自我介绍/可推导——不进入晋升候选
                     continue
                 if episode.importance < min_importance or episode.recall_count < min_recalls:
                     continue

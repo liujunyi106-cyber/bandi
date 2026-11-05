@@ -134,7 +134,7 @@ export function SessionTools({ items, testId }: { items: SessionToolItem[]; test
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" className="max-h-72 w-80 overflow-y-auto p-1">
-          {/*标题左对齐（与下方记录字段对齐）且用浅灰色；列表项不带 icon */}
+          {/* 2026-09-23 用户拍板：标题左对齐（与下方记录字段对齐）且用浅灰色；列表项不带 icon */}
           <p className="text-muted-foreground px-2 py-1.5 text-sm font-medium">
             {t("chat.tools.history")}
           </p>

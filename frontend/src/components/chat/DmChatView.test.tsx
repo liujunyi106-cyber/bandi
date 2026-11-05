@@ -1,5 +1,5 @@
 ﻿/**
- * 功能：DmChatView 行为测试（员工名/头像 + 任务状态徽标 + 空员工引导 +
+ * 功能：DmChatView 行为测试（Day137：员工名/头像 + 任务状态徽标 + 空员工引导 +
  * 线程消息过滤（参与方/项目）与切换竞态守卫）。
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -77,7 +77,7 @@ function threadFrame(overrides: Record<string, unknown>) {
 describe("DmChatView", () => {
   beforeEach(() => {
     wsHarness.handlers = {};
-    useChatStore.setState({ employeeProgress: {} });
+    useChatStore.setState({ employeeProgress: {}, employeeProgressText: {} });
     mocked.employees.mockResolvedValue({
       employees: [{ employee_id: "e1", name: "小美", role_id: "dev" }],
     });
@@ -139,7 +139,7 @@ describe("DmChatView", () => {
     expect(await screen.findByTestId("dm-task-badge")).toHaveTextContent("空闲");
   });
 
-  it("员工执行过程块：thread_progress 归并后实时展示", async () => {
+  it("员工执行过程块：thread_progress 归并后实时展示（不依赖任务轮询；Day137b-1 插队批）", async () => {
     useChatStore.setState({
       employeeProgress: {
         "company::::dev": [
@@ -156,6 +156,29 @@ describe("DmChatView", () => {
 
     await waitFor(() => expect(screen.getByTestId("dm-running")).toBeInTheDocument());
     expect(screen.getByTestId("process-block")).toBeInTheDocument();
+  });
+
+  it("执行中只显示过程块，不把流式文件正文刷进消息流", async () => {
+    useChatStore.setState({
+      employeeProgress: {
+        "company::::dev": [
+          { id: "ep:tool:1", kind: "tool", toolName: "read", status: "running" },
+        ],
+      },
+      employeeProgressText: {
+        "company::::dev": "C:\\a.md\nC:\\b.md\nC:\\c.md",
+      },
+    });
+    render(
+      <MemoryRouter>
+        <DmChatView targetRole="dev" />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("dm-running")).toBeInTheDocument());
+    expect(screen.getByTestId("process-block")).toBeInTheDocument();
+    expect(screen.queryByTestId("dm-running-text")).not.toBeInTheDocument();
+    expect(screen.queryByText(/C:\\a\.md/)).not.toBeInTheDocument();
   });
 
   it("群聊线程的过程槽不串入单聊视图（跨线程串台）", async () => {
@@ -348,7 +371,7 @@ describe("DmChatView", () => {
     expect(avatar.className).toContain("rounded-full");
     const meta = screen.getByTestId("dm-message-meta");
     expect(meta.className).toContain("text-sm");
-    expect(meta.className).toContain("items-end");
+    expect(meta.className).toContain("items-center");
   });
 
   it("对话框统一：公共 Composer 且模式切换已补齐（plan/execute 透传）", async () => {
@@ -605,7 +628,7 @@ describe("DmChatView", () => {
  * 模型控件，锁定态无从显示（本仓库 「传了 ≠ 有入口」同一类）。
  * 下面钉的是「渲染出了控件」这个行为，而不是「某 prop 被传了」。
  */
-describe("DmChatView 单聊控制条与 ⊕ 菜单", () => {
+describe("DmChatView 单聊控制条与 ⊕ 菜单（2026-09-30 用户拍板）", () => {
   beforeEach(() => {
     mocked.employees.mockResolvedValue({
       employees: [
@@ -619,7 +642,7 @@ describe("DmChatView 单聊控制条与 ⊕ 菜单", () => {
     });
   });
 
-  it("渲染控制条并显示该员工实际使用的模型", async () => {
+  it("渲染控制条并显示该员工实际使用的模型（§18.15② 有 UI 入口）", async () => {
     render(
       <MemoryRouter>
         <DmChatView targetRole="dev" />

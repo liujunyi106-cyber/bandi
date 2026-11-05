@@ -635,7 +635,7 @@ class R3xb1RecordingBus:
 
 @pytest.mark.asyncio
 async def test_cache_hit_failure_emits_tool_error() -> None:
-    """
+    """命中重映射：meta/should_abort 保留；失败命中必须发 TOOL_ERROR（与赢家 _fail_result
     同口径，带 error_message）——原先只发 TOOL_COMPLETED 导致审计/UI 看不到失败原因。"""
     bus = R3xb1RecordingBus()
     executor = ToolExecutor(registry=ToolRegistry(), event_bus=bus)
@@ -1720,7 +1720,7 @@ async def test_missing_dependency_keeps_pending_not_success(
     def _ctx() -> ExecutionContext:
         c = ExecutionContext(messages=[], provider=object(), config=object(), bus=_FakeBus())
         c.raw_input = "结论：帮我看下这个报错"
-        c.current_content = ""
+        c.current_content = "分析已完成，结论是继续执行当前方案。"
         c.turn_index = 1
         return c
 
@@ -1768,7 +1768,7 @@ async def test_retry_does_not_write_other_database_scope(tmp_path: Path) -> None
     def _ctx(raw_input: str) -> ExecutionContext:
         c = ExecutionContext(messages=[], provider=object(), config=object(), bus=_FakeBus())
         c.raw_input = raw_input
-        c.current_content = ""
+        c.current_content = "分析已完成，结论是继续执行当前方案。"
         c.turn_index = 1
         return c
 
@@ -1933,7 +1933,7 @@ async def test_magic_stub_store_scope_not_permanently_deferred() -> None:
     def _ctx() -> ExecutionContext:
         c = ExecutionContext(messages=[], provider=object(), config=object(), bus=_FakeBus())
         c.raw_input = "结论：范围桩场景的输入"
-        c.current_content = ""
+        c.current_content = "分析已完成，结论是继续执行当前方案。"
         c.turn_index = 1
         return c
 

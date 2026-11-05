@@ -9,6 +9,22 @@ import { MessageItem } from "@/components/chat/MessageItem";
 import { usePanelStore } from "@/stores/panel-store";
 import type { ChatMessage } from "@/stores/chat-store";
 
+vi.mock("@/hooks/use-employees", () => ({
+  useEmployees: () => ({
+    employees: [
+      {
+        role_id: "selection-team_market_researcher",
+        employee_id: "selection-team_market_researcher",
+        name: "市场调研",
+        title: "",
+        status: "active",
+      },
+    ],
+    loading: false,
+    error: null,
+  }),
+}));
+
 function message(overrides: Partial<ChatMessage> = {}): ChatMessage {
   return {
     id: "m1",
@@ -20,7 +36,7 @@ function message(overrides: Partial<ChatMessage> = {}): ChatMessage {
   };
 }
 
-describe("MessageItem · 引用文件", () => {
+describe("MessageItem · 引用文件（2026-10-12 用户拍板：右栏打开/外链跳转）", () => {
   beforeEach(() => {
     usePanelStore.setState({ open: false, tabs: [], activeTabId: "" });
   });
@@ -82,7 +98,7 @@ describe("MessageItem · 引用文件", () => {
   });
 
   it("引用文件渲染在回复气泡卡片内（不得落在卡片外）", () => {
-    // L1 回归：引用文件一度渲染在气泡 div 外（卡片外侧），用户报障要求收回卡片内。
+    // L1 真机回归：引用文件一度渲染在气泡 div 外（卡片外侧），用户报障要求收回卡片内。
     render(
       <MessageItem
         message={message({
@@ -203,7 +219,7 @@ describe("MessageItem", () => {
     expect(screen.getByText("已发送转向指令")).toBeInTheDocument();
   });
 
-  it("user 操作条精简：仅复制 + 编辑", () => {
+  it("user 操作条精简：仅复制 + 编辑（无点赞/差评/更多/重发——2026-09-25 用户拍板）", () => {
     render(
       <MessageItem
         message={message({ role: "user", content: "你好", entryId: "e1" })}
@@ -249,7 +265,7 @@ describe("MessageItem", () => {
     expect(onFeedback).toHaveBeenCalledWith(null);
   });
 
-  it("user 操作条：时间戳紧贴编辑按钮（无撑开分隔），且右对齐", () => {
+  it("user 操作条：时间戳紧贴编辑按钮（无撑开分隔），且右对齐（2026-09-25 用户拍板）", () => {
     render(
       <MessageItem
         message={message({
@@ -320,7 +336,7 @@ describe("MessageItem", () => {
     expect(onRevertStage).toHaveBeenCalledWith("e9");
   });
 
-  it("回复块时间戳：HH:mm 常显 + hover 精确时间", () => {
+  it("回复块时间戳：HH:mm 常显 + hover 精确时间（Day137b-1 参考源对齐）", () => {
     render(<MessageItem message={message({ createdAt: "2026-09-23T14:30:00" })} interactive />);
     const time = screen.getByTestId("message-time");
     expect(time).toHaveTextContent("14:30");
@@ -339,7 +355,7 @@ describe("MessageItem", () => {
     expect(screen.queryByTestId("streaming-cursor")).not.toBeInTheDocument();
   });
 
-  it("尝试调用阶段计时：秒数逐秒累加", () => {
+  it("尝试调用阶段计时：秒数逐秒累加（2026-10-01 §4.3；0s 不显示）", () => {
     vi.useFakeTimers();
     try {
       render(<MessageItem message={message({ content: "", done: false })} interactive />);
@@ -375,7 +391,7 @@ describe("MessageItem", () => {
     }
   });
 
-  it("有内容的流式回复：不渲染流式光标", () => {
+  it("有内容的流式回复：不渲染流式光标（2026-09-26 用户拍板移除蓝竖条）", () => {
     const { container } = render(
       <MessageItem message={message({ content: "正在生成中", done: false })} interactive />,
     );
@@ -405,6 +421,17 @@ describe("MessageItem", () => {
     expect(screen.queryByTestId("assistant-avatar")).not.toBeInTheDocument();
   });
 
+  it("破坏者：署名解析不到员工时隐藏身份头，不出首字母假头像", () => {
+    render(
+      <MessageItem
+        message={message({ senderName: "Worker", senderRole: "worker" })}
+        interactive
+      />,
+    );
+    expect(screen.queryByText("Worker")).not.toBeInTheDocument();
+    expect(screen.queryByText("W")).not.toBeInTheDocument();
+  });
+
   it("助理身份覆盖：秘书会话身份头为「秘书」（与项目面板一致；缺省仍「AI 助手」）", () => {
     render(
       <MessageItem
@@ -418,7 +445,7 @@ describe("MessageItem", () => {
   });
 
   it("破坏者：assistant 操作条与卡片左缘对齐（随头像左缘对齐，无缩进）", () => {
-    // 内容与头像左缘对齐（pl-5 姓名缩进移除）
+    // 2026-10-15 用户拍板：内容与头像左缘对齐（pl-5 姓名缩进移除）
     render(<MessageItem message={message()} interactive />);
     expect(screen.getByTestId("message-actions").className).not.toContain("pl-5");
   });

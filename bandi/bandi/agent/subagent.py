@@ -783,7 +783,7 @@ class SubagentManager:
         """按 task_id 或 session_id 取消活跃子 Agent（双句柄兼容）。
         定向取消置 session.cancelled 标记——spawn 将其降级为取消结果
         父流程不中断；cancel_all（父中断清理）语义保持。
-        修复：返回是否真实命中（未命中 False——API 不得虚报成功）。"""
+        终审修复：返回是否真实命中（未命中 False——API 不得虚报成功）。"""
         session_id = self._task_index.get(handle, handle)
         session = self._active.get(session_id)
         if session is None:

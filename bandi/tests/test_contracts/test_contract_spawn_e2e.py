@@ -1,4 +1,4 @@
-"""功能：spawn_thread_task 生产主链路端到端契约（DoD-12/）。
+"""功能：spawn_thread_task 生产主链路端到端契约（DoD-12/§6a）。
 
 重建根因：registry 裸注册 spawn 工具，公司链路（EngineSeatExecutor→run_agent→
 run_agent_turn）必须在 registry 建成后 bind_deps，否则工具对 LLM 可见但每次调用

@@ -60,7 +60,7 @@ function firePointer(
 ): void {
   // jsdom 26 没有 PointerEvent（fireEvent.pointerX 降级为普通 Event，button/clientX 被丢弃）
   // 而产品代码以 event.button / event.clientX / event.pointerId 分流 —— 用 MouseEvent +
-  // defineProperty 构造真浏览器等价的形状。
+  // defineProperty 构造真浏览器等价的形状（与 knowledge-page.test 的 helper 同构）。
   const event = new MouseEvent(type, {
     bubbles: true,
     cancelable: true,

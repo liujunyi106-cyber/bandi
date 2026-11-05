@@ -1,27 +1,61 @@
-# 功能：Electron 打包配置。
-# Windows 优先（nsis）；壳内加载 electron/main.js + 前端构建产物 dist/。
+# 功能：Electron 打包配置（@base docs/ADR.md ADR-42 / docs/前端设计规划.md §12）。
+# Windows 优先（nsis）；壳内加载 electron/main.js + 前端构建产物 dist/；
+# Python sidecar 生命周期与安装包瘦身 → P5-6（Day147-151）。
 appId: com.bandi.desktop
 productName: Bandi
 copyright: Copyright © 2026 Bandi
 
 directories:
-  output: release
+  output: ../release
   buildResources: build
+
+# 功能：Electron 运行时直接取本地已装产物（node_modules/electron/dist），跳过 @electron/get 下载链路。
+# 原因：electron-builder 26.18 依赖 @electron/get 的 ElectronDownloadCacheMode（3.1.0 才提供），
+# 而 electron 33 自身锁 2.x，扁平布局下解析到 2.0.0 会在打包时抛 TypeError。
+electronDist: node_modules/electron/dist
 
 files:
   - electron/**/*
   - dist/**/*
   - package.json
-  # 渲染进程依赖已由 vite 打进 dist/，排除生产依赖在 asar 内的重复收集
+  # 渲染进程依赖已由 vite 打进 dist/，仅保留主进程运行期需要的更新器依赖树
   - "!node_modules/**"
+  - node_modules/electron-updater/**/*
+  - node_modules/builder-util-runtime/**/*
+  - node_modules/fs-extra/**/*
+  - node_modules/graceful-fs/**/*
+  - node_modules/jsonfile/**/*
+  - node_modules/universalify/**/*
+  - node_modules/js-yaml/**/*
+  - node_modules/argparse/**/*
+  - node_modules/sprintf-js/**/*
+  - node_modules/debug/**/*
+  - node_modules/ms/**/*
+  - node_modules/sax/**/*
+  - node_modules/semver/**/*
+  - node_modules/lazy-val/**/*
+  - node_modules/lodash.escaperegexp/**/*
+  - node_modules/lodash.isequal/**/*
+  - node_modules/tiny-typed-emitter/**/*
 
-# sidecar：构建脚本 bandi/scripts/build-sidecar.py 先把 PyInstaller 产物同步到
-# build/sidecar/bandi-sidecar/（ASCII 目标目录，含 bandi-sidecar.exe + _internal/），
-# 这里整体作为 extraResources 打进 resources/sidecar/，与 electron/sidecar.ts 的候选路径对齐。
+# 功能：自动更新通道（GitHub Releases）。发布：GH_TOKEN=xxx electron-builder --publish always
+publish:
+  provider: github
+  owner: liujunyi106-cyber
+  repo: bandi
+  releaseType: release
+
+# sidecar（Day147 C-5/C-6）：构建脚本 bandi/scripts/build-sidecar.py 先把
+# PyInstaller 产物同步到 build/sidecar/bandi-sidecar/（ASCII 目标目录、
+# 产物含 bandi-sidecar.exe + _internal/），这里整体作为 extraResources
+# 打进 resources/sidecar/——与 electron/sidecar.ts 的 ② 号候选路径对齐。
 # build/sidecar 不存在时需先跑构建脚本，否则打包报错（fail-fast 有意为之）。
 extraResources:
   - from: build/sidecar
     to: sidecar
+  # 功能：SPA 构建产物随包分发，供 sidecar 以 BANDI_FRONTEND_DIST 托管（壳 loadURL 的页面来源）。
+  - from: dist
+    to: web
 
 win:
   target:
@@ -30,6 +64,8 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   perMachine: false
+  include: build/installer.nsh
+  artifactName: Bandi-Setup-${version}.${ext}
 
 mac:
   target: dmg

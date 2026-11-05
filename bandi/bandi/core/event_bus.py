@@ -112,7 +112,7 @@ _event_ctx_var: contextvars.ContextVar[_EventContext | None] = contextvars.Conte
 def set_event_context(**fields: str) -> contextvars.Token[_EventContext | None]:
     """设置当前执行上下文的事件溯源字段（返回 token 供 reset 恢复）。
 
-    修复：每次复制新对象再 set——原实现就地修改 `_event_ctx_var.get`
+    RF-18 审查修复：每次复制新对象再 set——原实现就地修改 `_event_ctx_var.get()`
     返回的共享 ctx；reset(token) 恢复的是同一对象引用（字段已被永久改写）
     导致「set(session_id=X) + reset」仍把 X 泄漏给父上下文/后续事件。
     """

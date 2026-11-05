@@ -7,7 +7,7 @@
 后果：思考耗时只存在于浏览器内存（前端 `settleThought`），**从未回传后端** ⇒
 重载/切会话后纯文本轮完全没有耗时、混合轮只剩工具耗时 ⇒ 过程块显示「已完结 · —」。
 
-口径：opencode `ReasoningPart.time.{start,end}` —— 思考段是可度量的时间区间。
+参考源口径：opencode `ReasoningPart.time.{start,end}` —— 思考段是可度量的时间区间。
 """
 
 from __future__ import annotations
@@ -100,7 +100,7 @@ class TestThoughtDurationSettledAtPersist:
 
     @pytest.mark.asyncio
     async def test_internal_marker_stripped_before_persist(self, monkeypatch) -> None:
-        """落库形态必须干净：内部起止标记不得进持久化。"""
+        """落库形态必须干净：内部起止标记不得进持久化（前端 ProcessNode 同构）。"""
         _patch_clock(monkeypatch, [1.0, 2.0])
         rec, store, _ = _recorder()
         await rec.on_thinking("s1", "x")

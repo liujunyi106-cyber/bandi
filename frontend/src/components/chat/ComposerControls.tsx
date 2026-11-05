@@ -1,7 +1,7 @@
 /**
-  * 功能：Composer 控制条——组合 [思考滑杆][模型字段] …… [发送/停止]。
+ * 功能：Composer 控制条（Day137b-2b ）——组合 [思考滑杆][模型字段] …… [发送/停止]。
  * 思考 = 滑杆字段（左侧）；模型 = 两态字段 + 底部配置入口 → 配置弹窗（档案级，全局生效）。
-  * 会话级 model/thinking 覆盖仍走 -2 的 payload 通道（与档案级共存，spec）。
+ * 会话级 model/thinking 覆盖仍走 -2 的 payload 通道（与档案级共存，spec §四已登记）。
  */
 import { useState } from "react";
 

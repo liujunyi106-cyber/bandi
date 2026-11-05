@@ -1,4 +1,5 @@
 # 功能：契约——provider 解析：显式 base_url 必须生效（含目录内模型）+ 缓存键含凭证。
+# 破坏者视角：① 目录内模型（deepseek-v4-flash 等）映射官方 provider 类，类内写死
 # 官方域名 → 用户显式 llm.base_url（私有网关）被静默忽略；② 缓存键不含 api_key →
 # 同模型同网关不同员工凭证串用实例（计费/权限事故）。
 from __future__ import annotations
@@ -84,13 +85,13 @@ def test_contract_provider_cache_key_includes_credentials() -> None:
     assert p_a2 is p_a, "同配置必须复用实例（缓存语义保持）"
 
 
-# ── 跨 provider 链候选端点隔离─────────────────────────────────
+# ── 跨 provider 链候选端点隔离（BC-002 残）─────────────────────────────────
 
 
 def _profile_cfg(*, provider: str, base_url: str, key: str = "sk-profile") -> BandiConfig:
     """模拟「激活档案解析后」的 config（with_resolved_llm 的效果）。"""
     cfg = BandiConfig()
-    cfg.llm.default_model = "hub-flash"
+    cfg.llm.default_model = "agnes-2.5-flash"
     cfg.llm.provider = provider
     cfg.llm.api_key = key
     cfg.llm.base_url = base_url
@@ -98,22 +99,22 @@ def _profile_cfg(*, provider: str, base_url: str, key: str = "sk-profile") -> Ba
 
 
 def test_cross_provider_candidate_does_not_inherit_profile_endpoint() -> None:
-    """契约：链候选归属 provider ≠ 激活档案 provider 时
-    不得继承档案 base_url（修复前 xiaomi/mimo 候选被劫持到档案端点——
+    """契约（BC-002 残·破坏者）：链候选归属 provider ≠ 激活档案 provider 时，
+    不得继承档案 base_url（修复前 xiaomi/mimo 候选被劫持到 agnes 端点——
     「首个端点失败即锁定」的真实机制）。"""
-    cfg = _profile_cfg(provider="openai_compat", base_url="https://private-hub.example/v1")
+    cfg = _profile_cfg(provider="agnes", base_url="https://apihub.agnes-ai.com/v1")
     reg = ProviderRegistry(cfg)
     provider = reg.get_provider_for_model("xiaomi/mimo-v2.6-flash", cfg)
     base = getattr(provider, "_base_url", "") or ""
-    assert "private-hub.example" not in base, (
-        f"跨 provider 候选不得继承档案端点，实际 {base!r}（修复前恒为档案端点）"
+    assert "agnes" not in base, (
+        f"跨 provider 候选不得继承档案端点，实际 {base!r}（修复前恒为 agnes 端点）"
     )
 
 
 def test_gateway_namespace_model_resolves_to_catalog_provider() -> None:
     """契约（破坏者）：网关命名空间模型（vendor/name）按末段归一命中目录归属——
     `xiaomi/mimo-v2.6-flash` → 目录 `mimo-v2.6-flash`（provider=mimo）。"""
-    cfg = _profile_cfg(provider="openai_compat", base_url="https://private-hub.example/v1")
+    cfg = _profile_cfg(provider="agnes", base_url="https://apihub.agnes-ai.com/v1")
     reg = ProviderRegistry(cfg)
     provider = reg.get_provider_for_model("xiaomi/mimo-v2.6-flash", cfg)
     cfg_obj = getattr(provider, "config", None) or getattr(provider, "_config", None)
@@ -148,7 +149,7 @@ def test_cross_provider_candidate_uses_env_endpoint(monkeypatch: pytest.MonkeyPa
     （`{PROVIDER}_BASE_URL` / `{PROVIDER}_API_KEY`）。"""
     monkeypatch.setenv("MIMO_BASE_URL", "https://mimo-gw.example/v1")
     monkeypatch.setenv("MIMO_API_KEY", "sk-mimo")
-    cfg = _profile_cfg(provider="openai_compat", base_url="https://private-hub.example/v1")
+    cfg = _profile_cfg(provider="agnes", base_url="https://apihub.agnes-ai.com/v1")
     reg = ProviderRegistry(cfg)
     provider = reg.get_provider_for_model("xiaomi/mimo-v2.6-flash", cfg)
     base = getattr(provider, "_base_url", "") or ""

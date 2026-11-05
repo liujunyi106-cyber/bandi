@@ -157,7 +157,7 @@ if ($StubScan) {
     exit 1
 }
 
-# --- Assembly-point completeness audit ---
+# --- Assembly-point completeness audit (机制补强 2026-08-18) ---
 if ($AssemblyPoint) {
     Write-Host "Mode  : Assembly-point completeness for: $AssemblyPoint"
     if ($Param) { Write-Host "Params: $Param" }
@@ -232,7 +232,7 @@ if ($AssemblyPoint) {
     exit 0
 }
 
-# --- Config field "definition -> consumer" audit ---
+# --- Config field "definition -> consumer" audit (P0R-2 型常规检测, 2026-09-17 新增) ---
 # 形态（P0R-2 本体与其同族）：配置字段有定义、文档有承诺，但生产代码零消费者 →
 # 用户改了配置什么也不发生（"能跑通但不符合使用场景"）。历史靠人工 audit 才发现
 # （ask_risk_levels / models_dev.url / preferred_language / tools.temp_dir /
@@ -306,7 +306,7 @@ if ($prod.Count -eq 0) {
     exit 1
 }
 
-# Definition-only false green : a class/func definition is a production
+# Definition-only false green (FM-1 blind spot): a class/func definition is a production
 # reference, so a symbol that is defined but NEVER called elsewhere used to report WIRED.
 if ($callSites.Count -eq 0) {
     Write-Host "FAIL - symbol '$Symbol' has ZERO production call sites (only $($defLines.Count) definition line(s))."

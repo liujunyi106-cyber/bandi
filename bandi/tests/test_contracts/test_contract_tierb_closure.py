@@ -1,6 +1,6 @@
-# 功能：契约——收尾批（DoR 核验驱动的补缺）。
+# 功能：契约——TierB 收尾批（DoR 核验驱动的补缺）。
 #
-# 背景：前端开工前置条件（计划）逐项核验发现两处缺口
+# 背景：前端开工前置条件（计划 §八）逐项核验发现两处缺口：
 # #4 成本查询需「重启后可查」——`/api/sessions/{id}/cost-detail` 是内存实时值
 # 落库台账（.2 llm_request_log）缺 API 读面；
 # #6 多 Agent 并发可观测需 per-agent 时间线——report.transitions 只有相位迁移

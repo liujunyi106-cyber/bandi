@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * 功能：sidecar 链路冒烟——不需要 Electron/GUI。
+ * 功能：sidecar 链路冒烟（Day147 C-2/C-3/C-5）——不需要 Electron/GUI。
  *
  * 模拟壳视角完整链路（两种 sidecar 形态）：
- * - 默认：`python -m bandi serve --port 0`（BANDI_HOME 指到隔离目录）
- * - `--exe <路径>`：PyInstaller 产物 `bandi-sidecar.exe serve --port 0`
- * → stdout 读 `BANDI_SIDECAR_READY port=N` 行
- * → GET /ready 期望 200
- * → taskkill /PID /T /F 树杀（与 electron/sidecar.ts 同口径）
- * → 断言：退出后 127.0.0.1:N 不再应答（端口真正释放，无孤儿进程）。
+ *   - 默认：`python -m bandi serve --port 0`（BANDI_HOME 指到隔离目录）
+ *   - `--exe <路径>`：PyInstaller 产物 `bandi-sidecar.exe serve --port 0`
+ *   → stdout 读 `BANDI_SIDECAR_READY port=N` 行
+ *   → GET /ready 期望 200
+ *   → taskkill /PID /T /F 树杀（与 electron/sidecar.ts 同口径）
+ *   → 断言：退出后 127.0.0.1:N 不再应答（端口真正释放，无孤儿进程）。
  *
  * 用法：node scripts/sidecar-smoke.cjs [python 解释器路径 | --exe sidecar.exe 路径]
  */

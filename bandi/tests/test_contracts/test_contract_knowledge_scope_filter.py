@@ -233,7 +233,7 @@ class TestSeatAssemblyWiring:
         assert get_runtime_knowledge_bases() is None
 
     def test_permission_query_crash_fail_closed(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """
+        """破坏者：role 查询崩溃——对齐 tool_tags fail-closed 先例（空名单=全禁）
         不得 fail-open 放行全量。"""
         from bandi.company import seat_executor as seat_mod
         from bandi.company.company_runtime import CompanyRuntime

@@ -1,14 +1,14 @@
 /**
-  * 功能：Bandi sidecar 进程管理。
+ * 功能：Bandi sidecar 进程管理（Day147 C-3 / @base docs/ADR.md ADR-42）。
  *
  * 职责：生产模式下 Electron 壳 spawn `bandi serve --port 0`（动态端口），
  * 等待就绪后把 `http://127.0.0.1:<port>/` 交给窗口加载；退出时树杀 sidecar
  * （含调度器等子进程），崩溃时自动重启（有限次），彻底失败降级 loadFile。
  *
  * 端口获取（双通道，与 bandi/cli/app.py 的回写口径对齐）：
- * ① stdout 结构化行 `BANDI_SIDECAR_READY port=<N> pid=<P>`（首选，零轮询）；
- * ② `{BANDI_HOME}/sidecar.port` JSON 轮询兜底（pid 必须等于本次 spawn 的 pid，
- * 排除上一轮壳/硬杀留下的陈旧文件）。
+ *   ① stdout 结构化行 `BANDI_SIDECAR_READY port=<N> pid=<P>`（首选，零轮询）；
+ *   ② `{BANDI_HOME}/sidecar.port` JSON 轮询兜底（pid 必须等于本次 spawn 的 pid，
+ *      排除上一轮壳/硬杀留下的陈旧文件）。
  * 就绪判定：`GET /ready` 返回 200（依赖探针，/health 是 liveness 口径）。
  */
 import { spawn, type ChildProcess } from "node:child_process";
@@ -29,6 +29,19 @@ export function bandiHome(): string {
   return process.env.BANDI_HOME ?? path.join(os.homedir(), ".bandi");
 }
 
+/**
+ * 功能：打包态把 SPA 产物目录以 BANDI_FRONTEND_DIST 传给 sidecar。
+ *
+ * 壳用 loadURL(sidecar) 显示界面，页面必须由同一个 FastAPI 进程托管；
+ * 安装后 dist 位于 <resources>/web（electron-builder extraResources），
+ * 而 sidecar 进程读不到 app.asar，故显式指路。
+ */
+export function packagedWebDistEnv(): Record<string, string> {
+  if (!app.isPackaged) return {};
+  const dist = path.join(process.resourcesPath, "web");
+  return existsSync(path.join(dist, "index.html")) ? { BANDI_FRONTEND_DIST: dist } : {};
+}
+
 export interface SidecarCommand {
   command: string;
   args: string[];
@@ -36,15 +49,15 @@ export interface SidecarCommand {
 }
 
 /**
-  * 功能：sidecar 启动命令解析。
+ * 功能：sidecar 启动命令解析（C-5 打包口径）。
  *
  * 优先级：
- * ① `BANDI_SIDECAR_CMD` 显式覆盖（PyInstaller onedir exe 完整路径）；
- * ② 打包态：`<resources>/sidecar/bandi-sidecar/bandi-sidecar.exe`
- * （electron-builder resources 布局，随安装包分发）；
- * ③ `~/.bandi/sidecar/bandi-sidecar/bandi-sidecar.exe`
- * （外部替换目录——与 frontend dist 外部替换同风格，发版只换 sidecar）；
- * ④ 开发态：仓库 .venv python + `python -m bandi serve`。
+ *   ① `BANDI_SIDECAR_CMD` 显式覆盖（PyInstaller onedir exe 完整路径）；
+ *   ② 打包态：`<resources>/sidecar/bandi-sidecar/bandi-sidecar.exe`
+ *      （electron-builder resources 布局，随安装包分发）；
+ *   ③ `~/.bandi/sidecar/bandi-sidecar/bandi-sidecar.exe`
+ *      （外部替换目录——与 frontend dist 外部替换同风格，发版只换 sidecar）；
+ *   ④ 开发态：仓库 .venv python + `python -m bandi serve`。
  * 都不可得 → null（壳降级 loadFile）。
  */
 export function resolveSidecarCommand(): SidecarCommand | null {
@@ -180,7 +193,7 @@ export class SidecarManager {
     return new Promise((resolve) => {
       const child = spawn(cmd.command, cmd.args, {
         cwd: cmd.cwd,
-        env: { ...process.env, BANDI_HOME: bandiHome() },
+        env: { ...process.env, BANDI_HOME: bandiHome(), ...packagedWebDistEnv() },
         windowsHide: true, // CREATE_NO_WINDOW：桌面应用不得闪黑框
         detached: false, // 跟随父进程生命周期，双保险（will-quit 还有显式树杀）
         stdio: ["ignore", "pipe", "pipe"],

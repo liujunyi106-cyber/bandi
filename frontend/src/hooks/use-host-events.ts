@@ -1,5 +1,5 @@
 /**
-  * 功能：宿主级聚合流（events.host，）。
+ * 功能：宿主级聚合流（events.host，@base docs/前端设计规划.md §8 应用内通知中心）。
  * 把两条 WS 通道的关键事件聚合为「宿主感」输出：通知中心条目（完成/出错/交互/断线补发）
  * + 会话连接状态镜像（ui store）。数据归并在 use-session-stream；本 hook 只管通知与状态。
  */
@@ -89,21 +89,9 @@ export function useHostEvents(): void {
         project_ids: [normalizeProjectScope(activeProjectId)],
       });
     };
-    let companyStatus = socket.getStatus();
     const offCompanyStatus = socket.onStatus((status) => {
-      const lostLink = companyStatus === "open" && status !== "open";
-      companyStatus = status;
-      if (status === "open") {
-        sendProgressSubscription();
-        return;
-      }
-      if (!lostLink) return;
-      const settled = useChatStore.getState().settleStaleEmployeeProgress();
-      for (const key of settled) {
-        window.setTimeout(() => {
-          useChatStore.getState().expireEmployeeProgressByKey(key);
-        }, EMPLOYEE_PROGRESS_EXPIRE_MS);
-      }
+      // 功能：断线不结算在跑过程槽；短暂抖动不覆盖过程块，回复落卡时由 thread_message 重建。
+      if (status === "open") sendProgressSubscription();
     });
 
     const offSession = sessionSocket.onFrame((frame) => {
@@ -187,7 +175,7 @@ export function useHostEvents(): void {
         return;
       }
       if (frame.type === "thread_progress") {
-        // 插队批：员工执行过程帧 → 过程槽归并（单聊/群聊实时过程块数据源）
+        // Day137b-1 插队批：员工执行过程帧 → 过程槽归并（单聊/群聊实时过程块数据源）；
         // 槽键含 thread_id（= 「这一次执行」的身份，与产出回写同源）
         const data = frameData(frame);
         const inner = data.event as { type?: unknown; data?: unknown } | undefined;

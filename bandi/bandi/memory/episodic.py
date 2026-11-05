@@ -1,7 +1,8 @@
 """Episode = 一次用户/Agent 交互的经历摘要（区别于 long_term 的知识事实层）。
 
-语义一一对应；Milvus 向量检索以「n-gram LIKE 命中比评分」替代
-重要性加权与时间衰减在本 store 的 search 排序中真正生效
+与 LeAgent episodic.py 的映射：record/note_recall best-effort/空 summary 跳过
+语义一一对应；Milvus 向量检索以「n-gram LIKE 命中比评分」替代（ADR-33 无 RAG）；
+重要性加权与时间衰减（LeAgent 仅存字段）在本 store 的 search 排序中真正生效：
 
     score = 命中相关度 × importance × 0.5 ** (age_days / half_life_days)
 """
@@ -24,6 +25,7 @@ from bandi.utils.db import connect_app_db
 logger = logging.getLogger(__name__)
 
 _DEFAULT_HALF_LIFE_DAYS = 90.0
+# 部分命中相关度线性映射下限（0.3~1.0）——保区分度，防长查询多 gram 场景分数近零
 _MIN_HIT_RELEVANCE = 0.3
 _MIN_TOKEN_LEN = 2
 _MAX_TOKEN_LEN = 4
@@ -31,7 +33,7 @@ _MAX_TOKEN_LEN = 4
 _FTS_CANDIDATE_LIMIT = 200
 
 # 功能：通用词（停用词）——单/双 token 查询命中「所有含该 gram 的条目」，
-# 零区分度，召回即噪音
+# 零区分度，召回即噪音（真机证据：20 轮普通对话中 5 条被「什么/回答/用户」
 # 顶到 recall 2~4，喂进 consolidation 提名通道）。覆盖 tokenize_cn 产出的
 # 2~4 gram 组合（同一句里「是什么」「怎么」这类衔接词）。
 _QUERY_STOP_TERMS = frozenset(
@@ -110,7 +112,7 @@ def _effective_query_terms(terms: list[str]) -> list[str]:
 
 
 def hit_relevance(hit_count: int, total: int) -> float:
-    """
+    """功能：命中相关度线性映射 [0.3, 1.0]——部分命中不再封顶 0.6（低区分度）
     或随查询 gram 数放大趋近于零；全中=1.0，零命中=0.0。"""
     if total <= 0 or hit_count <= 0:
         return 0.0
@@ -609,7 +611,7 @@ class EpisodicStore:
     ) -> tuple[str, list[Any]]:
         """维度过滤 SQL 片段（语义对齐 long_term）：传值等值过滤；未传补 IS NULL
         ——仅匹配该维度全局层，全局检索不命中维度行（防跨项目串写）。team_id
-        未传只命中非团队行，团队行必须带 team_id 显式查询。"""
+        同构：未传只命中非团队行，团队行必须带 team_id 显式查询。"""
         conditions: list[str] = []
         args: list[Any] = []
         if project_id is not None:

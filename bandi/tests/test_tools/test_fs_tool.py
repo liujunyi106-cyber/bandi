@@ -88,7 +88,7 @@ class TestLooksBinary:
 
 
 def test_resolve_rejects_symlink_pointing_inside_workspace(tmp_path, monkeypatch) -> None:
-    """修复：symlink 指向 workspace **内部**也必须拒绝
+    """审查修复：symlink 指向 workspace **内部**也必须拒绝——
     修复前 is_symlink 在 resolve() 之后判定恒 False（死检查），内部 symlink 放行。"""
     import bandi.tools.fs_tool as fs_mod
 

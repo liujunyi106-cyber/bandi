@@ -180,7 +180,7 @@ def test_tool_forwards_max_concurrent_to_manager(monkeypatch: Any) -> None:
 
 
 def test_worker_real_exception_isolated_from_siblings(monkeypatch: Any) -> None:
-    """修复：worker 抛真异常（非 SubagentResult 失败）不得传播阻断兄弟
+    """审查修复：worker 抛真异常（非 SubagentResult 失败）不得传播阻断兄弟——
     降级为 success=False 结果，兄弟照常完成（gather 不炸）。"""
     import bandi.agent.subagent as sub_mod
 

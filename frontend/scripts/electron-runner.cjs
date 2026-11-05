@@ -2,21 +2,21 @@
 /**
  * 功能：Electron 启动器——自动规避「exe 所在路径含非 ASCII 字符导致无法启动」的本机限制。
  *
-  * 背景：工作区位于含中文的路径时，`node_modules/electron/dist/electron.exe`
+ * 背景（2026-11-02 实测）：工作区位于含中文的路径时，`node_modules/electron/dist/electron.exe`
  * 启动即 ExitCode=1 且 stdout/stderr 全空、无事件日志、无崩溃记录，极难排查。
  * 物理复制 dist 到纯 ASCII 路径后正常；junction 无效（会被解析回真实路径）。
  * 官方开关 ELECTRON_OVERRIDE_DIST_PATH 可让 electron 从 ASCII 路径加载运行时，
-  * 而 app 代码本身仍可留在中文路径。
+ * 而 app 代码本身仍可留在中文路径（实测 ASCII exe + 中文 app = 正常工作）。
  *
  * 用法：
- * node scripts/electron-runner.js <electron 参数...>
- * 例：node scripts/electron-runner.js .
- * node scripts/electron-runner.js C:\path\to\app
+ *   node scripts/electron-runner.js <electron 参数...>
+ *   例：node scripts/electron-runner.js .
+ *       node scripts/electron-runner.js C:\path\to\app
  *
  * 行为：
- * - dist 路径已是纯 ASCII → 直接启动，不做任何复制；
- * - dist 路径含非 ASCII → 首次把运行时复制到 ~/.bandi/electron-dist/v<版本>/（用户目录，
- * 不污染工作区、不进 git），之后复用；并设 ELECTRON_OVERRIDE_DIST_PATH 指向该副本。
+ *   - dist 路径已是纯 ASCII → 直接启动，不做任何复制；
+ *   - dist 路径含非 ASCII → 首次把运行时复制到 ~/.bandi/electron-dist/v<版本>/（用户目录，
+ *     不污染工作区、不进 git），之后复用；并设 ELECTRON_OVERRIDE_DIST_PATH 指向该副本。
  */
 const { spawn, execFileSync } = require("node:child_process");
 const fs = require("node:fs");

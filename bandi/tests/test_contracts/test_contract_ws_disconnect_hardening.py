@@ -1,12 +1,12 @@
-"""功能：会话 WS 连接加固契约。
+"""功能：会话 WS 连接加固契约（2026-10-09 BC-001）。
 
-背景
+背景（真机取证，`~/.bandi/logs/bandi.log`）：
 - 后端在**已发出 close 的连接**上继续推流式帧，Starlette 抛的是
   `RuntimeError("Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.")`，
-  而 `_send` 只捕 `WebSocketDisconnect` ⇒ 漏判 ⇒ 整轮**每帧都重试失败**
+  而 `_send` 只捕 `WebSocketDisconnect` ⇒ 漏判 ⇒ 整轮**每帧都重试失败**（实测 256 次刷 ERROR），
   前端一个帧都收不到。
 - 回合此前是**内联 await** ⇒ 接收循环整轮失聪：前端 25s 心跳的 ping 无人应答，
-  超 75s 无入站帧即主动断开重连，重连后旧连接上的推送全部落空。
+  超 75s 无入站帧即主动断开重连（实测抖动来源），重连后旧连接上的推送全部落空。
 
 钉行为不钉实现：
 1. 任何发送失败（含「close 后 send」的 RuntimeError）都只记一次断连，后续帧**静默丢弃不再重试**
@@ -111,7 +111,7 @@ class TestTerminalFrameSurvivesSendFailure:
 
 
 def _isolated_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Any:
-    """功能：隔离 home/db/store 的 TestClient。"""
+    """功能：隔离 home/db/store 的 TestClient（绝不触碰真实用户目录，FM-62 双保险）。"""
     from fastapi.testclient import TestClient
 
     from bandi.core.config import BandiConfig

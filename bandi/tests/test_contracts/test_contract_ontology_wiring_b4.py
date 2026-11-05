@@ -1,4 +1,4 @@
-"""契约：本体装配与 API 接入（对照表 -7 /）。
+"""契约：本体装配与 API 接入（对照表 §4.1-7 / §4.3）。
 
 B4c：把三元组本体接进生产链路。
 
@@ -176,7 +176,7 @@ class TestGraphPayload:
         assert payload["edges"] == []
 
     def test_payload_is_json_serialisable(self, store: OntologyStore) -> None:
-        """端点要返回 JSON——不可序列化的对象会在上炸。"""
+        """端点要返回 JSON——不可序列化的对象会在真机上炸。"""
         _seed(store)
         json.dumps(build_graph_payload(store), ensure_ascii=False)
 
@@ -238,7 +238,7 @@ class TestToolRegistration:
     def test_real_wiring_kernel_assembly_registers_four_tools(
         self, store: OntologyStore, tmp_path: Path
     ) -> None:
-        """装配点对齐：镜像真实内核装配 `_build_tool_registry_with_config`。
+        """装配点对齐（FM-1）：镜像真实内核装配 `_build_tool_registry_with_config`。
 
         真实内核（agent_runner）第一参传 None（旧实体 store 已随删旧批次移除），
         三元组 store 以关键字传入。历史 bug 是把三元组 store 当第二位置参数传，
@@ -272,10 +272,10 @@ class TestToolRegistration:
         assert "ontology_query" in ToolRegistry.READONLY_TOOL_NAMES
 
     def test_adapter_execute_matches_framework_call_convention(self, store: OntologyStore) -> None:
-        """装配点对齐：executor 以**位置参数**调 execute
+        """装配点对齐（FM-1）：executor 以**位置参数**调 execute
         （`executor.py:1220`：`tool.execute(tc.arguments, **kwargs)`）。
 
-        适配器曾用 `**kwargs` 签名——探针按关键字调用掩盖了差异，报
+        适配器曾用 `**kwargs` 签名——探针按关键字调用掩盖了差异，真机报
         `takes 1 positional argument but 2 were given`。本条按框架方式调用。
         """
         import asyncio
@@ -313,7 +313,7 @@ class TestToolRegistration:
 
 
 class TestStringifiedParamsTolerance:
-    """（DeepSeek）：数组/对象参数会被双重编码成 JSON 字符串
+    """真机（DeepSeek）：数组/对象参数会被双重编码成 JSON 字符串——
     适配器须在校验前还原，否则 `ontology_assert` 永远「参数校验失败」。"""
 
     def test_stringified_array_params_coerced_before_validation(self, store: OntologyStore) -> None:
@@ -374,7 +374,7 @@ class TestStringifiedParamsTolerance:
         assert tool.validate_params(normalized) == []
 
     def test_stringified_scalar_params_coerced(self, store: OntologyStore) -> None:
-        """破坏者：布尔/整数也可能被字符串化
+        """破坏者：布尔/整数也可能被字符串化（真机 `includeInferred='True'`、
         `depth='3'`）——按 schema 还原为标量，否则查询永远校验失败。"""
         from bandi.ontology.tools import OntologyToolContext
         from bandi.tools.ontology_tool_adapter import build_ontology_tools

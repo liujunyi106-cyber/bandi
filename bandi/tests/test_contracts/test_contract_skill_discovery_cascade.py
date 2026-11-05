@@ -1,13 +1,13 @@
 """契约：技能发现只读 Bandi 自管目录，且导入通道可用。
 
-L1 G11-02 暴露了一个**两次都错**的问题：问「你能使用哪些 skills」
+真机 L1 G11-02 暴露了一个**两次都错**的问题：问「你能使用哪些 skills」，
 只答出 2 个（doc-coauthoring / skill-creator），而本机另有 4 个技能装在别处。
 
 第一版修法——把 `~/.config/opencode/skills`、`~/.claude/skills` 等宿主私有
 目录并入级联——**方向就是错的**：
 
 - 那些是别的 Agent 工具的实现细节，格式不保证、随对方升级变；
-扫进来 38 个技能，其中 30+ 是 lark/obsidian 类，本产品用不上
+- 实测扫进来 38 个技能，其中 30+ 是 lark/obsidian 类，本产品用不上，
   会污染员工技能的检索与匹配；
 - 员工（Employee）是 Bandi 的概念，技能库要能被按团队/员工差异化配置，
   放进别人的目录做不到。
@@ -25,7 +25,7 @@ import pytest
 
 from bandi.skills.loader import SkillLoader
 
-# 测试环境会把 home 重定向到 tmp，故按路径**后缀**断言级联覆盖
+# 测试环境会把 home 重定向到 tmp（FM-62 家族），故按路径**后缀**断言级联覆盖，
 # 不钉某台机器的绝对路径——要钉的是「这些目录被纳入了」，不是「在哪儿」。
 
 

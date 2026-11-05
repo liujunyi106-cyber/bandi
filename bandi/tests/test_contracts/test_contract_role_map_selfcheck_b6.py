@@ -1,6 +1,9 @@
 """契约族：role_map 装配期自检（B6-C2）。
 
 行为不变式：
+1. 坏映射 → 装配期告警（进程内按映射指纹去重，防每轮刷屏）；
+2. 好映射 → 零告警 + describe 摘要入日志；空映射 → 静默；
+3. `validate_role_map` 对非映射输入 fail-safe（返回问题描述，不 AttributeError）；
 4. 接线点：`build_policy_engine`（CLI/API 共用装配单点）触发自检。
 """
 
@@ -17,7 +20,7 @@ from bandi.core.permission.role_mapping import (
 
 class TestValidateRoleMapHardening:
     def test_non_mapping_input_fails_safe(self) -> None:
-        """"""
+        """破坏者：非映射输入不得 AttributeError——返回问题描述（TB-R5 加固）。"""
         problems = validate_role_map(["engineer", "member"])  # type: ignore[arg-type]
         assert problems and "类型" in problems[0]
 
@@ -59,7 +62,7 @@ class TestCheckRoleMap:
 
 class TestBuildPolicyEngineWiring:
     def test_build_policy_engine_triggers_selfcheck(self, caplog: Any) -> None:
-        """"""
+        """接线：装配单点 build_policy_engine 传入坏映射 → 告警出现。"""
         from bandi.agent.factory import build_policy_engine
         from bandi.tools.permissions_pipeline import PermissionsPipeline
 

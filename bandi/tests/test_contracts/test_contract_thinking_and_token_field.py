@@ -79,8 +79,8 @@ async def test_contract_openai_translates_thinking_to_reasoning_effort() -> None
 
 @pytest.mark.asyncio
 async def test_contract_openai_max_maps_to_strongest_effort() -> None:
-    """
-    **xhigh**
+    """契约（值域映射）：thinking_mode=max（deepseek 语域＝最强）在 OpenAI 端映射为
+    **xhigh**（GPT-5.2 引入第五档 xhigh，才是官方"最强"；修复前映射到 high
     会让「最大」与「高」同档）。gpt-5.2 属推理模型 ⇒ 才会真正发送该字段。"""
     captured: dict = {}
     provider = OpenAIProvider(_config("gpt-5.2", mode="max"))
@@ -90,7 +90,7 @@ async def test_contract_openai_max_maps_to_strongest_effort() -> None:
 
 @pytest.mark.asyncio
 async def test_contract_deepseek_translates_thinking_to_type_field() -> None:
-    """契约：thinking_mode=high →
+    """契约（DeepSeek 参数语义，参考源 LeAgent 实证）：thinking_mode=high →
     `thinking: {"type": "enabled"}` + `reasoning_effort: high`；无裸 thinking_mode。"""
     captured: dict = {}
     provider = DeepSeekProvider(_config("deepseek-v4-flash", mode="high"))

@@ -1,7 +1,7 @@
 /**
  * 功能：右栏员工视图测试（群聊列表展开 / 单聊直出 / 助理卡 / 自动展开）。
  */
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -64,6 +64,19 @@ vi.mock("@/services/company", async (importOriginal) => {
         ],
       })),
       workItems: vi.fn(async () => ({ items: [], column_counts: {} })),
+      threads: vi.fn(async () => ({
+        threads: [
+          {
+            thread_id: "th-ops",
+            session_id: "dm-ops",
+            parent_task_id: null,
+            participants: ["user", "ops"],
+            created_at: "",
+            message_count: 1,
+            kind: "dm",
+          },
+        ],
+      })),
     },
   };
 });
@@ -159,18 +172,18 @@ describe("EmployeesView", () => {
     expect(skillBlocks[skillBlocks.length - 1]).not.toHaveTextContent("报告术");
   });
 
-  it("单聊：直出目标员工 + 项目口径数据面（B3 项目 token/产物/绑定卡数）", async () => {
+  it("单聊：直出目标员工 + 会话口径 token（直聊线程，不落项目累计）", async () => {
     renderView("/chat?view=dm&target=ops&project=p1");
     expect(await screen.findByTestId("panel-employee-ops")).toBeInTheDocument();
     expect(screen.queryByTestId("panel-employee-dev")).not.toBeInTheDocument();
-    // 项目口径三件调用 + 产物小节渲染
-    expect(panelApi.projectUsage).toHaveBeenCalledWith("p1", "ops");
+    await waitFor(() => expect(panelApi.costDetail).toHaveBeenCalledWith("dm-ops"));
+    expect(panelApi.sop).toHaveBeenCalledWith("dm-ops");
+    // 项目累计 token 不得覆盖单聊会话 token
+    expect(panelApi.projectUsage).not.toHaveBeenCalled();
+    // 项目产物/绑定卡数仍按项目口径
     expect(panelApi.projectArtifacts).toHaveBeenCalledWith("p1", "ops");
     expect(panelApi.employeeProfile).toHaveBeenCalledWith("ops");
     expect(await screen.findByTestId("employee-artifacts")).toHaveTextContent("运维报告.md");
-    // 会话维度请求不发出（员工单聊无会话）
-    expect(panelApi.sop).not.toHaveBeenCalled();
-    expect(panelApi.costDetail).not.toHaveBeenCalled();
   });
 
   it("G3：expandRoleId 预置 → 自动展开该员工", async () => {
@@ -182,7 +195,7 @@ describe("EmployeesView", () => {
     expect(await screen.findByTestId("employee-card-details")).toBeInTheDocument();
   });
 
-  it("普通会话：助理卡 =「助理」", async () => {
+  it("普通会话：助理卡 =「助理」（2026-10-10 用户拍板秘书→助理）", async () => {
     renderView("/");
     expect(await screen.findByTestId("panel-employee-secretary")).toBeInTheDocument();
     expect(screen.getByText("助理")).toBeInTheDocument();
@@ -197,7 +210,7 @@ describe("EmployeesView", () => {
     expect(screen.queryByText("AI 助手")).not.toBeInTheDocument();
   });
 
-  it("助理会话：助理卡显示「助理」", async () => {
+  it("助理会话：助理卡显示「助理」（2026-10-10 秘书→助理）", async () => {
     useChatStore.setState({
       activeSessionId: "s-secretary",
       sessions: [
@@ -225,7 +238,7 @@ describe("EmployeesView", () => {
     expect(screen.queryByTestId("panel-employee-secretary")).not.toBeInTheDocument();
   });
 
-  it("助理卡可收起/展开", async () => {
+  it("助理卡可收起/展开（真机反馈：原实现恒展开不可伸缩）", async () => {
     const user = userEvent.setup();
     renderView("/");
     expect(await screen.findByTestId("employee-card-details")).toBeInTheDocument();

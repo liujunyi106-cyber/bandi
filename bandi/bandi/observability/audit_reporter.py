@@ -35,7 +35,7 @@ def _rollback_append(path: Path, original_size: int, line: str) -> None:
     """条件回滚：仅当文件尾部恰为本行内容（或其前缀，即半行）时才截断。
 
     无条件截断会误伤并发写者——多进程（API+CLI 共用审计链）场景下，回滚窗口内
-    他方已 fsync 的记录会被一并截掉。检测到尾部含他方内容时
+    他方已 fsync 的记录会被一并截掉（破坏者审查实锤）。检测到尾部含他方内容时
     保守不动：宁可留半行由 `verify()` 报出，也不静默删除他人记录。
     """
     try:
@@ -84,7 +84,7 @@ def resolve_audit_actor(explicit: AuditActor | None = None) -> AuditActor:
 
     显式传入优先（调用方最清楚）；否则从日志上下文派生——多 Agent 场景下
     `loop._run_loop` 已绑定 `agent_id`，据此可自动落到 `agent` 主体。
-    无任何身份线索时回落 `system`/`local`。
+    无任何身份线索时回落 `system`/`local`（本仓暂无账号体系，见 ADR-34）。
     """
     if explicit is not None:
         if explicit.kind not in VALID_ACTOR_KINDS:

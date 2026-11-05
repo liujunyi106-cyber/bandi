@@ -1,4 +1,4 @@
-# 功能：自动压缩落库契约——压缩结果写 summary/boundary entry
+# 功能：P0-1 自动压缩落库契约——压缩结果写 summary/boundary entry，
 # 重启恢复按最新 boundary 的 active_messages 投影，原始历史仍可审计。
 from __future__ import annotations
 

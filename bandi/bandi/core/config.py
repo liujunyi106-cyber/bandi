@@ -132,7 +132,9 @@ class ComputerUseConfig(
     allow_sensitive_windows: bool = False
 
 
-class FeatureFlagsConfig(BaseModel):  # 功能：特性门控配置
+class FeatureFlagsConfig(
+    BaseModel
+):  # 功能：特性门控配置（CC-24 tool_groups：组名→开关，未列出的组默认开放）
     tool_groups: dict[str, bool] = Field(default_factory=dict)
 
 
@@ -215,7 +217,7 @@ class VerifierPolicyConfig(BaseModel):  # 功能：验证器策略配置（启�
 class AgentConfig(
     BaseModel
 ):  # 功能：Agent 模式/迭代上限/压缩阈值/上下文窗口/Token 预算/折叠阈值配置
-    mode: str = "execute"  # plan | execute
+    mode: str = "execute"  # plan | execute（双模式，u 日拍板）
     max_iterations: int = 15
     stream_to_ui: bool = True
     compression_threshold: float = 0.85
@@ -273,6 +275,7 @@ class PermissionsConfig(
         default_factory=lambda: ["rm -rf /", "format *", "del /f /s", "rd /s /q"]
     )
     ask_risk_levels: list[str] = Field(default_factory=lambda: ["high", "critical"])
+    # 默认**空** = 不启用映射 → 所有角色保持「无权限档」，行为与改造前完全一致。
     # 目标值须是 admin/power_user/member/readonly 之一（非法值被忽略并告警
     # 见 core/permission/role_mapping.py）。
     role_map: dict[str, str] = Field(default_factory=dict)

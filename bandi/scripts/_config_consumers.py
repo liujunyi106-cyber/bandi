@@ -29,7 +29,7 @@ P0R-2 的形态：**配置字段有定义、文档有承诺，但生产零消费
 `perm_config.ask_risk_levels`）仍能被"字段名出现"捕获，因此不会漏报为 DEAD；
 但反过来，**同名字段撞车**（如 `.mode` 到处出现）会让真死字段被假绿放过。
 故本脚本定位是"高精度低召回"的守门员：**报出来的必须是真的**，漏网的靠 REVIEW 清单
-与人工补。
+与人工审查补。
 
 ## 允许清单
 
@@ -55,7 +55,7 @@ _SRC = _REPO / "bandi"  # ...\bandi\bandi  (production package)
 _CONFIG_FILE = "core/config.py"
 
 # 豁免清单：字段 → 理由。新增条目须先实证（勿用来掩盖真死配置）。
-# 原 4 项
+# G9（2026-09-17）：原 4 项（system.temp_dir / safety.l2_threshold /
 # safety.block_threshold / llm.budget_limit）均已真接线，审计 STALE 提示后移除；
 # 机制保留备将来「整体消费不逐字段引用」型字段登记。
 ALLOWLIST: dict[str, str] = {}

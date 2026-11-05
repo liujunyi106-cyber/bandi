@@ -86,11 +86,11 @@ def test_effective_window_never_degrades_to_one_on_sentinel() -> None:
     assert ctx.effective_context_window > 1_000
 
 
-def test_million_window_model_drives_compression_watermark() -> None:
-    """目录收录 1M 窗口的模型（mimo-v2.6-flash）→ 85% 水位按目录真实窗口计算。
+def test_agnes_flash_registered_window_drives_compression_watermark() -> None:
+    """agnes-2.5-flash（用户 hub 模型，目录收录 500K）→ 85% 水位按 500K 计算。
 
-    未收录时解析为兜底 128K；收录后应取目录真实窗口——这是「放开」语义对
+    收录前解析为兜底 128K；收录后应取目录真实窗口——这是「放开」语义对
     第三方 hub 模型的直接收益面。"""
-    cfg = BandiConfig(llm=LLMConfig(default_model="mimo-v2.6-flash"))
-    assert resolve_context_window(cfg) == 1_048_576
-    assert int((1_048_576 - 20_000) * 0.85) == 874_289
+    cfg = BandiConfig(llm=LLMConfig(default_model="agnes-2.5-flash"))
+    assert resolve_context_window(cfg) == 500_000
+    assert int((500_000 - 20_000) * 0.85) == 408_000

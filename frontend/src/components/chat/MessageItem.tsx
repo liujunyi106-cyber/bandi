@@ -1,5 +1,5 @@
 /**
-  * 功能：单条消息条目（）。
+ * 功能：单条消息条目（@base docs/前端设计规划.md §8：过程块 + 反馈按钮内嵌消息流）。
  * user 右对齐气泡 / assistant 左对齐（过程块在正文上方）/ system 居中小字；
  * 操作条：时间戳在左（相对日期），复制在最右；
  * user 仅保留「编辑 + 复制」（无点赞/差评/更多/重发），assistant 保留「👍/👎/⋯/复制」；
@@ -22,7 +22,7 @@ import { memo, useEffect, useMemo, useState } from "react";
 import { AssistantAvatar } from "@/components/chat/AssistantAvatar";
 import { AttachmentChips } from "@/components/chat/AttachmentChips";
 import { CitationChips } from "@/components/chat/CitationChips";
-import { EmployeeAvatar } from "@/components/team/EmployeeAvatar";
+import { EmployeeIdentityHeader } from "@/components/chat/EmployeeIdentityHeader";
 import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
 import { stripGeneratedCitationBlock } from "@/lib/citation-cleanup";
 import { MemberTaskCards } from "@/components/chat/MemberTaskCard";
@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useT } from "@/i18n";
 import { extractReferencedFiles } from "@/lib/chat-references";
-import { employeeTone, resolveEmployeeName, type AssistantIdentity } from "@/lib/employee";
+import { resolveEmployeeName, type AssistantIdentity } from "@/lib/employee";
 import { useEmployees } from "@/hooks/use-employees";
 import type { WorkItemSummary } from "@/services/company";
 import { shouldUseDocumentLayout } from "@/lib/markdown";
@@ -49,7 +49,6 @@ import { formatFullTime, formatRelativeTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { usePanelStore } from "@/stores/panel-store";
 import type { ChatMessage, CitationRef, ProcessNode } from "@/stores/chat-store";
-import { toneClass } from "@/theme";
 
 interface MessageItemProps {
   message: ChatMessage;
@@ -76,14 +75,14 @@ interface MessageItemProps {
   /** 功能：@提及高亮名单（v5——ChatView 传员工名/角色 id；渲染后 DOM 处理）。 */
   mentions?: string[];
   /** 功能：默认助手身份覆盖（秘书会话 = 「秘书」——与项目面板/右栏一致；缺省 = 「AI 助手」）。
-   * 显式 `null` = 不显示身份头（团队会话无署名流式占位——团队里没有「秘书/助手」角色）。 */
+   *  显式 `null` = 不显示身份头（团队会话无署名流式占位——团队里没有「秘书/助手」角色）。 */
   assistantIdentity?: AssistantIdentity | null;
   /** 功能：成员任务卡（该回复派发的子卡——完整任务内容可展开；置于正文之后）。 */
   memberTaskItems?: WorkItemSummary[];
   /** 功能：本轮产物（写类工具落盘文件——与引用文件同一容器渲染，紧凑排布）。 */
   replyArtifacts?: { id: string; path: string; tool_name?: string }[];
   /** 功能：本轮消息级总执行时长（上一条 user 消息 → 本条回复落卡的墙钟差；
-   * 过程块总行「已完成 · 时间」的口径来源）。 */
+   *  过程块总行「已完成 · 时间」的口径来源）。 */
   turnDurationMs?: number;
 }
 
@@ -196,11 +195,13 @@ function MessageItemComponent({
   // 普通回复也带默认身份头（员工回复用员工名，其余用「AI 助手」）
   // 秘书会话覆盖默认身份（消息头「秘书」）
   // 团队会话（assistantIdentity === null 且无署名）= 不显示身份头
-  // （团队里没有「秘书/助手」角色，流式占位不套用它）
-  const hideIdentity = !isUser && assistantIdentity === null && !message.senderName;
+  // 有署名但解析不到员工时同样隐藏，避免首字母假头像（W / Worker）。
+  const hideIdentity = !isUser
+    ? message.senderName
+      ? !senderEmployee
+      : assistantIdentity === null
+    : false;
   const assistantLabel = message.senderName ?? assistantIdentity?.name ?? t("chat.assistant.name");
-  const assistantIdentityKey =
-    message.senderRole ?? message.senderName ?? assistantIdentity?.roleId ?? "assistant";
   // 头恒有 → 内容（过程块/状态行/气泡）统一与头像左缘对齐（不再缩进到姓名位）
   // 空流式期（尚无正文）：状态行承担等待指示；正文未到前不渲染白色空卡
   // 「正在回复中…」占位：仅当流式且无内容**且尚未出现过程链**时显示——
@@ -230,6 +231,13 @@ function MessageItemComponent({
     );
   }
 
+  const emptyAssistant = !isUser && !displayContent.trim() && !(message.process?.length ?? 0);
+  if (!isUser && message.local === true && emptyAssistant) {
+    // 团队/员工会话的本地占位：回复由 thread_message 承担，不渲染空助理气泡/身份头。
+    // 助理会话流式空态保留「正在回复中」状态行；一旦落定仍为空则直接隐藏，避免白块。
+    if (assistantIdentity === null || !streaming) return null;
+  }
+
   return (
     <div
       className={cn("group flex w-full flex-col", isUser ? "items-end" : "items-start")}
@@ -254,29 +262,17 @@ function MessageItemComponent({
         )}
       >
         {!isUser && !hideIdentity ? (
-          <span className="text-chat-muted mb-1 flex items-end gap-1.5 text-sm leading-none">
-            {message.senderName ? (
-              senderEmployee ? (
-                <EmployeeAvatar
-                  name={assistantLabel}
-                  metadata={senderEmployee.metadata}
-                  className="size-6 rounded-full text-xs"
-                />
-              ) : (
-                <span
-                  className={cn(
-                    "flex size-6 items-center justify-center rounded-full text-xs font-medium",
-                    toneClass(employeeTone(assistantIdentityKey)),
-                  )}
-                >
-                  {Array.from(assistantLabel)[0] ?? ""}
-                </span>
-              )
-            ) : (
+          message.senderName ? (
+            <EmployeeIdentityHeader
+              name={assistantLabel}
+              metadata={senderEmployee?.metadata}
+            />
+          ) : (
+            <span className="text-chat-muted mb-1 flex items-center gap-1.5 text-sm leading-none">
               <AssistantAvatar className="size-6" />
-            )}
-            {assistantLabel}
-          </span>
+              {assistantLabel}
+            </span>
+          )
         ) : null}
         <div
           className={cn(
@@ -322,7 +318,7 @@ function MessageItemComponent({
             >
               <Loader2 className="size-3 animate-spin" />
               {t("chat.composer.responding")}
-              {/* 尝试调用阶段显示已等待秒数 */}
+              {/* 2026-10-01 §4.3：尝试调用阶段显示已等待秒数（opencode StreamingIndicator 同构） */}
               {elapsed > 0 ? (
                 <span data-testid="streaming-elapsed" className="tabular-nums">
                   {formatElapsed(elapsed)}
@@ -372,7 +368,7 @@ function MessageItemComponent({
                 </Button>
               </div>
             </div>
-          ) : streaming && !displayContent.trim() ? null : (
+          ) : !isUser && !displayContent.trim() ? null : (
             <div
               data-testid="message-bubble"
               className={cn(
@@ -384,7 +380,7 @@ function MessageItemComponent({
                   : "bg-card border-chat-hairline rounded-tl-[4px] border",
               )}
             >
-              {/* 员工回复：成员任务卡——**数据卡优先**（完整
+              {/* 员工回复：成员任务卡（用户拍板 2026-10-16）——**数据卡优先**（完整
                   任务内容可展开，与右栏计划同源）；无数据卡时正文「## 成员任务」文本段
                   兜底渲染为卡；两者都没有则不渲染。卡片置于其余正文（含风险）之后。 */}
               {isEmployee && memberTaskItems?.length ? (
@@ -424,9 +420,9 @@ function MessageItemComponent({
                   ) : null}
                 </p>
               ) : null}
-              {/*移除回复末尾的流式光标（蓝竖条）——逐段出字本身即进度反馈，
+              {/* 2026-09-26 用户拍板：移除回复末尾的流式光标（蓝竖条）——逐段出字本身即进度反馈，
                   空内容期由上方「正在回复中…」状态行承担指示 */}
-              {/*引用文件落在「回复卡片内」最下方，标蓝可点开（裸路径） */}
+              {/* 2026-10-12 用户拍板：引用文件落在「回复卡片内」最下方，标蓝可点开（裸路径） */}
               {!isUser && replyArtifacts?.length ? (
                 <div
                   className="text-chat-muted mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 border-t border-chat-hairline pt-1.5 text-xs"
@@ -524,7 +520,7 @@ function MessageItemComponent({
         >
           {isUser ? (
             <>
-              {/* user：时间戳贴编辑按钮、不撑开；仅复制 + 编辑 */}
+              {/* user（2026-09-25 用户拍板）：时间戳贴编辑按钮、不撑开；仅复制 + 编辑 */}
               {message.createdAt ? (
                 <span
                   data-testid="message-time"

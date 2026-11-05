@@ -96,7 +96,7 @@ Check-Step "directory tree (arch Section 19)" {
 }
 
 # 6. pytest — 三分组（主门禁 -n 4 不与墙钟预算/外部工具类争 CPU；两类仍必跑，非跳过）
-# 分组依据：
+#    分组依据（2026-09-28 实证：全量 -n 4 下 5 项红，隔离单跑 5 项全绿）：
 #      - timing       真实并发临界区 + 墙钟预算（mem_engineering / robots）；隔离 25-51s
 #      - external_tool 调外部可执行程序（LibreOffice）；隔离 ~71s
 #    这两类是**负载敏感**而非缺陷，混跑必然误报；独立低并发分组让门禁变绿且不掩盖。

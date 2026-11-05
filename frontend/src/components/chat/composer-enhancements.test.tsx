@@ -1,5 +1,5 @@
 /**
-  * 功能：前端行为测试——Composer 增强（⊕/@/斜杠/附件发送）+ 附件 chips + 解析。
+ * 功能：Day137b-2 前端行为测试——Composer 增强（⊕/@/斜杠/附件发送）+ 附件 chips + 解析。
  */
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -39,7 +39,7 @@ beforeEach(() => {
   useUiStore.setState({ chatMode: "plan", sessionModel: "", sessionThinking: "" });
 });
 
-describe("Composer 增强", () => {
+describe("Composer 增强（Day137b-2）", () => {
   it("⊕ 菜单：三项（添加文件/选择团队/@引用）", async () => {
     const user = userEvent.setup();
     render(<Composer busy={false} enhanced onSend={vi.fn()} onSteer={vi.fn()} onStop={vi.fn()} />);
@@ -50,7 +50,7 @@ describe("Composer 增强", () => {
     expect(screen.getByTestId("composer-plus-quote")).toBeInTheDocument();
   });
 
-  it("⊕ 悬浮/选中：加号颜色不变，改为圆圈内部填充", async () => {
+  it("⊕ 悬浮/选中：加号颜色不变，改为圆圈内部填充（与多选卡同底色；2026-10-01 用户拍板）", async () => {
     const user = userEvent.setup();
     render(<Composer busy={false} enhanced onSend={vi.fn()} onSteer={vi.fn()} onStop={vi.fn()} />);
     const plus = screen.getByTestId("composer-plus");
@@ -232,7 +232,7 @@ describe("Composer 增强", () => {
   });
 });
 
-describe("附件 chips 与解析", () => {
+describe("附件 chips 与解析（Day137b-2）", () => {
   it("formatSize 三档（B/KB/MB）", () => {
     expect(formatSize(12)).toBe("12 B");
     expect(formatSize(2048)).toBe("2.0 KB");
@@ -283,7 +283,7 @@ describe("附件 chips 与解析", () => {
   });
 });
 
-describe("⊕ 菜单「选择员工」可关", () => {
+describe("⊕ 菜单「选择员工」可关（2026-09-30 单聊拍板；2026-10-02 收敛到项目群聊会话）", () => {
   it("allowTeamPicker=false：保留上传与@引用文件，仅摘掉「选择员工」", async () => {
     const user = userEvent.setup();
     render(
@@ -310,7 +310,7 @@ describe("⊕ 菜单「选择员工」可关", () => {
   });
 });
 
-describe("⊕「选择员工」@团队成员", () => {
+describe("⊕「选择员工」@团队成员（2026-10-02 用户拍板）", () => {
   it("点击 → 插入 @ 并打开 @ 面板；面板只列团队成员（mentionRoleIds 过滤，外部人不混入）", async () => {
     const user = userEvent.setup();
     render(

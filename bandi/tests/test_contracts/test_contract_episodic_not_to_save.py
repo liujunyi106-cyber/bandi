@@ -1,9 +1,9 @@
-"""契约：经历层入口负面清单。
+"""契约：经历层入口负面清单（cc-haha「What NOT to save」移植）。
 
 缺陷实证：`review_episodic_ingest` 只拒空/单字/≤12字纯寒暄，导致：
-自我介绍与能力清单照单全收
+- 自我介绍与能力清单照单全收（实测 episodic.db 14 条里 5 条同类）
 - 这类情节被相似问句反复召回，`recall_count` 虚高到 8，把自己顶成高价值候选，
-  进而生成噪音晋升审批
+  进而生成噪音晋升审批（用户真机看到 3 条审批噪音）
 
 本契约钉**入口**行为：可从现状推导的内容与自我介绍不进经历层，而真实排查经历
 （用户问题里带路径/报错）必须照记——判据只看「回答侧」。
@@ -55,6 +55,27 @@ class TestEpisodicNotToSave:
 
     def test_conclusion_signal_beats_self_intro(self) -> None:
         """含结论信号的自我介绍不算低价值——它同时带事实产出。"""
-        summary = "用户: 你好 → 回答: 我是 Bandi 助手。建议你先建立项目空间再派单"
+        summary = "用户: 帮我看看这个方案 → 回答: 我是 Bandi 助手。建议你先建立项目空间再派单"
         verdict = review_episodic_ingest(summary)
         assert verdict.decision == "accept", f"带建议的回复应记录，实际 {verdict}"
+
+
+class TestTaskResultAndExplicitRemember:
+    def test_task_result_table_is_remembered(self) -> None:
+        """任务结果表格是业务事实，不能被「多行清单」形态误杀。"""
+        summary = (
+            "用户: 我有三件小事，请先拆成任务清单再逐项完成 → 回答: 已拆成4项任务并完成：\n\n"
+            "| 任务 | 结果 |\n|------|------|\n"
+            "| ① 去重后总人数 | **5人**（张伟重复1条） |\n"
+            "| ② 研发 | 2人 |\n| ③ 市场 | 2人 |\n| ④ 运营 | 1人 |\n"
+            "| ⑤ 最早入职年份 | 2021年 |\n\n"
+            "**汇总：去重后共 5 人（研发 2、市场 2、运营 1），最早入职年份为 2021 年。**"
+        )
+        verdict = review_episodic_ingest(summary)
+        assert verdict.decision == "accept", f"任务结果表格应记录，实际 {verdict}"
+
+    def test_explicit_remember_short_ack_is_remembered(self) -> None:
+        """用户明确说「记住」时，短确认回复也要留在经历层。"""
+        summary = "用户: 记住：我的偏好是回答简洁 → 回答: 好的，已记住"
+        verdict = review_episodic_ingest(summary)
+        assert verdict.decision == "accept", f"显式记住应记录，实际 {verdict}"

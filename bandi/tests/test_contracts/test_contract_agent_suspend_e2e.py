@@ -1,4 +1,4 @@
-# 功能：端到端契约——AgentLoop 内真挂起完整闭环（老板验收标准）
+# 功能：Day132c 端到端契约——AgentLoop 内真挂起完整闭环（老板验收标准）
 # 场景：LLM 生成 request_user_input 工具调用 → 真实 UserInputTool 经注入的
 # 答复 → 工具返回 answers 进上下文 → LLM 第二轮收尾 → COMPLETED。
 # 契约钉最终产物：interaction 帧可见、loop 挂起可证、答复后同 loop 续跑完成

@@ -152,6 +152,7 @@ def test_run_work_item_writes_output_to_bound_thread(tmp_path: Path) -> None:
 
 def test_on_message_callback_fires_for_thread_events(tmp_path: Path) -> None:
     """ThreadManager on_message 回调：create_thread → thread_created，add_message →
+    thread_message 事件（WS 实时帧的接线点，沿 CommunicationManager.on_message_sent 先例）。
     （契约：回调必须携带线程/消息数据派生字段，供生产者直接广播；回调失败不阻断线程写。）"""
     events: list[dict] = []
 
@@ -179,7 +180,8 @@ def test_on_message_callback_fires_for_thread_events(tmp_path: Path) -> None:
     assert msg_evt["mentions"] == ["tech"]
     assert msg_evt["message_id"] == msg.message_id
     assert msg_evt.get("participants") == ["product", "tech"], (
-        "线程消息帧必须携带参与方——前端单聊视图按参与方集合精确过滤，防其他线程消息串入"
+        "线程消息帧必须携带参与方——前端单聊视图按参与方集合精确过滤，"
+        "防其他线程消息串入（Day137 修复）"
     )
 
 

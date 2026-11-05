@@ -508,7 +508,7 @@ class WorkItemStore:
     ) -> WorkItem | None:
         """功能：把 卡受控转回可重跑态（用户/评审要求返工的唯一入口）。
 
-        命名 bypass
+        命名 bypass（对标 OpenOPC `reopen_approved_delegation_work_item_for_rework`）：
         不放开 `ALLOWED_TRANSITIONS` 全表——常规仍只允许回 READY，仅本入口
         额外放行 READY_FOR_REWORK。守卫 fail-closed：卡必须存在且处于 ；
         target 只允许 READY_FOR_REWORK / READY，其余一律拒绝。
@@ -1071,7 +1071,7 @@ class WorkItemStore:
     def save_org_roles(self, roles: list[dict[str, Any]]) -> None:
         """批量保存角色定义（INSERT OR REPLACE）。"""
         with self._lock:
-            # 功能：时间戳按本地时间口径记录
+            # 功能：时间戳按本地时间口径记录（与全仓拍板口径一致）
             now = datetime.now(UTC).isoformat()
             self._conn.execute("DELETE FROM org_roles")
             for r in roles:
@@ -1130,7 +1130,7 @@ class WorkItemStore:
         保留供测试与既有装配，llm_config 三态（None/{}/值）保真。
         """
         with self._lock:
-            # 功能：时间戳按本地时间口径记录
+            # 功能：时间戳按本地时间口径记录（与全仓拍板口径一致）
             now = datetime.now(UTC).isoformat()
             self._conn.execute("DELETE FROM org_employees")
             for e in employees:

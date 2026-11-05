@@ -12,6 +12,7 @@ from bandi.llm.streaming import StreamEvent, StreamEventType
 
 # - Claude 4.7 / 4.8 / Opus 5 / Sonnet 5 / Fable / Mythos 系：**仅** adaptive
 # （`type:"enabled"` 直接 400；`budget_tokens` 已废弃）
+# - 4.6 系：`enabled` 已弃用但仍可用（本层沿用 budget 映射，保守）
 # - 4.5 及更早：只支持 enabled + budget_tokens
 # adaptive 系必须带 `display:"summarized"`，否则响应不含思考文本（前端过程块会空）
 _ADAPTIVE_MODEL_MARKERS = (
@@ -22,6 +23,7 @@ _ADAPTIVE_MODEL_MARKERS = (
     "claude-fable",
     "claude-mythos",
 )
+# 官方 output_config.effort 取值：low / medium / high / max（xhigh 映射到 max）
 _ANTHROPIC_EFFORT = {
     "minimal": "low",
     "low": "low",
@@ -30,6 +32,7 @@ _ANTHROPIC_EFFORT = {
     "xhigh": "max",
     "max": "max",
 }
+# 旧系 budget 映射（tokens；仅 4.6 及更早使用）
 _ANTHROPIC_BUDGET = {"low": 4096, "medium": 8192, "high": 16000, "max": 32000}
 
 

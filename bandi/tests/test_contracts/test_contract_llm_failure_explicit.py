@@ -27,7 +27,7 @@ from bandi.llm.streaming import StreamEvent, StreamEventType
 
 class TestP1HttpDeterministicFailure:
     def test_429_classified_recoverable(self) -> None:
-        # 语义回调：429 限流属**暂时故障** → 可重试（带退避）
+        # 语义回调（用户拍板，对齐参考源）：429 限流属**暂时故障** → 可重试（带退避），
         # 只有 4xx 非 429（配置/请求类）才是确定性失败。
         rm = RecoveryManager()
         err = httpx.HTTPStatusError(
@@ -348,7 +348,7 @@ class TestP7E2EEmptyResponseExplicit:
         # 配置链打桩返回空响应：候选池对 unknown model 必败后由本桩接管
         # 既避免真实出网，又保证「成功路径的空响应」穿透整条生产装配链
         monkeypatch.setattr("bandi.llm.strategy.FallbackEngine", _E2EEmptyFallbackEngine)
-        # 本用例覆盖「配置链」路径
+        # 本用例覆盖「配置链」路径（默认链已按 2026-10-09 拍板置空，机制仍在）
         from bandi.core.config import BandiConfig
 
         _real_load = BandiConfig.load.__func__

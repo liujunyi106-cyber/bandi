@@ -177,7 +177,7 @@ async def _staged_chain(
     max_tokens: int,
     session_id: str | None = None,
 ) -> SkillDistillResponse:
-    """功能：staged——outline → 逐节点扩写 → 分段生成完整卡。"""
+    """功能：staged——outline → 逐节点扩写 → 终审 分段生成完整卡。"""
     outline_text = await _complete_text(
         provider,
         prompt,

@@ -1,7 +1,7 @@
 # 功能：摘要实体保真提取校验（文件路径/错误串/函数调用/数值——本地正则，无 RAG）
 """摘要保真：从源文本提取关键实体并校验 LLM 摘要是否保留。
 
-设计约束：纯本地方则 + 集合比对，不调 LLM、不建索引。
+设计约束（ADR-33 无 RAG）：纯本地方则 + 集合比对，不调 LLM、不建索引。
 宁误报不漏斗——校验只触发告警/重试提示，不阻断主链，故提取可激进（召回优先）
 通过去重 + 并存比控制噪声。
 """
@@ -275,8 +275,8 @@ class FidelityReport:
     @property
     def degraded(self) -> bool:
         """保真是否不足——分层判定：任一关键类（filepath/error/call）缺失率超严格
-        阈值、数值类缺失率超宽松阈值，或语义状态被改写
-        噪声绑架 .11 回归），或用户意图动作动词全丢。状态/意图保真
+        阈值、数值类缺失率超宽松阈值，或语义状态被改写（审查项2；数字降权避免
+        噪声绑架 .11 回归），或用户意图动作动词全丢（审查项3）。状态/意图保真
         独立于结构化实体（纯状态/意图源无实体也须判定）。"""
         for kind in ("filepath", "error", "call"):
             if self._kind_ratio_above(kind, FIDELITY_RETENTION_THRESHOLD):
@@ -401,7 +401,7 @@ def check_fidelity(source_text: str, summary_text: str) -> FidelityReport:
 
 def build_fidelity_retry_hint(report: FidelityReport, max_hint: int = 8) -> str:
     """功能：生成重试提示——列出摘要遗漏的缺失实体（去重），引导 LLM 补全；
-    语义状态缺失时额外提示保留未完成/阻塞标记。"""
+    语义状态缺失（审查项2）时额外提示保留未完成/阻塞标记。"""
     missing_values = [e.value for e in report.missing]
     seen: set[str] = set()
     unique: list[str] = []
@@ -447,7 +447,7 @@ def build_fidelity_retry_hint(report: FidelityReport, max_hint: int = 8) -> str:
 
 def _resp_truncated(resp: Any) -> bool:
     """功能：LLM 响应是否因输出上限被截断（finish_reason=length / Anthropic·Google
-    的 max_tokens 形态，审计 2.3；修复统一两系枚举）。"""
+    的 max_tokens 形态，审计 2.3；审查修复统一两系枚举）。"""
     return str(getattr(resp, "finish_reason", "") or "").lower() in {"length", "max_tokens"}
 
 

@@ -1,4 +1,4 @@
-# 功能：会话压缩服务
+# 功能：会话压缩服务（CLI /compact 与 API 端点共用——Day137b-2）
 # append-only 约束下原会话原样保留，新会话承载压缩结果）。
 from __future__ import annotations
 

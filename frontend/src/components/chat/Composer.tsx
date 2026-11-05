@@ -1,10 +1,10 @@
 /**
-  * 功能：Composer（）。
+ * 功能：Composer（@base docs/前端设计规划.md §8 交互规范）。
  * 布局：附件 chips（输入上方）→ 输入栏（可增高至 240px）→ 功能栏
  * （⊕ 聚合菜单 / 模式圆圈 / 模型·思考控制条 / 发送·停止）。
  * textarea：Enter 发送、Shift+Enter 换行（IME 保护）；/ 触发斜杠面板、@ 触发引用菜单（键盘导航）。
  * 增强（enhanced=true——ChatView 主会话）：附件上传（⊕/拖拽；立即上传三态 chips）+
-  * @ 引用（对话附件/项目文件/员工）+ 斜杠命令 + 模型/思考会话级覆盖。
+ * @ 引用（对话附件/项目文件/员工）+ 斜杠命令 + 模型/思考会话级覆盖（Day137b-2）。
  * 模式切换：圆圈内「计划/执行」——点击或 Shift+Tab 切换；showMode=false（派单视图）隐藏。
  * 终止：busy 时发送键原位变停止态——点击两次确认（3s），Esc 直接停止。
  */
@@ -59,7 +59,7 @@ interface ComposerProps {
   showMode?: boolean;
   /** 输入占位文案（缺省用会话链路的默认文案）。 */
   placeholder?: string;
-  /* 增强模式。 */
+  /** 增强模式（⊕/@/斜杠/控制条/附件；ChatView 主会话——Day137b-2）。 */
   enhanced?: boolean;
   /** 附件模式（仅 ⊕ 上传/拖拽/chips——单聊/群聊派单链路； 轮三-5 新增）。 */
   attachmentsEnabled?: boolean;
@@ -78,6 +78,8 @@ interface ComposerProps {
   allowEmployeePicker?: boolean;
   /** 附件归属项目（上传/文件引用数据源）。 */
   projectId?: string;
+  /** 功能：上下文用量环的会话 id（员工单聊线程的 chat session；缺省用当前会话）。 */
+  sessionId?: string;
   /** 功能：员工独立模型（单聊/员工视角）——非空时控制条显示该员工实际模型并锁定切换。 */
   employeeModel?: string;
   /** 功能：执行中（本会话回复或团队任务）——发送改为入待发送队列。 */
@@ -114,6 +116,7 @@ export function Composer({
   onClearEmployee,
   allowEmployeePicker = false,
   projectId = "",
+  sessionId = "",
   employeeModel = "",
   executing,
   prefill = null,
@@ -870,7 +873,7 @@ export function Composer({
               onRemove={(uploadId) => useChatStore.getState().removeDraftAttachment(uploadId)}
             />
           ) : null}
-          {/* 引用文件 chips（@ 选项目文件——与上传附件同款视觉；发送时转 @路径 文本） */}
+          {/* 2026-09-29：引用文件 chips（@ 选项目文件——与上传附件同款视觉；发送时转 @路径 文本） */}
           {draftReferences.length ? (
             <div className="mb-1.5 flex flex-wrap gap-1.5 px-2" data-testid="composer-references">
               {draftReferences.map((ref) => (
@@ -1033,7 +1036,7 @@ export function Composer({
                   model={currentModel}
                   options={mergedModelOptions}
                   thinking={sessionThinking}
-                  sessionId={composerSessionId}
+                  sessionId={sessionId || composerSessionId}
                   usageRefreshKey={showStop ? 1 : 0}
                   activeProfile={activeProfile}
                   profiles={switchableProfiles}
@@ -1064,7 +1067,7 @@ export function Composer({
                   title={t("chat.composer.stop")}
                   onClick={armStop}
                 >
-                  {/*中断 icon 用方形（lucide Square 自带 rx=2 小圆角）实心 */}
+                  {/* 2026-09-24 用户拍板：中断 icon 用方形（lucide Square 自带 rx=2 小圆角）实心 */}
                   <Square className="size-3.5 fill-current" />
                 </Button>
               ) : (
@@ -1075,14 +1078,14 @@ export function Composer({
                   title={t("chat.composer.send")}
                   onClick={submit}
                 >
-                  {/*纸飞机右移 1px 视觉居中（原 -2px 过左） */}
+                  {/* 2026-09-22 用户拍板：纸飞机右移 1px 视觉居中（原 -2px 过左） */}
                   <Send className="size-3.5 -translate-x-[1px] translate-y-[1px] fill-current" />
                 </Button>
               )}
             </div>
           </div>
         </div>
-        {/* 输入框下方附加区（项目空间卡片）——与决策区对称，同在外壳内 */}
+        {/* 2026-09-29：输入框下方附加区（项目空间卡片）——与决策区对称，同在外壳内 */}
         {below ? (
           <div
             data-testid="composer-below"

@@ -453,7 +453,7 @@ def _normalize_mcp_metadata(tool_def: dict[str, Any]) -> dict[str, Any]:
     if isinstance(ext.get("destructive"), bool):
         destructive = ext["destructive"]
 
-    concurrency_safe = read_only  # 只读工具隐式并发安全
+    concurrency_safe = read_only  # 只读工具隐式并发安全（cc-haha 语义）
     if isinstance(ext.get("concurrency_safe"), bool):
         concurrency_safe = ext["concurrency_safe"]
 

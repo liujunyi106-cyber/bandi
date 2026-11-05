@@ -41,6 +41,7 @@ class ModelSpec:  # 功能：模型规格元数据（上下文窗口/能力标�
 #
 # 已接线（可列挡位）：
 # DeepSeek /.1（官方 change log）：reasoning_effort = low/high/max（medium/xhigh 是兼容
+# 映射值，直传与 high 同档 ⇒ 不列）；thinking 默认**关闭**（opt-in）。
 # OpenAI GPT-5.x/GPT-6（官方 Help Center + models.dev）：reasoning.effort =
 # none/low/medium/high/xhigh/max；GPT-5.6 三件套全六档、gpt-6-astra 五档（low..max）
 # GPT-5.2 五档、gpt-5.2-pro 三档；**默认 medium（思考开）**，故「关闭」由适配层显式发 none 落实。
@@ -77,6 +78,7 @@ _BUILTIN_REASONING_EFFORTS: dict[str, list[str]] = {
     "claude-sonnet-4-6": ["low", "medium", "high"],
     "claude-haiku-4-5": ["low", "medium", "high"],
     # Gemini 3.x：thinkingLevel 枚举（原整数 thinkingBudget 已弃用；官方「不再建议」）
+    # 3.x 不能真正关闭（minimal 为最近似「不思考」，见适配层空档映射）
     "gemini-3.8-flash": ["low", "medium", "high"],
     "gemini-3.6-flash": ["low", "medium", "high"],
     "gemini-3.5-flash": ["low", "medium", "high"],
@@ -348,6 +350,14 @@ BUILTIN_MODELS: dict[str, ModelSpec] = {
         max_output_tokens=131072,
         pricing=ModelPricing(round(0.3 * USD_TO_CNY, 4), round(1.2 * USD_TO_CNY, 4), "CNY"),
     ),
+    # agnes hub 聚合模型（OpenAI 兼容端点 apihub.agnes-ai.com/v1；
+    # 上下文窗口约 500K）。
+    "agnes-2.5-flash": ModelSpec(
+        name="agnes-2.5-flash",
+        provider="agnes",
+        context_window=500000,
+        max_output_tokens=65536,
+    ),
     # 多模态（文本/图像/音频/视频输入）旗舰与轻量档。
     "mimo-v2.6-pro": ModelSpec(
         name="mimo-v2.6-pro",
@@ -368,14 +378,14 @@ BUILTIN_MODELS: dict[str, ModelSpec] = {
     "space-bunny-free": ModelSpec(
         name="space-bunny-free",
         provider="opencode",
-        # 下限：374188 prompt_tokens 请求成功。800K 探针服务端
-        # 直接断连且未给出上下文超限错误，原因不明 ⇒ 保守登记下限而非臆造上限。
+        # 实测下限：374188 prompt_tokens 请求成功（2026-10-09）。800K 探针服务端
+        # 直接断连且未给出上下文超限错误，原因不明 ⇒ 保守登记实测下限而非臆造上限。
         context_window=400000,
         max_output_tokens=32768,
-        # 服务端返回 reasoning_content，但思考开关不可控 ⇒ 不列 effort 档位
+        # 服务端返回 reasoning_content（实测），但思考开关不可控 ⇒ 不列 effort 档位，
         # 前端据 supports_reasoning=False 隐藏「思考」挡位。
         supports_reasoning=False,
-        # 端点零费用，故定价为 0——不计入成本台账，避免污染评测成本口径。
+        # 端点零费用（免费档实测可用），故定价为 0——不计入成本台账，避免污染评测成本口径。
         pricing=ModelPricing(0, 0),
     ),
     "mock": ModelSpec(

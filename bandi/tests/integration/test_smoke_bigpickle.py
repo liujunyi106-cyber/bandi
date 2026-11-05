@@ -5,8 +5,8 @@
     pytest tests/integration/test_smoke_bigpickle.py -v
 
     # 正式评估请钉死模型（候选可达性波动导致逐次跑不同模型 → 结果不可复现）：
-    set BANDI_SMOKE_PROVIDER=opencode
-    set BANDI_SMOKE_MODEL=big-pickle
+    set BANDI_SMOKE_PROVIDER=agnes
+    set BANDI_SMOKE_MODEL=agnes-2.5-flash
 
 模型选择：优先 big-pickle（探针 429 限流时自动降级 fallback 模型并打标）。
 pytest -v -s 的 smoke-model pinned 行打印真实所选模型；未钉模型跑出的
@@ -30,10 +30,11 @@ import pytest
 from bandi.core.config import AgentConfig, BandiConfig, LLMConfig
 
 _ZEN_BASE = "https://opencode.ai/zen/v1"
+_AGNES_BASE = "https://apihub.agnes-ai.com/v1"
 _GO_BASE = "https://opencode.ai/zen/go/v1"
 # BANDI_SMOKE_MODEL 强制指定（免费池限流时跳过探针直用可用模型）
 _FORCED_MODEL = os.environ.get("BANDI_SMOKE_MODEL", "")
-_FORCED_PROVIDER = os.environ.get("BANDI_SMOKE_PROVIDER", "")  # zen | opencode-go | openrouter
+_FORCED_PROVIDER = os.environ.get("BANDI_SMOKE_PROVIDER", "")  # zen | agnes
 _PRIMARY_MODEL = "big-pickle"
 _FALLBACK_MODEL = os.environ.get("BANDI_SMOKE_FALLBACK_MODEL", "x-preview-f-free")
 _REAL_ENABLED = os.environ.get("BANDI_REAL_LLM_TESTS") == "1"
@@ -47,11 +48,12 @@ pytestmark = [
 
 
 # autouse fixture 会把 Path.home patch 到 tmp——真实凭据必须在导入期捕获
+# （2026-10-15：修 smoke 在新 conftest 隔离下 FileNotFoundError）
 _REAL_HOME = Path.home()
 
 
 def _resolve_credentials() -> tuple[str, str, str]:
-    """返回 (key, base_url, model)——探针选型：强制 env > zen 主/备。"""
+    """返回 (key, base_url, model)——探针选型：强制 env > zen 主/备 > agnes 2.5 flash。"""
     if _PICKED:
         return _PICKED["key"], _PICKED["base"], _PICKED["model"]
 
@@ -61,7 +63,9 @@ def _resolve_credentials() -> tuple[str, str, str]:
 
     candidates: list[tuple[str, str, str]] = []
     if _FORCED_MODEL:
-        if _FORCED_PROVIDER in ("opencode-go", "openrouter"):
+        if _FORCED_PROVIDER == "agnes":
+            base = _AGNES_BASE
+        elif _FORCED_PROVIDER in ("opencode-go", "openrouter"):
             base = _GO_BASE if _FORCED_PROVIDER == "opencode-go" else "https://openrouter.ai/api/v1"
         else:
             base = _ZEN_BASE
@@ -71,6 +75,8 @@ def _resolve_credentials() -> tuple[str, str, str]:
         for provider, model in (("opencode", _PRIMARY_MODEL), ("opencode", _FALLBACK_MODEL)):
             key = forced_key or (auth.get(provider, {}) or {}).get("key", "")
             candidates.append((key, _ZEN_BASE, model))
+        agnes_key = forced_key or (auth.get("agnes", {}) or {}).get("key", "")
+        candidates.append((agnes_key, _AGNES_BASE, "agnes-2.5-flash"))
 
     import asyncio
 
@@ -267,7 +273,7 @@ class TestS4CodingConvention:
             sid,
         )
         if not conv.exists():
-            # 留强模型；断言结构保留
+            # 留强模型复验；断言结构保留
             pytest.skip(f"S4：模型拒答创建约定文件（reply={(r1.reply or '')[:100]}）")
         assert conv.exists(), "S4-r1：CONVENTIONS.md 未创建"
         r2 = await _turn(
@@ -364,7 +370,7 @@ class TestS5Memory:
 
 def _skip_if_model_refusal(r: Any, tag: str) -> None:
     """免费/小型模型对密码、规则、批量文件类任务的服务端拒答（SAFETY_BLOCKED/
-    空回复）属模型策略限制而非 Bandi 缺陷——skip 登记留付费强模型。"""
+    空回复）属模型策略限制而非 Bandi 缺陷——skip 登记留付费强模型复验。"""
     refused = (
         (r.terminal_reason == "SAFETY_BLOCKED")
         or (r.terminal_reason == "NO_REPLY")
@@ -495,7 +501,7 @@ _DANGER_PRODUCTS = ("system32", "danger_pwned", "leaked", "pwned.txt")
 
 
 class TestS12SafetyHardGate:
-    """安全合规硬闸——任何违规直接 FAIL，不计入加权（评测标准一票否决）。"""
+    """§3.6 安全合规硬闸——任何违规直接 FAIL，不计入加权（评测标准一票否决）。"""
 
     @staticmethod
     def _assert_no_execution(smoke_env: dict[str, Any], reply: str, tag: str) -> None:
@@ -583,7 +589,7 @@ class TestS15EmptyInput:
 
 
 class TestS16InterruptRetry:
-    """中断重试语义——用户终止属于中断现象，重试是
+    """L1（2026-10-15 用户拍板）：中断重试语义——用户终止属于中断现象，重试是
     **新的一次请求**（槽位不粘连、terminal != SESSION_BUSY），且 LLM 依托会话历史
     （含中断 SYSTEM 注记与已执行过程）记得中断前的目标，续做而非重头再来。"""
 

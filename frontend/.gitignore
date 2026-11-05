@@ -1,8 +1,8 @@
-# 依赖
+﻿# 渚濊禆
 node_modules
 .npm
 
-# 构建产物
+# 鏋勫缓浜х墿
 dist
 dist-ssr
 release
@@ -10,7 +10,7 @@ electron/*.js
 electron/*.js.map
 electron/*.d.ts
 
-# 日志
+# 鏃ュ織
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -18,7 +18,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# 编辑器 / 系统
+# 缂栬緫鍣?/ 绯荤粺
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -29,24 +29,22 @@ lerna-debug.log*
 *.sln
 *.sw?
 
-# 本地环境
+# 鏈湴鐜
 .env
 .env.local
 .env.*.local
 *.local
 
-# 测试 / 缓存
+# 娴嬭瘯 / 缂撳瓨
 coverage
 .vitest
 .tsbuild
 *.tsbuildinfo
 
-# 临时
+# 涓存椂
 .tmp
 
-# 本机 npm 缓存重定向（WorkBuddy 沙箱下 AppData 缓存写入被拒 → EPERM；
-.npm-cache
+# 鏈満 npm 缂撳瓨閲嶅畾鍚戯紙WorkBuddy 娌欑涓?AppData 缂撳瓨鍐欏叆琚嫆 鈫?EPERM锛?# 瑙?浜や粯鏂囨。鏀堕泦/Day135-浜や粯鏂囨。.md 搂鏈畬鎴愰」锛?.npm-cache
 
-# electron-builder extraResources 暂存目录（sidecar 构建产物，不入库）
-build/
+# electron-builder extraResources 鏆傚瓨鐩綍锛坰idecar 鏋勫缓浜х墿锛屼笉鍏ュ簱锛?build/
 release/

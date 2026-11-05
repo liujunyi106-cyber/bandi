@@ -12,10 +12,14 @@
 
 from __future__ import annotations
 
+import logging
+import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from bandi.core.message import LLMResponse, Message
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from bandi.agent.base import ExecutionContext
@@ -92,7 +96,8 @@ async def _production_call_model(
     bandi_config = ctx.meta.get("bandi_config")
     use_fallback = registry is not None and bandi_config is not None and bandi_config.llm
     purpose = str(ctx.meta.get("_llm_call_purpose", "chat"))
-    return await states._do_llm_call(
+    started = time.perf_counter()
+    response = await states._do_llm_call(
         ctx,
         messages,
         use_fallback,
@@ -101,6 +106,20 @@ async def _production_call_model(
         allow_reactive_compact=purpose == "chat" and not ctx.meta.get("_reactive_retry_active"),
         allow_stream=purpose == "chat",
     )
+    # 功能：每次模型调用记录耗时与 token 分项，用于定位慢轮次与累计 token 偏高
+    usage = getattr(response, "usage", None)
+    logger.info(
+        "llm call: purpose=%s msgs=%d prompt_tokens=%s completion_tokens=%s "
+        "session_total=%d duration_ms=%.0f finish=%s",
+        purpose,
+        len(messages),
+        getattr(usage, "prompt_tokens", 0) if usage else 0,
+        getattr(usage, "completion_tokens", 0) if usage else 0,
+        int(getattr(ctx, "total_tokens", 0) or 0),
+        (time.perf_counter() - started) * 1000.0,
+        getattr(response, "finish_reason", "") or "",
+    )
+    return response
 
 
 def _ensure_pipeline(ctx: ExecutionContext) -> Any:

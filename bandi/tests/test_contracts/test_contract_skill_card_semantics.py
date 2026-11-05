@@ -5,6 +5,7 @@
 # 非 JSON / 脱图 JSON 拒绝。
 # 落地前置（skill 资产持久化），save_card 写 ~/.bandi/skills/<skill_id>.card.json
 # load_card 用作恢复/转发唯一入口——族级覆盖两条路径（构造族 + load 族）。
+# 参考 bandi/skills/importer.py 原子替换先例。
 
 from __future__ import annotations
 
@@ -235,7 +236,8 @@ class TestSerializerSafety:
         assert entries == ["sk_order_flow.card.json"]
 
     def test_save_overwrites_atomically(self, tmp_path: Path) -> None:
-        """契约（幂等覆盖）：同一 skill_id 重复 save → 覆盖为最新"""
+        """契约（幂等覆盖）：同一 skill_id 重复 save → 覆盖为最新
+        内容，且旧文件不残留（原子替换，参考 importer 先例）。"""
         card_a = SkillCard(**_full_card())
         save_card(card_a, tmp_path)
         card_b = SkillCard(

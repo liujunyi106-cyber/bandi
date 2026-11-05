@@ -3,7 +3,7 @@
  */
 import { LoaderCircle } from "lucide-react";
 
-import { EmployeeAvatar } from "@/components/team/EmployeeAvatar";
+import { EmployeeIdentityHeader } from "@/components/chat/EmployeeIdentityHeader";
 
 interface PendingEmployeeReplyProps {
   roleId: string;
@@ -18,14 +18,16 @@ export function PendingEmployeeReply({
 }: PendingEmployeeReplyProps) {
   return (
     <div
-      className="text-chat-muted flex items-center gap-1.5 pl-5 text-sm leading-none"
+      className="flex w-full flex-col items-start"
       data-testid="pending-employee-reply"
       data-role-id={roleId}
       aria-live="polite"
     >
-      <EmployeeAvatar name={name} metadata={metadata} className="size-6 rounded-full text-xs" />
-      <span className="text-foreground font-medium">{name}</span>
-      <span className="text-chat-muted flex items-center gap-1 text-xs">
+      <EmployeeIdentityHeader name={name} metadata={metadata} />
+      <span
+        className="text-chat-muted flex items-center gap-1 text-xs"
+        data-testid="pending-employee-reply-status"
+      >
         <LoaderCircle className="size-3 animate-spin" aria-hidden />
         正在回复中…
       </span>

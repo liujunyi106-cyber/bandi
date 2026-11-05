@@ -144,7 +144,7 @@ def test_protected_tool_skipped(small_budget) -> None:
             "bandi.memory.compression_pipeline", fromlist=["CompressionStats"]
         ).CompressionStats(),
     )
-    assert result[0].content == huge_skill.content, "skill_invoke 工具豁免"
+    assert result[0].content == huge_skill.content, "skill_invoke 工具豁免（CT-03 名单修复）"
 
 
 def test_min_savings_gate_blocks_tiny_prune(small_budget) -> None:

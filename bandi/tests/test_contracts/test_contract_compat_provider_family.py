@@ -1,6 +1,6 @@
 """契约：OpenAI 兼容 provider 家族（moonshot/zhipu/minimax/mimo/ollama）构造行为。
 
-bandi/llm/registry.py `_get_or_create` + bandi/llm/providers/openai.py
+@base: bandi/llm/registry.py `_get_or_create` + bandi/llm/providers/openai.py
 背景（二次核实批）：注册表对 compat 家族按名实例化（不传 base_url 参数）
 而 OpenAICompatProvider 构造签名曾为必填 base_url ⇒ 激活 moonshot/zhipu 档案必 TypeError。
 本契约钉死不变式：
@@ -18,7 +18,7 @@ from bandi.core.exceptions import LLMError
 from bandi.llm.providers.openai import OpenAICompatProvider
 from bandi.llm.registry import ProviderRegistry
 
-COMPAT_FAMILY = ("openai_compat", "moonshot", "zhipu", "minimax", "mimo", "ollama")
+COMPAT_FAMILY = ("openai_compat", "moonshot", "zhipu", "minimax", "mimo", "ollama", "agnes")
 
 
 def _registry() -> ProviderRegistry:

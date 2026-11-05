@@ -130,7 +130,7 @@ describe("SettingsDialog 模型档案（137c-A1）", () => {
     expect(activeMark.querySelector("svg")).not.toBeNull();
     expect(activeMark.querySelector("svg")?.getAttribute("class")).toContain("text-primary");
     expect(screen.getByTestId("profile-activate-p-a")).toBeDisabled();
-    // 「使用中」按钮 = 卡片底色 + 同色边缘线（原 disabled 黑按钮灰饼感太重）
+    // 拍板：「使用中」按钮 = 卡片底色 + 同色边缘线（原 disabled 黑按钮灰饼感太重）
     const activeBtn = screen.getByTestId("profile-activate-p-a");
     expect(activeBtn.className).toContain("bg-primary/5");
     expect(activeBtn.className).toContain("border-primary/5");
@@ -151,7 +151,7 @@ describe("SettingsDialog 模型档案（137c-A1）", () => {
     expect(container).toBeTruthy();
   });
 
-  it("应用按钮为黑底白字主按钮", async () => {
+  it("应用按钮为黑底白字主按钮（default 变体，与全局主操作统一；2026-10-01 用户拍板）", async () => {
     render(<SettingsDialog open onOpenChange={vi.fn()} />);
     openProfilesTab();
     await waitFor(() => expect(screen.getByTestId("profile-activate-p-b")).toBeInTheDocument());
@@ -284,7 +284,7 @@ describe("SettingsDialog 左侧导航与用量/缓存页签（R3）", () => {
   });
 });
 
-describe("SettingsDialog 反馈模型", () => {
+describe("SettingsDialog 反馈模型（2026-09-29）", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(settingsApi.profiles).mockResolvedValue({

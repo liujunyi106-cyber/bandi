@@ -38,7 +38,7 @@ def test_attachment_orders_by_real_read_time() -> None:
     attachment = build_post_compact_file_attachment(removed, read_state=read_state)
 
     assert attachment is not None
-    # 起附件改为「### 路径 + 真实内容片段」块，排序契约不变
+    # P0-2 起附件改为「### 路径 + 真实内容片段」块，排序契约不变
     lines = [line[4:] for line in attachment.content.splitlines() if line.startswith("### ")]
     assert lines[0] == "b.md", "最近读取的文件必须排最前"
     assert lines[1] == "a.md"

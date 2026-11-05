@@ -1,5 +1,5 @@
 /**
-  * 功能：选中实体的详情卡（）。
+ * 功能：选中实体的详情卡（@base docs/前端设计规划.md §6「知识 · 图谱」实体卡）。
  * 只读呈现 + 关联实体可点（点即切换选中，形成图谱内的邻接漫游）。
  */
 import { X } from "lucide-react";
@@ -17,6 +17,7 @@ export interface EntityCardProps {
   /** 无选中实体时展示的引导文案容器（由页面控制，这里只处理有选中）。 */
   onSelectNeighbor: (id: string) => void;
   onClose: () => void;
+  /** 类型 → 颜色映射（与画布/图例同源）。 */
   typeColors: ReadonlyMap<string, string>;
 }
 

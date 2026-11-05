@@ -1,4 +1,4 @@
-# 功能：知识库数据模型——文档、知识桶、段落块、概念与摄取结果的字段定义。
+# 功能：知识库三层实体（document → bucket → chunk）——StaffDeck knowledge/schema 同构
 
 from __future__ import annotations
 
@@ -8,8 +8,6 @@ from typing import Any
 
 @dataclass
 class KnowledgeDocument:
-    """功能：一篇已入库文档（base → document → bucket → chunk 的第一层）。"""
-
     id: str
     base_id: str
     filename: str
@@ -25,7 +23,7 @@ class KnowledgeDocument:
 
 @dataclass
 class KnowledgeBase:
-    """功能：知识库容器，按员工或项目划归属（两者皆空即全局库）。"""
+    """功能：知识库容器（base 级 scope——employee_id/project_id 归属，None = 全局）。"""
 
     id: str
     name: str
@@ -37,8 +35,6 @@ class KnowledgeBase:
 
 @dataclass
 class KnowledgeBucket:
-    """功能：文档内按标题切出的知识桶，是段落块的分组单位。"""
-
     id: str
     base_id: str
     document_id: str
@@ -53,8 +49,6 @@ class KnowledgeBucket:
 
 @dataclass
 class KnowledgeChunk:
-    """功能：检索与引用的最小单位，承载一段原文及其定位信息。"""
-
     id: str
     base_id: str
     document_id: str
@@ -70,8 +64,6 @@ class KnowledgeChunk:
 
 @dataclass
 class KnowledgeConcept:
-    """功能：OKF 概念——由文档/知识桶派生出的可引用知识条目。"""
-
     id: str
     base_id: str
     document_id: str = ""
@@ -91,8 +83,6 @@ class KnowledgeConcept:
 
 @dataclass
 class IngestResult:
-    """功能：一次摄取的统计结果。"""
-
     document_id: str
     bucket_count: int
     chunk_count: int

@@ -41,16 +41,6 @@ from bandi.tools.base import BaseTool, ToolPermissionContext
 from bandi.tools.executor import ToolExecutor
 from bandi.tools.registry import ToolRegistry
 
-
-# 功能：LLM 档案单例是进程级的，用例之间必须复位到临时路径，
-# 否则上一个用例激活的档案、甚至本机真实的 ~/.bandi/llm_profiles.json 都会污染下一个
-@pytest.fixture(autouse=True)
-def _isolate_llm_profile_store(tmp_path: Path):
-    reset_store_singleton(tmp_path / "llm_profiles.json")
-    yield
-    reset_store_singleton(tmp_path / "llm_profiles_after.json")
-
-
 # 功能：契约——公司员工执行的记忆维度必须跟随「工作项的项目归属」
 #
 # ① `company_mode._build_runtime` 取 `self.communication.project_id`，而生产调度器
@@ -289,8 +279,8 @@ class TestWorkItemSubjectWiring:
 
 
 # ==================== day137_timeline ====================
-# 功能：契约测试——工具时间线数据源（CoT thinking 透传 + tool_input 透传）
-# 钉行为族（前端过程块/工具时间线的数据来源，docs/前端设计规划.md）
+# 功能：Day137 契约测试——工具时间线数据源（CoT thinking 透传 + tool_input 透传）
+# 钉行为族（前端过程块/工具时间线的数据来源，docs/前端设计规划.md §8）：
 # ① LLM_STREAM_EVENT(thinking_delta) 经真实 EventBus + _subscribe_handler 转发到
 # StreamHandler.on_thinking（CoT 思维链节点数据源）；
 # ② thinking 事件按会话归属过滤（其他会话不串流）；
@@ -303,7 +293,7 @@ class TestWorkItemSubjectWiring:
 
 
 class R137RecorderHandler:
-    """StreamHandler 记录实现。"""
+    """StreamHandler 记录实现（Day137：含 on_thinking）。"""
 
     def __init__(self) -> None:
         self.deltas: list[str] = []
@@ -668,9 +658,11 @@ async def test_all_stream_handlers_emit_note_frames() -> None:
 #
 # 现状：用户在单聊/群聊补充要求只会**新建** work_item；已派发/已 APPROVED 的卡
 # 用户碰不到（`READY_FOR_REWORK` 只有「评审失败」自动入口；APPROVED 仅允许回
-# `READY` 且走内部邮件复活）。
-# 目标链路：写修正指令 → 受控回转（named bypass 只放行指定状态）→ 把修正理由与
-# 上一版产出注入 brief（否则第二次尝试既看不到被拒原因，只能重复同样的错或盲改）
+# `READY` 且走内部邮件复活）。对标 OpenOPC：
+# `_prepare_company_followup_target`（写 latest_user_directive）
+# → `reopen_approved_delegation_work_item_for_rework`（named bypass 受控回转）
+# → `build_rework_feedback_context`（把修正指令 + 上一版产出注入 brief
+# 注释原话「否则第二次尝试既看不到被拒原因，要么重复同样的错、要么盲改」）
 #
 # 本契约钉三层行为：
 # ① r2xday137_store 侧：APPROVED → READY_FOR_REWORK 的**唯一受控入口**（非 APPROVED 一律
@@ -940,7 +932,7 @@ def dispatcher(r2xday137_store: WorkItemStore):
 
 
 class TestReworkLifecycleCleanup:
-    """修复：用户修正指令/上一版产出必须在「使命完成」时清理——残留会让
+    """审查修复：用户修正指令/上一版产出必须在「使命完成」时清理——残留会让
     `directive or feedback` 遮蔽后续评审驳回反馈（brief 里旧指令取代新反馈）
     并污染该卡所有后续执行轮。"""
 
@@ -1057,7 +1049,7 @@ class TestReworkLifecycleCleanup:
 
 
 class TestUserReworkEntryNoHalfCommit:
-    """修复：非 APPROVED 卡被拒时不得留半提交（线程消息先落盘但卡未回转）。"""
+    """审查修复：非 APPROVED 卡被拒时不得留半提交（线程消息先落盘但卡未回转）。"""
 
     def test_rejected_rework_leaves_no_thread_message(
         self, r2xday137_store: WorkItemStore, tmp_path: Any
@@ -1091,7 +1083,7 @@ class TestUserReworkEntryNoHalfCommit:
 
 
 class TestReopenCasUnderConcurrency:
-    """修复：reopen 的 CAS 必须验证 UPDATE 命中——并发窗口不得返回「成功」。"""
+    """审查修复：reopen 的 CAS 必须验证 UPDATE 命中——并发窗口不得返回「成功」。"""
 
     def test_concurrent_reopen_fails_explicitly(self, tmp_path: Any, monkeypatch: Any) -> None:
         db = str(tmp_path / "cas.db")
@@ -1139,8 +1131,9 @@ class TestReopenCasUnderConcurrency:
 
 
 # ==================== day137b_employee_progress ====================
-# 功能：插队批契约——员工执行过程流式（thread_progress 帧数据源）
+# 功能：Day137b-1 插队批契约——员工执行过程流式（thread_progress 帧数据源）
 # 钉行为族（员工单聊/群聊/团队会话的实时过程块）：
+# ① EmployeeProgressHandler 帧映射族（run_agent_turn 过程帧 → thread_progress 事件：
 # content/thinking/tool_start/tool_progress/tool_result/skill/note/memory/task_ledger/done/error）；
 # ② 归属字段（project_id/thread_id/role_id）逐帧携带（前端按项目/员工过滤依据）；
 # ③ 破坏者：广播回调异常不得中断员工执行（帧转发 best-effort）；
@@ -1164,6 +1157,7 @@ def _event_types(frames: list[dict[str, Any]]) -> list[str]:
     return [f["data"]["event"]["type"] for f in frames]
 
 
+# ── ① 帧映射族（方法 → event.type/data 结构；② 归属断言合并覆盖）────────────
 async def test_handler_frame_family_with_scope() -> None:
     frames, callback = _collector()
     handler = EmployeeProgressHandler(callback, project_id="p1", thread_id="t1", role_id="r1")
@@ -1506,8 +1500,8 @@ async def test_progress_scope_normalizes_empty_to_company() -> None:
 
 
 # ==================== day137b_process_frames ====================
-# 功能：契约——过程消息数据源补全（记忆写入行 / 会话任务条 / 挂起倒计时）
-# 钉行为族（docs/前端设计规划.md 过程块规范）
+# 功能：Day137b-1 契约——过程消息数据源补全（记忆写入行 / 会话任务条 / 挂起倒计时）
+# 钉行为族（docs/前端设计规划.md §8 过程块规范）：
 # ① MEMORY_WRITTEN 经真实 _emit_memory_written + 真实 EventBus + _subscribe_handler
 # 转发到 StreamHandler.on_memory_written（前端「记入记忆 xN」数据源）；
 # ② MEMORY_WRITTEN 按会话归属过滤（loop 外发射，data.session_id 兜底——不串会话）；
@@ -1520,7 +1514,7 @@ async def test_progress_scope_normalizes_empty_to_company() -> None:
 
 
 class R137bRecorderHandler:
-    """StreamHandler 记录实现。"""
+    """StreamHandler 记录实现（Day137b-1：含 on_memory_written / on_task_ledger）。"""
 
     def __init__(self) -> None:
         self.memory_channels: list[list[str]] = []
@@ -1774,7 +1768,7 @@ async def test_notification_frame_has_no_countdown() -> None:
 
 
 # ==================== day137b2_attachments ====================
-# 功能：契约——对话附件通道（消息绑定落库 + 文本类内容注入）
+# 功能：Day137b-2 契约——对话附件通道（消息绑定落库 + 文本类内容注入）
 
 
 def r5xday137b2__isolate_home(monkeypatch, tmp_path: Path) -> None:
@@ -2006,7 +2000,7 @@ class TestWsProviderConfig:
 
 
 # ==================== day137b2_compact ====================
-# 功能：契约——会话压缩服务（compact：单块全量摘要 + fork 新会话）
+# 功能：Day137b-2 契约——会话压缩服务（compact：单块全量摘要 + fork 新会话）
 
 
 def r6xday137b2__isolate_home(monkeypatch, tmp_path: Path) -> None:
@@ -2109,7 +2103,7 @@ class TestCompactEndpoint:
 
 
 # ==================== day137b2_files_models ====================
-# 功能：契约——模型候选列表（控制条数据源）+ 项目文件列表（@文件引用数据源）
+# 功能：Day137b-2 契约——模型候选列表（控制条数据源）+ 项目文件列表（@文件引用数据源）
 
 
 class TestAvailableModels:
@@ -2187,7 +2181,7 @@ class TestProjectFilesEndpoint:
 
 
 # ==================== day137b2b_llm_profiles ====================
-# 功能：-2b 契约——多 Provider 档案（LlmProfile/ProfileStore/resolve 唯一解析入口）
+# 功能：Day137b-2b 契约——多 Provider 档案（LlmProfile/ProfileStore/resolve 唯一解析入口）
 # 钉行为族（不钉实现）：
 # ① 档案 CRUD + 首次创建自动激活 + 删除激活档案后激活指针清空；
 # ② resolve_llm_config 覆盖语义（有档案覆盖模型/凭证/地址/白名单高级项；无档案原样返回）；
@@ -2265,9 +2259,7 @@ def test_profile_crud_and_activation(tmp_path: Path) -> None:
 def test_resolve_llm_config_applies_profile_and_keeps_base_blanks(tmp_path: Path) -> None:
     """resolve 覆盖语义：无档案原样返回；有档案覆盖模型/凭证/白名单高级项且不改原对象；
     档案字段为空白不得把 base 里的值清掉（破坏者视角反面）。"""
-    # 用单例本身（与 resolve_llm_config 同一实例）：两个实例共享同一文件但各有内存缓存，
-    # 快速执行时 deactivate() 的写入与缓存键落在同一 mtime 刻度，读侧仍会看到旧档案
-    r8xday137b2b_store = reset_store_singleton(tmp_path / "llm_profiles.json")
+    r8xday137b2b_store = ProfileStore(tmp_path / "llm_profiles.json")
     base = LLMConfig(api_key="base-key", default_model="deepseek-v4-flash", timeout=60)
 
     # 无档案 → 原样返回（零迁移：跟随 config.yaml）
@@ -2436,6 +2428,7 @@ def test_builtin_reasoning_efforts_offline_fallback() -> None:
             f"{name}（{BUILTIN_MODELS[name].provider}）适配层尚未接线 thinking ⇒ 不得进入兜底表"
         )
 
+    # -C 加固：新接线四家的挡位必须落在**各自适配层映射表值域内**——
     # 防「滑杆给了档位但适配层不认（或静默丢弃）」，与 deepseek/openai 同款断言
     from bandi.llm.adapters.anthropic import _ANTHROPIC_EFFORT
     from bandi.llm.adapters.google import _GEMINI_LEVEL

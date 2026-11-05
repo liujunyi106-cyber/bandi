@@ -1,5 +1,5 @@
 /**
-  * 功能：顶栏（）。
+ * 功能：顶栏（@base docs/前端设计规划.md §8 顶栏 56px 三槽位）。
  * 左：收缩开关（一键全部收缩/展开：左栏 + 项目面板）+ 当前会话名（+ 重命名按钮）；
  * 右：右栏开合 icon（v5：连接灯移除，与左栏切换按钮对称；WS 异常时保留文字提示）。
  * ：通知中心移至左栏底部；顶栏标题旁加重命名；
@@ -86,7 +86,7 @@ export function AppHeader({
   const status = worseStatus(wsStatus, sessionWsStatus);
   const labelKey = wsLabelKey(status);
   // 右栏开合（v5：与左栏 SidebarTrigger 同款镜像图标；仅收起态出现——展开后收起由右栏自身负责
-  // 单一开合入口、不与右栏「⇥ 收起」双按钮并存）
+  // 用户拍板：单一开合入口、不与右栏「⇥ 收起」双按钮并存）
   // .2：作用域放宽——会话与项目内员工单聊（DM 路由）均有右栏入口
   const panelOpen = usePanelStore((state) => state.open);
   const panelScope = isChatRoute
@@ -103,8 +103,8 @@ export function AppHeader({
         ? state.messagesBySession[activeSessionId]?.length
         : state.messagesBySession[""]?.length) ?? 0,
   );
-  const streams = useChatStore((state) => state.streams);
-  const busy = Boolean(streams[activeSessionId ?? ""]);
+  const busy = Boolean(useChatStore((state) => state.streams[activeSessionId ?? ""]));
+  // 空会话（无会话/无项目/无消息/未在跑）不占顶栏高度，让对话区更干净
   const hideEmptyChatHeader =
     isChatRoute &&
     !activeSessionId &&
@@ -113,16 +113,20 @@ export function AppHeader({
     messageCount === 0 &&
     !busy;
 
-  if (isTeamRoute || isKnowledgeRoute || isWorkRoute || isSkillsRoute || hideEmptyChatHeader) {
+  if (
+    isTeamRoute ||
+    isKnowledgeRoute ||
+    isWorkRoute ||
+    isSkillsRoute ||
+    hideEmptyChatHeader
+  ) {
     return null;
   }
 
   return (
     <>
       <header
-        className={`border-border bg-background/80 supports-[backdrop-filter]:bg-background/60 flex h-14 shrink-0 items-center gap-2 px-3 backdrop-blur ${
-          isTeamRoute ? "" : "border-b"
-        }`}
+        className="bg-chat-bg flex h-14 shrink-0 items-center gap-2 px-3"
       >
         {/* 功能：项目面板收起后，顶栏出现「展开项目面板」按钮——
             普通会话（无项目归属）不显示；展开态由项目面板内按钮负责收起 */}
@@ -156,9 +160,9 @@ export function AppHeader({
           ) : null}
         </div>
 
-        {/* 右侧组：搜索/历史提问 + 连接提示 + 右栏开合 */}
+        {/* 右侧组：搜索/历史提问 + 连接提示 + 右栏开合（统一 gap-1——2026-09-26 用户反馈三类 icon 间距一致） */}
         <div className="flex shrink-0 items-center gap-1">
-          {/*会话内搜索/历史提问移到顶栏，与连接状态指示同排对齐 */}
+          {/* 2026-09-23 用户拍板：会话内搜索/历史提问移到顶栏，与连接状态指示同排对齐 */}
           {headerToolTestId && headerToolItems.length > 0 ? (
             <SessionTools items={headerToolItems} testId={headerToolTestId} />
           ) : null}
@@ -174,7 +178,7 @@ export function AppHeader({
             </div>
           ) : null}
 
-          {/* 右栏展开入口 */}
+          {/* 右栏展开入口（仅收起态显示；左侧 SidebarTrigger 的镜像图标——2026-09-26 用户拍板） */}
           {showPanelTrigger ? (
             <button
               type="button"

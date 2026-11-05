@@ -1,4 +1,4 @@
-# 功能：UserInputTool 接线完整性契约（DoD-11）——registry 工具 bind_ui 装配
+# 功能：Day132c UserInputTool 接线完整性契约（DoD-11）——registry 工具 bind_ui 装配
 # 背景：registry 内 UserInputTool 裸实例化（factory 无 ui），若 run_agent_turn 注入的
 # user_interaction 不 bind 到工具，真实链 LLM 调用 request_user_input 会 fail-closed
 # 抛错而非真挂起（接线盲区实证）。契约钉：build_agent_context(user_interaction=X) 后

@@ -44,7 +44,7 @@ vi.mock("@/services/sessions", () => ({
   },
 }));
 
-describe("流看门狗", () => {
+describe("流看门狗（FM-101）", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     listeners.frame = undefined;
@@ -153,7 +153,7 @@ describe("流看门狗", () => {
     expect(useChatStore.getState().streams["s1"]).toBeUndefined();
   });
 
-  it("team_routed 终帧标记成功终态", async () => {
+  it("team_routed 终帧标记成功终态（防「中断横幅」误报——2026-10-16 真机）", async () => {
     renderHook(() => useSessionStream());
     await act(async () => {
       listeners.frame?.({

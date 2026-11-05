@@ -121,7 +121,7 @@ def test_note_feedback_missing_item_returns_false(tmp_path: Any) -> None:
 
 
 def test_note_feedback_corrupt_metadata_raises_without_clobber(tmp_path: Any) -> None:
-    """
+    """契约（破坏者）：metadata 损坏时拒绝反馈（ValueError，端点映射 409）
     原值不得被覆盖。"""
     lt = LongTermMemory(str(tmp_path / "lt.db"))
     lt.store(MemoryItem("corrupt", "元数据损坏条目"))
@@ -396,7 +396,7 @@ async def test_memory_source_passes_question_hint_to_unified(monkeypatch: Any) -
         intent_hint="execute",
     )
     assert captured["question_hint"] == "history_conclusion", (
-        "生产链 intent_hint 恒 plan/execute，四问分类不得被短路"
+        "生产链 intent_hint 恒 plan/execute，四问分类不得被短路（修主链 FM-1）"
     )
     assert captured["intent_hint"] == "execute", "执行意图必须继续透传（plan/execute 偏置不丢）"
 

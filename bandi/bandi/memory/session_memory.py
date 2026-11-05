@@ -1,6 +1,7 @@
 """SM-compact = 传统 LLM 摘要压缩的前置替代：轮末自动沉淀的会话记忆
 保留窗口算法完成压缩——全程零 LLM 调用。
 
+与 cc-haha sessionMemoryCompact.ts 的映射：
 * 数据源 getSessionMemoryContent → ``build_session_memory_summary``（scratchpad 快照）
 * calculateMessagesToKeepIndex → ``calculate_keep_index``（min 双下限/max 上限/
   boundary floor/tool 对不拆散一一对应）
@@ -46,7 +47,7 @@ def build_session_memory_summary(
     store: ScratchpadStore, session_id: str, max_tokens: int = DEFAULT_SUMMARY_MAX_TOKENS
 ) -> str | None:
     """功能：从 working scratchpad turn 快照拼装结构化摘要（带摘要前缀协议
-    项3：摘要总 token 受 max_tokens 上限约束——超预算时尾部（最新）快照优先
+    审查项3：摘要总 token 受 max_tokens 上限约束——超预算时尾部（最新）快照优先
     从最新向旧贪心纳入至预算耗尽（会话记忆新近性优先，防摘要失控挤爆上下文）。"""
     snapshots = {
         key: value
@@ -220,7 +221,7 @@ def _has_text(m: Message) -> bool:
 
 
 def _boundary_floor(messages: list[Message]) -> int:
-    """最后一个 [压缩边界] 标记的下一条位置——向前扩展不得越过。"""
+    """最后一个 [压缩边界] 标记的下一条位置——向前扩展不得越过（cc-haha floor 不变量）。"""
     from bandi.memory.compression_pipeline import COMPACT_BOUNDARY_PREFIX
 
     floor = 0
@@ -234,7 +235,7 @@ def session_memory_boundary(
     store: ScratchpadStore, session_id: str, messages: list[Message]
 ) -> int | None:
     """功能：计算「已被会话记忆覆盖」的消息边界——最大已快照 turn 之后的第一条
-    消息位置；归属不明（turn_index 缺失）
+    消息位置（cc-haha lastSummarizedMessageId 对应物）；归属不明（turn_index 缺失）
     保守视为未覆盖。无任何快照返回 None。"""
     turns: set[int] = set()
     for key in store.all(session_id):

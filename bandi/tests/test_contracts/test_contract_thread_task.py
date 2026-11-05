@@ -152,7 +152,7 @@ async def test_spawn_defaults_parent_to_bound_work_item(tmp_path) -> None:
 
 @pytest.mark.asyncio
 async def test_spawn_message_id_unique_across_similar_prompts(tmp_path) -> None:
-    """修复：两次相似 prompt（前 16 字符相同）spawn 的线程消息 message_id
+    """审查修复：两次相似 prompt（前 16 字符相同）spawn 的线程消息 message_id
     必须唯一——修复前用 task_prompt[:16] 作 id 会冲突。"""
     store = WorkItemStore(str(tmp_path / "wi.db"))
     tm = ThreadManager(workspace=str(tmp_path / "ws"), project_id="p", session_id="s")

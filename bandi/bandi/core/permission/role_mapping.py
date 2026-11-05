@@ -1,3 +1,4 @@
+# 功能：组织角色 → 内置权限档 的映射层（方案 A）
 #
 # 背景：本仓有两套并行的「角色」概念，语义不同因而**不合并**：
 # * `core/permission/roles.py` 的 4 个**内置权限档**（admin / power_user / member /
@@ -5,7 +6,10 @@
 # 经 `PolicyEngine` 在**工具执行面**生效（`tools/executor.py` 的 policy 检查）；
 # * 组织**岗位**（`company/org_engine.py` 的 `OrgRole`）——回答「这个人担任哪个岗位」
 #
+# 缺口：组织岗位与权限档之间没有映射，导致「界面上给人绑了岗位，执行面完全不看」。
+# 本模块用**可配映射**把两者接起来：岗位 → 权限档由配置决定（这是配置，不是硬编码）。
 #
+# ⚠️ 关键默认：**映射为空时 `resolve_role()` 原样返回** → 本模块对现有行为零影响。
 # 这正是方案 A 相对方案 C（合并两套体系）的核心优势：纯增量、可回退。
 
 from __future__ import annotations
@@ -35,11 +39,13 @@ _ROLE_RANK: dict[str, int] = {
 def resolve_role(role: str, role_map: Mapping[str, str] | None = None) -> str:
     """把组织角色解析成内置权限档名。
 
+    无映射、映射缺失、或映射目标非法时**原样返回入参**。原样返回 = 「该角色没有对应
     权限档」，与既有契约（`register_builtin_role` 对未知角色不注册任何策略）一致——
     既不会意外放行，也不会意外拦截。
 
     Args:
         role: 组织角色 id（如 `"engineer"`），或已是权限档名（如 `"member"`）。
+        role_map: `{组织角色: 权限档}`。空/None 表示不启用映射。
 
     Returns:
         权限档名或原 `role`。
@@ -63,9 +69,10 @@ def resolve_role(role: str, role_map: Mapping[str, str] | None = None) -> str:
 
 
 def validate_role_map(role_map: Mapping[str, str] | None) -> list[str]:
-    """
+    """自检映射表，返回问题描述列表（空列表 = 全部合法）。
 
     供装配期/CLI 自检调用——把配置错误在启动时暴露，而不是等到某次工具调用才静默失效。
+    非映射输入（配置类型写错）fail-safe 返回问题描述而非 AttributeError。
     """
     if role_map is None:
         return []
@@ -83,13 +90,17 @@ def validate_role_map(role_map: Mapping[str, str] | None) -> list[str]:
     return problems
 
 
+# 功能：装配期自检的进程内去重——同一映射指纹只告警一次（build_policy_engine
 # 每轮执行都会调用，无去重会按轮刷屏）
 _checked_role_maps: set[str] = set()
 _checked_role_maps_lock = threading.Lock()
 
 
 def check_role_map(role_map: Mapping[str, str] | None) -> list[str]:
-    """装配期自检：validate 逐条告警 + describe 入日志（进程内按指纹去重）。"""
+    """装配期自检：validate 逐条告警 + describe 入日志（进程内按指纹去重）。
+
+    返回问题列表（空 = 合法）。同一映射只检一次；不同映射各自检一次。
+    """
     fingerprint = (
         repr(sorted((role_map or {}).items())) if isinstance(role_map, Mapping) else repr(role_map)
     )
@@ -106,7 +117,7 @@ def check_role_map(role_map: Mapping[str, str] | None) -> list[str]:
 
 
 def describe_role_map(role_map: Mapping[str, str] | None) -> str:
-    """"""
+    """人类可读的映射摘要（可观测性/日志用）。"""
     if not role_map:
         return "角色映射：未启用（所有角色保持无权限档）"
     pairs = ", ".join(f"{k}→{v}" for k, v in sorted(role_map.items()))
@@ -141,6 +152,8 @@ def effective_role_for(
 
     解析链（前者优先）：
       1. `user_id` 在账户体系里的**组织岗位绑定**（`AccountStore.list_user_roles`）
+         逐个经 `role_map` 映射；多个岗位命中不同档时取**最高档**；
+      2. 回落 `agent_role` 经 `role_map` 映射；
       3. 都没有 → `agent_role` 原样返回（= 无权限档，行为与改造前一致）。
 
     **零副作用保证**：`user_id` 为空时**完全不触碰** `account_store`（不建库、不查询）

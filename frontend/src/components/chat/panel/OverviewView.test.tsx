@@ -2,7 +2,7 @@
  * 功能：右栏概览视图测试（摘要卡 / 计划树 / 产物点击 / SOP 优先）。
  * .2：员工作用域 = 单员工卡（不发会话维度请求）。
  */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { OverviewView } from "@/components/chat/panel/OverviewView";
@@ -201,7 +201,7 @@ describe("OverviewView", () => {
     expect(screen.queryByTestId("panel-plan-todo")).not.toBeInTheDocument();
   });
 
-  it("计划段显示团队工作项（project_id 过滤）；概览无团队板块", async () => {
+  it("计划段显示团队工作项（project_id 过滤）；概览无团队板块（2026-10-03 拍板删除）", async () => {
     useChatStore.setState({ activeProjectId: "p1", tasksBySession: {} });
     vi.mocked(companyApi.projects).mockResolvedValueOnce({
       projects: [
@@ -273,7 +273,7 @@ describe("OverviewView", () => {
     expect(sessionsApi.artifacts).not.toHaveBeenCalled();
   });
 
-  it("旧工作项无 project_id 时回落项目成员角色过滤", async () => {
+  it("旧工作项无 project_id 时回落项目成员角色过滤（2026-09-26 真机反馈场景）", async () => {
     useChatStore.setState({ activeProjectId: "p1", tasksBySession: {} });
     vi.mocked(companyApi.projects).mockResolvedValueOnce({
       projects: [
@@ -391,22 +391,33 @@ describe("OverviewView", () => {
     expect(screen.queryByText("历史会话卡")).not.toBeInTheDocument();
   });
 
-  it("员工作用域：直出单员工卡，项目口径数据面（B3）且不发会话维度请求", async () => {
+  it("员工作用域：直出单员工卡，token 走直聊线程而非项目累计", async () => {
     vi.mocked(companyApi.employees).mockResolvedValueOnce({
       employees: [{ employee_id: "e1", role_id: "dev", name: "小美", description: "开发" }],
+    });
+    vi.mocked(companyApi.threads).mockResolvedValueOnce({
+      threads: [
+        {
+          thread_id: "th-dev",
+          session_id: "dm-dev",
+          parent_task_id: null,
+          participants: ["user", "dev"],
+          created_at: "",
+          message_count: 2,
+          kind: "dm",
+        },
+      ],
     });
     render(<OverviewView scope={EMPLOYEE_SCOPE} />);
     expect(await screen.findByTestId("panel-employee-dev")).toBeInTheDocument();
     expect(screen.getByText("小美")).toBeInTheDocument();
-    expect(panelApi.sop).not.toHaveBeenCalled();
-    expect(panelApi.costDetail).not.toHaveBeenCalled();
+    await waitFor(() => expect(panelApi.costDetail).toHaveBeenCalledWith("dm-dev"));
+    expect(panelApi.sop).toHaveBeenCalledWith("dm-dev");
+    // 项目累计 token 不得覆盖单聊会话 token
+    expect(panelApi.projectUsage).not.toHaveBeenCalled();
     expect(vi.mocked(companyApi.workItems)).toHaveBeenCalledWith("dev");
-    // 项目口径三件（该项目用量 / 该项目员工产物 / 绑定卡数）
-    expect(panelApi.projectUsage).toHaveBeenCalledWith("p1", "dev");
     expect(panelApi.projectArtifacts).toHaveBeenCalledWith("p1", "dev");
     expect(panelApi.employeeProfile).toHaveBeenCalledWith("dev");
-    // 绑定卡数 = 能力档案 skill 资源数（2.2k → 2.2k 本项目 token；SOP 格显示绑定卡数 1）
-    expect((await screen.findAllByText("1")).length).toBeGreaterThan(0);
   });
 
   it("秘书会话：右栏计划不取团队工作项（计划=助理自己的 Todo，不混团队计划）", async () => {

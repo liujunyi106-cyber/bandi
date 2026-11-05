@@ -120,9 +120,9 @@ export function ProjectPanel(props: ProjectPanelProps) {
 function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps) {
   const t = useT();
   const navigate = useNavigate();
-  // 项目面板宽度可由右边缘拖拽调整（手动覆盖持久化 + min/max 钳制）
-  // 无手动覆盖时随窗口自适应（1024→160 / 1920→224），双击手柄回自适应
-  // 拖拽上限收到 224；旧 override 可能超出上限 → 读取时同样钳制
+  // 拍板：项目面板宽度可由右边缘拖拽调整（手动覆盖持久化 + min/max 钳制）
+  // 拍板：无手动覆盖时随窗口自适应（1024→160 / 1920→224），双击手柄回自适应
+  // 拍板：拖拽上限收到 224；旧 override 可能超出上限 → 读取时同样钳制
   const windowWidth = useWindowWidth();
   const widthOverride = useUiStore((state) => state.projectPanelWidthOverride);
   const setPanelWidth = useUiStore((state) => state.setProjectPanelWidth);
@@ -178,8 +178,8 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
   const hasTeam = (project?.members.length ?? 0) > 0;
 
   /** 功能：团队群聊头像成员——项目成员中的在职员工（最多 4 个由 TeamAvatar 截断）。
-   * 成员集以项目解析结果为准（employee_name 已随接口返回），员工列表只补头像元数据——
-   * 员工接口未就绪/失败时不再把头像组退化成单图标。 */
+   *  成员集以项目解析结果为准（employee_name 已随接口返回），员工列表只补头像元数据——
+   *  员工接口未就绪/失败时不再把头像组退化成单图标。 */
   const groupMembers = useMemo(() => {
     const byRole = new Map(employees.map((employee) => [employee.role_id, employee]));
     return (project?.members ?? [])
@@ -643,7 +643,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
   };
 
   /** 功能：拉入团队后确保群聊入口——无群聊会话时补建一个空群聊
-   * （删除群聊后经顶部「选择团队」重新拉入即可恢复入口行）。 */
+   *  （删除群聊后经顶部「选择团队」重新拉入即可恢复入口行）。 */
   const ensureGroupSession = async () => {
     await refreshProject();
     // 以 store 现状判断（memo 可能滞后于本帧）——已有群聊会话则不再补建
@@ -676,7 +676,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
   };
 
   /** 功能：删除员工单聊——本地立即清条目/过程槽，后台删后端直聊线程（窗口边界）；
-   * 重新选择员工即新线程新上下文（产物不删）。 */
+   *  重新选择员工即新线程新上下文（产物不删）。 */
   const openFolder = () => {
     void companyApi
       .openFolder(projectId)
@@ -762,7 +762,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
   };
 
   /** 功能：单条删除会话（秘书/群聊共用）——本地立即清理，再请求后端。
-   * 群聊行只删当前会话及其群记忆，不影响同项目其他群会话。 */
+   *  群聊行只删当前会话及其群记忆，不影响同项目其他群会话。 */
   const onDeleteSession = async (session: SessionSummary) => {
     if (isEmployeeDmSession(session)) {
       setDeletingSession(null);
@@ -991,7 +991,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
     ) : null;
 
   /** 功能：头像行内置「＋新建会话」（聊天气泡加号）——与「更多」同口径：
-   * 平时隐形，条目悬浮 / 聚焦时浮现。 */
+   * 平时隐形，条目悬浮 / 聚焦时浮现（2026-10-19 拍板）。 */
   const newSessionButton = (scope: string, onNew: () => void) => {
     const hoverKey = `entry:${scope}`;
     return (
@@ -1009,14 +1009,14 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
         onBlur={() => setHoveredId((prev) => (prev === hoverKey ? "" : prev))}
         onClick={onNew}
       >
-        {/* 设计统一：与左栏「新建会话」共用自绘图标（同一语义同一图形） */}
+        {/* 2026-09-26 设计统一：与左栏「新建会话」共用自绘图标（同一语义同一图形） */}
         <NewSessionIcon className="size-3.5" />
       </button>
     );
   };
 
   /** 功能：头像行内置「更多操作 ⋯」（三类行统一入口，菜单内容按行类型区分）。
-与会话行同口径——平时隐形，条目悬浮 / 聚焦时浮现。 */
+      2026-10-09 用户拍板：与会话行同口径——平时隐形，条目悬浮 / 聚焦时浮现。 */
   const moreMenu = (scope: string, items: React.ReactNode) => {
     const hoverKey = `entry:${scope}`;
     return (
@@ -1053,10 +1053,10 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
     // [&_svg]:stroke-[1.75]：与左栏导航 / 过程块统一描边（lucide 默认 2 在 12–14px 下偏重）
     <aside
       style={{ width: panelWidth }}
-      className="border-chat-hairline bg-card relative flex shrink-0 flex-col border-r [&_svg]:stroke-[1.75]"
+      className="bg-card relative flex shrink-0 flex-col [&_svg]:stroke-[1.75]"
       data-testid="project-panel"
     >
-      {/* 右边缘拖拽手柄：向右拖增宽，store 层钳制 [160, 224]；双击重置默认。
+      {/* 右边缘拖拽手柄（2026-10-03）：向右拖增宽，store 层钳制 [160, 224]；双击重置默认。
           right-0：8px 热区全在面板内（-right-1 伸出 4px 会污染 scrollWidth / 覆盖对话区边缘）。 */}
       <div
         data-testid="project-panel-resize-handle"
@@ -1077,12 +1077,12 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
         }}
         onDoubleClick={() => resetPanelWidth()}
       />
-      <div className="border-chat-hairline flex h-14 shrink-0 items-center gap-1 border-b px-3">
+      <div className="flex h-14 shrink-0 items-center gap-1 px-3">
         <span className="min-w-0 flex-1 truncate text-sm font-medium">
           {project?.name || projectId}
         </span>
-        {/*保留原「功能」icon（选择团队/选择员工；无团队灰色禁用）
-仅项目群聊会话显示（DM / 项目内秘书会话隐藏） */}
+        {/* 2026-09-23 用户拍板：保留原「功能」icon（选择团队/选择员工；无团队灰色禁用）
+            2026-10-02 用户拍板：仅项目群聊会话显示（DM / 项目内秘书会话隐藏） */}
         {showFeatureMenu ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -1121,7 +1121,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
         </button>
       </div>
 
-      {/*搜索框常驻（与下方不设分割线）；聚焦即呈现历史任务 */}
+      {/* 2026-09-23 用户拍板：搜索框常驻（与下方不设分割线）；聚焦即呈现历史任务 */}
       <div className="shrink-0 px-2 pt-2 pb-3">
         <div className="border-chat-hairline bg-card flex items-center gap-1.5 rounded-md border px-2 py-1.5">
           <Search className="text-chat-muted size-3.5 shrink-0" />
@@ -1189,8 +1189,8 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
           <>
             {showSecretaryEntry ? (
               <>
-                {/* 秘书
-右侧按钮位置与下方会话行 ⋯ **上下对齐**——
+                {/* 秘书（纯展示——2026-09-23 用户拍板：带头像组件不可点，仅会话行可点选中）
+                2026-09-29 用户拍板：右侧按钮位置与下方会话行 ⋯ **上下对齐**——
                 右侧内边距用 pr-1（会话行同值），不用 px-2（否则 ⋯ 右移 4px 错位）。 */}
                 <div
                   data-testid="panel-secretary-entry"
@@ -1335,7 +1335,7 @@ function ProjectPanelContent({ collapsed = false, onToggle }: ProjectPanelProps)
         )}
       </div>
 
-      {/*与任务面板批量操作同款（面板内分区 + 按钮组，非弹窗） */}
+      {/* 2026-09-25 用户拍板：与任务面板批量操作同款（面板内分区 + 按钮组，非弹窗） */}
       {bulk ? (
         <div
           data-testid="panel-bulk-bar"

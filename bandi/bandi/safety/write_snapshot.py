@@ -69,7 +69,7 @@ def create_snapshot(
     target_files: list[Path],
     snapshot_root: Path | None = None,
 ) -> Path | None:
-    """
+    """功能：把既有目标文件复制进带时间戳的批次目录并写 manifest（还原映射）；
     无可快照文件返回 None；失败只告警不抛出（快照绝不阻断执行）。"""
     existing = [f for f in target_files if f.is_file()]
     if not existing:

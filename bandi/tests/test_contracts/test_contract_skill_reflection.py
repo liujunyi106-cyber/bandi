@@ -160,7 +160,7 @@ async def test_reflection_pass_keeps_draft_and_consumes_one_review(tmp_skills_di
 @pytest.mark.asyncio
 async def test_reflection_prompt_carries_seven_rubrics_and_no_new_candidate(tmp_skills_dir) -> None:
     """契约（对齐）：反思提示词必须声明 7 项 rubric
-    且不得出现的 new_candidate 保留口径（Bandi 只认 existing registry）。"""
+    且不得出现参考源的 new_candidate 保留口径（Bandi 只认 existing registry）。"""
     provider = _RecordingProvider()
     provider.add_response(LLMResponse(content=_draft_response_text()))
     provider.add_response(LLMResponse(content=_review_text(passed=True)))

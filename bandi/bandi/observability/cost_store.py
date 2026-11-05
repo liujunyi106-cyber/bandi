@@ -303,7 +303,7 @@ class CostStore:
         """等待**持久化屏障**（不停止接收）：队列空 **且** 无在途未提交条目。
 
         此前只等 `queue.empty()`——消费者已 get 未 commit 的窗口内会提前返回
-        调用方误以为账已落库。
+        调用方误以为账已落库（破坏者审查实锤：5000 条压力下 flush 返回时 47 条在途）。
         """
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:

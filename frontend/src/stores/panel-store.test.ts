@@ -1,5 +1,5 @@
 /**
-  * 功能：右栏 v5 状态机测试（开合/页签/联动/宽度/自动展开记忆——）。
+ * 功能：右栏 v5 状态机测试（开合/页签/联动/宽度/自动展开记忆——@base docs/前端设计规划.md §8）。
  */
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -126,7 +126,7 @@ describe("panel-store", () => {
     expect(usePanelStore.getState().view).toBe("files");
   });
 
-  it("setWidth 按会话钳制", () => {
+  it("setWidth 按会话钳制（260~640；2026-10-03 min 两轮下调 320→280→260）", () => {
     usePanelStore.getState().setWidth("s1", 100);
     expect(usePanelStore.getState().widthBySession.s1).toBe(260);
     usePanelStore.getState().setWidth("s1", 9999);
@@ -135,7 +135,7 @@ describe("panel-store", () => {
     expect(usePanelStore.getState().widthBySession.s1).toBe(PANEL_WIDTH_DEFAULT + 10);
   });
 
-  it("resetWidth 清除手动覆盖", () => {
+  it("resetWidth 清除手动覆盖（2026-10-04：双击手柄回窗口自适应）", () => {
     usePanelStore.getState().setWidth("s1", 420);
     expect(usePanelStore.getState().widthBySession.s1).toBe(420);
     usePanelStore.getState().resetWidth("s1");

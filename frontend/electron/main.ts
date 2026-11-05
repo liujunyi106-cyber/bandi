@@ -1,18 +1,28 @@
 /**
-  * 功能：Electron 主进程壳。
+ * 功能：Electron 主进程壳（@base docs/ADR.md ADR-42 / docs/前端设计规划.md §12）。
  * dev：加载 vite dev server（VITE_DEV_SERVER_URL），三进程并行（vite + uvicorn + 本窗口）。
-  * 生产：加载 `dist/index.html`。
-  * 托盘 / 窗口状态记忆 / 自启动 / `/ready` 就绪探针后开窗 → 细化。
+ * 生产：spawn FastAPI sidecar → /ready → loadURL（SPA + API + WS 单端口）；失败降级 loadFile。
+ * 桌面体验：托盘、窗口状态记忆、开机自启、通知权限。
  */
-import { BrowserWindow, app, session, shell } from "electron";
+import { BrowserWindow, Menu, Tray, app, session, shell } from "electron";
 import path from "node:path";
 
+import { loadSettings, saveSettings } from "./app-settings";
 import { SidecarManager } from "./sidecar";
+import { applyAutoLaunch, createTray, refreshTrayMenu } from "./tray";
+import { checkForUpdatesInteractive, initUpdater } from "./updater";
+import { loadWindowState, saveWindowState } from "./window-state";
 
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
+const APP_USER_MODEL_ID = "com.bandi.desktop";
 
 /** sidecar 生命周期管理器（生产模式唯一实例；dev 模式不用）。 */
 const sidecar = new SidecarManager();
+const settings = loadSettings();
+
+let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
+let quitting = false;
 
 function safeUrl(value: string): URL | null {
   try {
@@ -29,16 +39,57 @@ function openExternalSafely(value: string): void {
   void shell.openExternal(value);
 }
 
-/* 功能：创建主窗口（1440×900，最小 1024×700 —— 窗口与断点）。 */
+/** 功能：显示并聚焦主窗口（托盘点击、第二实例、激活事件共用）。 */
+function showMainWindow(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createWindow();
+    return;
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+/** 功能：把偏好设置里的开机自启写入系统并刷新托盘勾选。 */
+function syncAutoLaunch(enabled: boolean): void {
+  settings.autoLaunch = enabled;
+  saveSettings(settings);
+  applyAutoLaunch(enabled);
+  if (tray) refreshTrayMenu(tray, enabled, trayHandlers);
+}
+
+const trayHandlers = {
+  showWindow: showMainWindow,
+  quit: () => {
+    quitting = true;
+    app.quit();
+  },
+  toggleAutoLaunch: syncAutoLaunch,
+  checkUpdate: () => void checkForUpdatesInteractive(),
+};
+
+/** 功能：创建主窗口（尺寸与位置取自上次退出时的记忆）。 */
 function createWindow(): void {
+  const state = loadWindowState();
   const win = new BrowserWindow({
-    width: 1440,
-    height: 900,
+    width: state.width,
+    height: state.height,
+    x: state.x,
+    y: state.y,
     minWidth: 1024,
     minHeight: 700,
     show: false,
     backgroundColor: "#f7f8fa",
     autoHideMenuBar: true,
+    // 自绘标题栏：44px 拖拽区（渲染层 index.css 的 --titlebar-h 必须同值），
+    // 由系统只画右上角三个控制按钮，底色与页面一致、不显示图标与标题。
+    ...(process.platform === "win32"
+      ? {
+          titleBarStyle: "hidden" as const,
+          titleBarOverlay: { color: "#ffffff", symbolColor: "#111111", height: 44 },
+        }
+      : {}),
+    icon: path.join(__dirname, "assets", "icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -46,8 +97,31 @@ function createWindow(): void {
       sandbox: true,
     },
   });
+  mainWindow = win;
 
-  win.once("ready-to-show", () => win.show());
+  win.once("ready-to-show", () => {
+    if (state.maximized) win.maximize();
+    win.show();
+  });
+
+  // 关窗即最小化到托盘（可在偏好里改），托盘「退出」才真正结束进程
+  win.on("close", (event) => {
+    saveWindowState(win);
+    if (!quitting && settings.closeToTray) {
+      event.preventDefault();
+      win.hide();
+    }
+  });
+
+  let saveTimer: NodeJS.Timeout | null = null;
+  const scheduleSave = () => {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      if (!win.isDestroyed()) saveWindowState(win);
+    }, 400);
+  };
+  win.on("resize", scheduleSave);
+  win.on("move", scheduleSave);
 
   // 外链一律交给系统浏览器，不在壳内开新窗口；仅放行 http/https/mailto。
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -74,7 +148,7 @@ function createWindow(): void {
         responseHeaders: {
           ...(details.responseHeaders ?? {}),
           "Content-Security-Policy": [
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+            "default-src 'self'; font-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
               "img-src 'self' data: blob: https:; connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:*; " +
               "worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'self'",
           ],
@@ -89,7 +163,7 @@ function createWindow(): void {
     return;
   }
 
-  // 生产模式：spawn sidecar → /ready → loadURL（SPA+API+WS 单端口）。
+  // 生产模式（ADR-42）：spawn sidecar → /ready → loadURL（SPA+API+WS 单端口）。
   // sidecar 起不来/超时/崩溃耗尽 → 降级 loadFile（静态壳，不白屏）。
   void sidecar.start().then((handle) => {
     if (handle) {
@@ -103,32 +177,46 @@ function createWindow(): void {
 
 /** 功能：sidecar 彻底失败后的窗口降级（loadURL 已发出的场景重载静态壳）。 */
 function degradeWindowToStatic(): void {
-  const [win] = BrowserWindow.getAllWindows();
-  if (!win || win.isDestroyed()) return;
-  const current = win.webContents.getURL();
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const current = mainWindow.webContents.getURL();
   if (current.startsWith("http://127.0.0.1:")) {
-    void win.loadFile(path.join(__dirname, "..", "dist", "index.html"));
+    void mainWindow.loadFile(path.join(__dirname, "..", "dist", "index.html"));
   }
+}
+
+/** 功能：只对本地 sidecar 页面放行通知权限（桌面通知与提示音依赖它）。 */
+function allowNotificationsForLocalApp(): void {
+  session.defaultSession.setPermissionRequestHandler((contents, permission, callback) => {
+    const url = safeUrl(contents.getURL());
+    const isLocalApp = url?.hostname === "127.0.0.1" || url?.hostname === "localhost";
+    callback(permission === "notifications" && Boolean(isLocalApp));
+  });
 }
 
 // 单实例锁：重复启动时聚焦既有窗口
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on("second-instance", () => {
-    const [existing] = BrowserWindow.getAllWindows();
-    if (!existing) return;
-    if (existing.isMinimized()) existing.restore();
-    existing.focus();
-  });
+  app.setAppUserModelId(APP_USER_MODEL_ID);
+  // 功能：移除 Electron 默认应用菜单（应用/编辑），桌面端只用自绘标题栏与托盘菜单。
+  Menu.setApplicationMenu(null);
+
+  app.on("second-instance", showMainWindow);
 
   void app.whenReady().then(() => {
     // sidecar 崩溃重启耗尽 → 已加载的 http 页面降级为静态壳
     sidecar.setGiveUpListener(() => degradeWindowToStatic());
+    allowNotificationsForLocalApp();
     createWindow();
-    app.on("activate", () => {
-      if (BrowserWindow.getAllWindows().length === 0) createWindow();
-    });
+    applyAutoLaunch(settings.autoLaunch);
+    tray = createTray(settings.autoLaunch, trayHandlers);
+    tray.on("click", showMainWindow);
+    initUpdater();
+    app.on("activate", showMainWindow);
+  });
+
+  app.on("before-quit", () => {
+    quitting = true;
   });
 
   app.on("will-quit", () => {
@@ -136,7 +224,8 @@ if (!app.requestSingleInstanceLock()) {
     sidecar.stop();
   });
 
+  // 关闭到托盘时窗口只是隐藏，不能因 window-all-closed 退出
   app.on("window-all-closed", () => {
-    if (process.platform !== "darwin") app.quit();
+    if (quitting || !settings.closeToTray) app.quit();
   });
 }

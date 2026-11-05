@@ -29,7 +29,7 @@ CONSOLIDATION_MIN_RECALLS = 2
 # 但复用的经验仍值得晋升（openclaw min_unique_queries 语义）。
 # 0.5 底线：纯基准 0.4 的普通轮（无转向/无工具错误/无异常终止信号）即便被
 # n-gram 召回互相 bump 也不得走复用通道——否则普通对话会被相似问句顶成
-# 提名噪音。
+# 提名噪音（真机实证：20 轮普通问答被宽松召回顶到 recall=2 全线提名）。
 CONSOLIDATION_MIN_MULTI_RECALLS = 2
 CONSOLIDATION_MIN_MULTI_IMPORTANCE = 0.5
 CONSOLIDATION_MIN_UNIQUE_QUERIES = 2
@@ -76,19 +76,10 @@ def _age_days(created_at: str | None, now: datetime) -> float:
 
 
 def _is_low_value_episode(summary: str) -> bool:
-    """功能：判定情节摘要是否为寒暄/自我介绍/能力清单类低价值内容。
+    """功能：判断情节摘要是否只是噪音（审批等待/回执/寒暄/自我介绍/可推导）。"""
+    from bandi.memory.ingest_review import is_noise_memory
 
-    同类问题在整合路径的体现：此类情节会被相似问句反复召回
-    虚高）触发晋升，进入暂存区变成噪音审批。只看「→ 回答:」之后的回复侧——
-    用户问题里的寒暄不代表情节无价值（如「你好，帮我修个 bug」）。
-    """
-    from bandi.memory.ingest_review import is_approval_wait_text, is_self_intro_reply
-
-    body = str(summary or "")
-    if not body:
-        return True
-    answer = body.rsplit("→ 回答:", 1)[-1] if "→ 回答:" in body else body
-    return is_self_intro_reply(answer) or is_approval_wait_text(body)
+    return is_noise_memory(summary) is not None
 
 
 # 功能：用户已拒绝晋升的情节标记——打标后永不进入晋升通道。拒绝必须粘滞：

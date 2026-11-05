@@ -23,7 +23,7 @@ execution_isolation:
   network: none
   memory_mb: 1024
   cpu_seconds: 300
-  # 只读无进展循环检测窗口；0=默认 5，>0 显式覆盖
+  # E2 只读无进展循环检测窗口；0=默认 5，>0 显式覆盖
   loop_detection_window: 0
 
 tools:
@@ -39,11 +39,11 @@ tools:
     persist_to_work_item: true
     emit_runtime_events: true
   feature_flags:
-    # 工具组开关：未列出的组默认开放（零迁移）。
-    # 生效路径：本文件是模板/示例——BandiConfig.load() 只读 ~/.bandi/config.yaml
-    # （或 $BANDI_ENV 指定的环境配置）。要真正关闭某组，请把本段复制到
-    # ~/.bandi/config.yaml 后再改（改本文件不生效）。
-    # 关闭整组示例（放 ~/.bandi/config.yaml）：
+    # CC-24 feature 闂ㄦ帶锛氭湭鍒楀嚭鐨勭粍榛樿寮€鏀撅紙闆惰縼绉伙級銆?
+    # 鈿狅笍 鐢熸晥璺緞锛氭湰浠撳簱 config.yaml 鏄ā鏉?绀轰緥鈥斺€擮nticaConfig.load() 鍙
+    # ~/.bandi/config.yaml锛? $BANDI_ENV 鐜閰嶇疆锛夈€傝鐪熸鍏抽棴鏌愮粍锛岃鎶婃湰娈?
+    # 澶嶅埗鍒?~/.bandi/config.yaml 鍚庡啀鏀癸紙鏀规湰鏂囦欢涓嶇敓鏁堬級銆?
+    # 鍏抽棴鏁寸粍绀轰緥锛堟斁 ~/.bandi/config.yaml锛夛細
     #   workflow: false
     tool_groups:
       workflow: true
@@ -65,8 +65,8 @@ prefetch:
   focused_memory: true
 
 models_dev:
-  # 启动时按 TTL 拉取 models.dev 模型元数据，断网回退缓存/硬编码。
-  # 生效路径：本文件是模板——复制本段到 ~/.bandi/config.yaml 才生效。
+  # 鏂规 C锛氬惎鍔ㄦ椂鎸?TTL 鎷夊彇 models.dev 妯″瀷鍏冩暟鎹紝鏂綉鍥為€€缂撳瓨/纭紪鐮併€?
+  # 鐢熸晥璺緞锛氭湰浠撳簱 config.yaml 鏄ā鏉库€斺€斿鍒舵湰娈靛埌 ~/.bandi/config.yaml 鎵嶇敓鏁堛€?
   enabled: true
   url: "https://models.dev/api.json"
   cache_ttl_hours: 24.0
@@ -80,8 +80,8 @@ verification:
 
 
 permissions:
-  # 分层权限规则（user/project/local/BANDI_CONFIG 四层逐层叠加 + 来源标注）——
-  # 字符串简写默认放行（如 'bash:git:*'），或 {"pattern": "...", "action": "deny|ask"}
+  # CT-06锛氬垎灞傛潈闄愯鍒欙紙user/project/local/BANDI_CONFIG 鍥涘眰閫愬眰鍙犲姞 + 鏉ユ簮鏍囨敞锛夆€斺€?
+  # 瀛楃涓茬畝鍐欓粯璁ゆ斁琛岋紙濡?'bash:git:*'锛夛紝鎴?{"pattern": "...", "action": "deny|ask"}
   rules: []
   deny_tools: []
   ask_tools: ["bash", "write", "ontology_define", "ontology_assert", "python_exec", "browser"]
@@ -92,9 +92,9 @@ permissions:
   # true = fail-closed 抛错拒绝执行（防 DB 故障把受限用户按高权限档放行）
   strict_role_binding: false
 
-# hooks 事件配置，事件：PreToolUse/PostToolUse/PostToolUseFailure/
-# UserPromptSubmit/SessionStart/SessionEnd/PreCompact/PostCompact；四动作
-# command/prompt/agent/http；项目级 hooks 需 BANDI_TRUST_PROJECT_HOOKS=1 信任
+# CT-07锛歨ooks 浜嬩欢閰嶇疆锛? 浜嬩欢 PreToolUse/PostToolUse/PostToolUseFailure/
+# UserPromptSubmit/SessionStart/SessionEnd/PreCompact/PostCompact锛涘洓鍔ㄤ綔
+# command/prompt/agent/http锛涢」鐩眰 hooks 闇€ BANDI_TRUST_PROJECT_HOOKS=1 淇′换锛?
 # 安全：command 默认按 exec 拆分执行（分号/重定向是字面参数，无 shell 展开）；
 # 确需 shell 语义时显式加 shell: true（注入面自担）。
 # hooks:
@@ -108,7 +108,7 @@ safety:
   l2_threshold: 0.3
   block_threshold: 0.7
 
-# 记忆/会话生命周期维护（调度器 /api/scheduler/start 后按间隔执行；
+# D1：记忆/会话生命周期维护（调度器 /api/scheduler/start 后按间隔执行；
 # enabled=false 或 interval_hours<=0 关闭）
 memory_maintenance:
   enabled: true

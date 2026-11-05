@@ -1,5 +1,5 @@
 /**
-  * 功能：可插槽容器注册表（）。
+ * 功能：可插槽容器注册表（@base docs/前端设计规划.md §11 Slot 预留）。
  * 壳层只认固定 region；新面板（含 插件贡献）往注册表挂，AppShell 零改动。
  */
 import type { ComponentType } from "react";

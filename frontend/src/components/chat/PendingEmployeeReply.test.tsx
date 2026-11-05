@@ -9,6 +9,7 @@ describe("PendingEmployeeReply", () => {
     const row = screen.getByTestId("pending-employee-reply");
     expect(row).toHaveAttribute("data-role-id", "lead");
     expect(row).toHaveTextContent("Leader");
-    expect(row).toHaveTextContent("正在回复中…");
+    expect(screen.getByTestId("pending-employee-reply-status")).toHaveTextContent("正在回复中…");
+    expect(row.className).not.toContain("pl-5");
   });
 });

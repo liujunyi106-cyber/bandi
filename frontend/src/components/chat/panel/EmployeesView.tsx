@@ -1,5 +1,5 @@
 /**
-  * 功能：右栏员工视图（v5，）——以员工为主体的工作台
+ * 功能：右栏员工视图（v5，@base docs/前端设计规划.md §8）——以员工为主体的工作台：
  * 项目会话（.3 删甲后团队群聊由项目会话承载）= 员工列表 → 单击展开（摘要格：
  * 技能/任务/token/SOP + 技能胶囊 + 任务列表）；单聊 = 直出目标员工；普通会话 = 助理卡（秘书）。
  * @员工 → 自动展开该员工并滚动到位。
@@ -7,7 +7,7 @@
  * token panelApi.costDetail；任务 companyApi.workItems(role)（知识库档案绑定查询未接入 → 不设区）。
  */
 import { Bot, ChevronRight, Loader2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { AssistantAvatar } from "@/components/chat/AssistantAvatar";
@@ -21,7 +21,13 @@ import {
   SECRETARY_ROLE_ID,
 } from "@/lib/employee";
 import { cn } from "@/lib/utils";
-import { companyApi, type EmployeeSummary, type WorkItemSummary } from "@/services/company";
+import {
+  companyApi,
+  findDirectThread,
+  type EmployeeSummary,
+  type ThreadSummary,
+  type WorkItemSummary,
+} from "@/services/company";
 import {
   panelApi,
   type CostDetail,
@@ -41,18 +47,22 @@ const LIST_LIMIT = 8;
  * .2：会话维度（SOP/token）无会话时跳过请求显示占位；
  * 项目上下文（projectId）时切项目口径——SOP = 绑定卡数（能力档案 skill 资源）
  * Token = 该员工在本项目用量、任务按项目收敛、新增产物小节。
-  * 形态对齐概览。 */
+ * 形态对齐概览（用户拍板：摘要格 + 胶囊，非竖排文字列表）。 */
 function CardDetails({
   sessionId,
+  threadId,
   roleId,
   projectId,
   skills,
+  useSessionCost = false,
   indent = true,
 }: {
   sessionId: string;
+  threadId?: string;
   roleId: string;
   projectId?: string;
   skills: InstalledSkill[] | null;
+  useSessionCost?: boolean;
   indent?: boolean;
 }) {
   const t = useT();
@@ -65,10 +75,7 @@ function CardDetails({
   const [bindingCount, setBindingCount] = useState<number | null>(null);
   const [projectTokens, setProjectTokens] = useState<number | null>(null);
   const [artifacts, setArtifacts] = useState<ProjectArtifact[] | null>(null);
-  const loadedRef = useRef(false);
   useEffect(() => {
-    if (loadedRef.current) return;
-    loadedRef.current = true;
     // 会话维度数据（SOP/token）：员工单聊概览无会话 id（.2）——跳过请求显示占位
     if (sessionId) {
       void panelApi
@@ -82,25 +89,28 @@ function CardDetails({
     }
     // 项目口径（员工在本项目——绑定卡数 / token / 产物）
     if (projectId) {
-      // token 走**会话窗口**：有会话时按其线程过滤，避免显示项目历史累计
-      const usageRequest =
-        sessionId && typeof companyApi.threads === "function"
-          ? companyApi
-              .threads(projectId)
-              .then(
-                (result) =>
-                  result.threads.find((thread) => thread.session_id === sessionId)?.thread_id ?? "",
-              )
-              .catch(() => "")
-              .then((threadId) =>
-                threadId
-                  ? panelApi.projectUsage(projectId, roleId, threadId)
-                  : panelApi.projectUsage(projectId, roleId),
-              )
-          : panelApi.projectUsage(projectId, roleId);
-      void usageRequest
-        .then((result) => setProjectTokens(result.total_tokens))
-        .catch(() => undefined);
+      // 单聊用会话 cost（后端按 thread 聚合）；项目员工卡才用项目口径 token
+      if (!useSessionCost) {
+        const usageRequest =
+          sessionId && typeof companyApi.threads === "function"
+            ? companyApi
+                .threads(projectId)
+                .then(
+                  (result) =>
+                    result.threads.find((thread) => thread.session_id === sessionId)
+                      ?.thread_id ?? "",
+                )
+                .catch(() => "")
+                .then((threadId) =>
+                  threadId
+                    ? panelApi.projectUsage(projectId, roleId, threadId)
+                    : panelApi.projectUsage(projectId, roleId),
+                )
+            : panelApi.projectUsage(projectId, roleId);
+        void usageRequest
+          .then((result) => setProjectTokens(result.total_tokens))
+          .catch(() => undefined);
+      }
       void panelApi
         .projectArtifacts(projectId, roleId)
         .then((result) => setArtifacts(result.artifacts))
@@ -136,7 +146,7 @@ function CardDetails({
       setKnowledge([]);
       setWorkItems([]);
     }
-  }, [sessionId, roleId, projectId]);
+  }, [sessionId, threadId, roleId, projectId, useSessionCost]);
 
   const sopValue = projectId
     ? bindingCount === null
@@ -161,13 +171,17 @@ function CardDetails({
         <SummaryCard
           label={t("chat.panel.summaryTokens")}
           value={
-            projectId
-              ? projectTokens === null
-                ? "—"
-                : compactTokens(projectTokens)
-              : cost
+            useSessionCost
+              ? cost
                 ? compactTokens(cost.total_tokens)
                 : "—"
+              : projectId
+                ? projectTokens === null
+                  ? "—"
+                  : compactTokens(projectTokens)
+                : cost
+                  ? compactTokens(cost.total_tokens)
+                  : "—"
           }
         />
         <SummaryCard label={t("chat.panel.employeeSop")} value={sopValue} />
@@ -184,7 +198,7 @@ function CardDetails({
           }
         />
       </div>
-      {/* 技能列表 */}
+      {/* 技能列表（字段行——2026-09-26 用户拍板：胶囊语义不清，改与任务列表同款文字行） */}
       <div className="space-y-0.5" data-testid="employee-skills">
         <p className="text-chat-muted text-[10px] font-medium">{t("chat.panel.employeeSkills")}</p>
         {skills === null ? (
@@ -254,8 +268,10 @@ export function EmployeeRow({
   description,
   metadata,
   sessionId,
+  threadId,
   projectId,
   skills,
+  useSessionCost,
   expanded,
   onToggle,
   scrollOnMount,
@@ -265,8 +281,10 @@ export function EmployeeRow({
   description?: string;
   metadata?: Record<string, unknown>;
   sessionId: string;
+  threadId?: string;
   projectId?: string;
   skills: InstalledSkill[] | null;
+  useSessionCost?: boolean;
   expanded: boolean;
   onToggle: () => void;
   scrollOnMount?: boolean;
@@ -322,7 +340,14 @@ export function EmployeeRow({
         />
       </button>
       {expanded ? (
-        <CardDetails sessionId={sessionId} roleId={roleId} projectId={projectId} skills={skills} />
+        <CardDetails
+          sessionId={sessionId}
+          threadId={threadId}
+          roleId={roleId}
+          projectId={projectId}
+          skills={skills}
+          useSessionCost={useSessionCost}
+        />
       ) : null}
     </div>
   );
@@ -345,6 +370,27 @@ export function EmployeesView({ sessionId }: { sessionId: string }) {
   const [assistantOpen, setAssistantOpen] = useState(true);
   // 项目在职员工（项目成员口径——employee_status 非 inactive；员工档案补描述）
   const [projectMembers, setProjectMembers] = useState<EmployeeSummary[] | null>(null);
+  // 员工单聊的直聊线程：用其 chat session 查会话级 token/上下文，避免项目累计
+  const [dmThread, setDmThread] = useState<ThreadSummary | null>(null);
+
+  useEffect(() => {
+    if (mode !== "dm" || !targetRole || !dmProjectId || sessionId) {
+      setDmThread(null);
+      return;
+    }
+    let cancelled = false;
+    companyApi
+      .threads(dmProjectId)
+      .then(({ threads }) => {
+        if (!cancelled) setDmThread(findDirectThread(threads, targetRole));
+      })
+      .catch(() => {
+        if (!cancelled) setDmThread(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, targetRole, dmProjectId, sessionId]);
 
   useEffect(() => {
     if (!activeProjectId) {
@@ -441,9 +487,11 @@ export function EmployeesView({ sessionId }: { sessionId: string }) {
           roleId={targetRole}
           description={list.find((item) => item.role_id === targetRole)?.description}
           metadata={list.find((item) => item.role_id === targetRole)?.metadata}
-          sessionId={sessionId}
+          sessionId={sessionId || dmThread?.session_id || ""}
+          threadId={dmThread?.thread_id}
           projectId={dmProjectId || undefined}
           skills={boundSkillsFor(skills, list.find((item) => item.role_id === targetRole)?.skills)}
+          useSessionCost
           expanded
           onToggle={() => undefined}
         />

@@ -1,5 +1,5 @@
-# 功能：契约测试——search_unified 跨分类 score 归一化
-"""契约：MemoryManager.search_unified 跨分类统一排序前
+# 功能：契约测试——search_unified 跨分类 score 归一化（审查项10）
+"""契约（审查项 10 / 破坏者）：MemoryManager.search_unified 跨分类统一排序前
 long_term/episodic 的 score 含未限幅 importance（可 >1），其量纲上限高而系统性
 压过 working/project_md（恒为 relevance∈[0,1]）——即使后者查询相关度满格。
 归一化后同量纲下比较，破坏者（importance 高但 relevance 低的 episodic）不得

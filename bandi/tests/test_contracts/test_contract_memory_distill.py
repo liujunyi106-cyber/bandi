@@ -187,7 +187,7 @@ class TestDistilledMemoryShape:
 class TestSyncFacadeProviderLifecycle:
     def test_fresh_provider_per_call(self, monkeypatch) -> None:
         """每次同步提炼独立构建 provider——跨 asyncio.run 复用会在绑定旧
-        事件循环的 HTTP 客户端上报「Event loop is closed」。"""
+        事件循环的 HTTP 客户端上报「Event loop is closed」（真机实证）。"""
         from bandi.memory import distill as distill_mod
 
         builds: list[int] = []

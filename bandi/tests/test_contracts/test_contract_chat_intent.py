@@ -1,6 +1,7 @@
 # 功能：契约——群聊意图四态：
 # confirm=确认执行（顶层接单出计划，turn_type=INTAKE）/ adjust=调整返工 /
 # query=咨询问答（chat_kind=query——右栏不出发计划）/ task=执行指令（无标记）。
+# 钉行为：分类词表命中与短句限制 / 卡的 chat_kind 标记与 turn_type 映射 /
 # 破坏者：长文含确认词不误判 / task 不标记。
 from __future__ import annotations
 

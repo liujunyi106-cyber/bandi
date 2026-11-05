@@ -94,7 +94,18 @@ describe("useHostEvents", () => {
     expect(useChatStore.getState().employeeProgress["p1::t1::r1"]).toHaveLength(1);
     expect(useChatStore.getState().employeeProgressDone["p1::t1::r1"]).toBe(true);
 
-    // 新执行首帧 → 清槽重建（旧节点不残留）
+    // 新执行首帧（started）→ 清槽重建（旧节点不残留）
+    act(() => {
+      wsHarness.shellFrame?.({
+        type: "thread_progress",
+        data: {
+          project_id: "p1",
+          thread_id: "t1",
+          role_id: "r1",
+          event: { type: "started", data: {} },
+        },
+      });
+    });
     act(() => {
       wsHarness.shellFrame?.({
         type: "thread_progress",
@@ -167,33 +178,32 @@ describe("useHostEvents", () => {
     }
   });
 
-  it("破坏者（REV-137b2-9）：公司链路断开 → 仍在执行的过程槽结算（附断线注记）并被兜底回收", () => {
+  it("破坏者（REV-137b2-9）：公司链路断开不结算在跑过程（不注入连接中断）", () => {
     vi.useFakeTimers();
     try {
       renderHook(() => useHostEvents());
       act(() => {
         wsHarness.shellFrame?.(progressFrame("thinking_delta", { text: "跑着" }));
       });
-      // 断线前：无完成标记（过程块显示「执行中」——错过的终态帧补不回来的那种状态）
       expect(useChatStore.getState().employeeProgressDone["p1::t1::r1"]).toBeUndefined();
 
       act(() => {
         wsHarness.companyStatus?.("reconnecting");
       });
       const nodes = useChatStore.getState().employeeProgress["p1::t1::r1"];
-      expect(nodes[nodes.length - 1]).toMatchObject({ kind: "note", noteType: "disconnected" });
-      expect(nodes[0]).toMatchObject({ status: "success" });
-      expect(useChatStore.getState().employeeProgressDone["p1::t1::r1"]).toBe(true);
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0]).toMatchObject({ kind: "thought", status: "running" });
+      expect(useChatStore.getState().employeeProgressDone["p1::t1::r1"]).toBeUndefined();
 
-      // 结算槽同样进入兜底回收（2min）——不永久悬浮
       act(() => {
         vi.advanceTimersByTime(120_000);
       });
-      expect(useChatStore.getState().employeeProgress["p1::t1::r1"]).toBeUndefined();
+      expect(useChatStore.getState().employeeProgress["p1::t1::r1"]).toHaveLength(1);
     } finally {
       vi.useRealTimers();
     }
   });
+
 
   it("对照组（REV-137b2-9）：链路恢复/保持 open 不触发结算（不误伤在跑的执行）", () => {
     renderHook(() => useHostEvents());
@@ -243,6 +253,9 @@ describe("useHostEvents", () => {
       // 到期前新执行开始（重置槽与完成标记）——留在旧 窗口之外、2min 窗口之内
       act(() => {
         vi.advanceTimersByTime(119_000);
+      });
+      act(() => {
+        wsHarness.shellFrame?.(progressFrame("started", {}));
       });
       act(() => {
         wsHarness.shellFrame?.(progressFrame("thinking_delta", { text: "新任务" }));
@@ -346,7 +359,7 @@ describe("137c-B4 宿主通知 i18n（REV-137b2-10）", () => {
 // 发现：宿主通道的 interaction 帧此前**只发通知、不留帧**。
 // 会话通道（use-session-stream）只投递「当前活动会话」的帧 → 用户切到别处时
 // 该会话的审批帧只经宿主通道到达 → 切回后决策区无卡 → Agent 永久阻塞（死路）。
-describe("跨会话审批帧必须留帧（不可只发通知）", () => {
+describe("2026-09-30 真机：跨会话审批帧必须留帧（不可只发通知）", () => {
   beforeEach(() => {
     wsHarness.shellFrame = null;
     wsHarness.sessionFrame = null;

@@ -1,4 +1,4 @@
-# 功能：分段跑 pytest —— basetemp 收到系统临时目录、按组拆分，避免全量单跑占满系统盘
+# 功能：分段跑 pytest —— basetemp 固定到 D 盘、按组拆分，避免全量单跑耗尽 C 盘临时存储
 # 用法：
 #   .\scripts\run-tests.ps1 -Group agent
 #   .\scripts\run-tests.ps1 -Group contracts -Chunk 1 -Chunks 3
@@ -8,7 +8,7 @@ param(
     [string]$Group = "all",
     [int]$Chunk = 0,
     [int]$Chunks = 1,
-    [string]$BaseTemp = (Join-Path $env:TEMP "bandi-pytest"),
+    [string]$BaseTemp = "D:\_pytest_tmp",
     [switch]$StopOnFail
 )
 

@@ -1,6 +1,7 @@
 # 功能：技能分支版本化（per-owner 分支：fork / 更新 / 同步 / 晋升 / 回滚 + semver 快照）。
 # AgentSkillBranchVersion + `ensure_agent_skill_branch`（fork）/`update_branch_skill`/
 # `sync_branch_from_overall`/`promote_branch_to_overall`/`rollback_branch` + next_*_version。
+# per-Employee 均可承载）；② 分支落**独立文件**（复用 serializer 原子写先例）；
 # 不改 `EmployeeEvolutionManager`（其 SKILL.md + 整数版本口径与本块互不干扰）。
 from __future__ import annotations
 
@@ -279,7 +280,7 @@ class SkillBranching:
         card: SkillCard,
         change_summary: str,
     ) -> list[SkillBranchVersion]:
-        """功能：追加版本快照——同版本已存在则原样返回
+        """功能：追加版本快照——同版本已存在则原样返回（幂等，对齐参考源
         `_ensure_branch_version`：同一版本不重复落快照）。"""
         if any(item.version == version for item in branch.versions):
             return list(branch.versions)

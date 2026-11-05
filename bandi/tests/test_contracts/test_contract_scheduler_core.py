@@ -1,4 +1,4 @@
-# 功能：定时任务调度器契约（B）——ScheduledTask 模型 + TaskStore 持久化 + TaskScheduler tick 语义
+# 功能：Day134 定时任务调度器契约（B）——ScheduledTask 模型 + TaskStore 持久化 + TaskScheduler tick 语义
 # 背景：调度循环复用 company/heartbeat.run_tick_loop 共享骨架（tick 容错 + interval 钳制 + stop 清理）。
 # runner 注入（默认走 headless agent turn）——契约钉 tick 触发/推进/容错，不钉执行体内核。
 # 契约钉行为族：store CRUD+持久化 / 到期触发·未到期静默 / disabled 跳过 / 触发后 last_run+next_run

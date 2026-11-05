@@ -1,5 +1,5 @@
 /**
-  * 功能：空员工状态引导。
+ * 功能：空员工状态引导（@base docs/前端设计规划.md §6 空态引导——Day137）。
  * 组织还没有员工时，群聊/单聊/会话空态展示 → 组织面板（团队页）创建员工。
  */
 import { UserRoundPlus } from "lucide-react";

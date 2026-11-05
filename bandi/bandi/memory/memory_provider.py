@@ -28,7 +28,7 @@ _PROJECT_MD_SNIPPET_CHARS = 300
 
 
 def _unit_score(value: float) -> float:
-    """跨分类 score 归一化到统一 [0,1] 无量纲——各分类原始
+    """跨分类 score 归一化到统一 [0,1] 无量纲（项10 审查补齐）——各分类原始
     score 量纲不同（long_term/episodic 乘未限幅 importance 可 >1，working/
     project_md 恒为 relevance∈[0,1]）。跨分类排序前限幅到 [0,1]，杜绝某一分类
     因自身量纲上限高而系统性压过其余分类，使 score 可比（同量纲下 relevance/
@@ -164,8 +164,10 @@ def _query_tokens(query: str) -> list[str]:
 def _description_boost(meta: dict[str, Any], query: str) -> float:
     """功能：一句话索引命中加成——description 是「相关性判断」专用索引。
 
-    先用索引判断这条记忆与当前问题相不相关，再决定要不要读全文。索引命中即给
-    相关性加权，索引缺失或不命中保持 1.0（不惩罚老数据）。
+    移植 cc-haha `findRelevantMemories` 的做法（`description` 字段的原文注释：
+    "used to decide relevance in future conversations"）：先用索引判断这条记忆
+    与当前问题相不相关，再决定要不要读全文。索引命中即给相关性加权，索引缺失
+    或不命中保持 1.0（不惩罚老数据）。
     """
     desc = str(meta.get("description") or "").strip()
     if not desc or not query:
@@ -201,7 +203,7 @@ def _fusion_score(meta: dict[str, Any], intent_bias: float = 0.0) -> float:
 
 
 def _apply_category_floor(hits: list[MemoryHit], limit: int) -> list[MemoryHit]:
-    """项3：per-category 公平保底——纯 score 排序下高 importance 分类可能
+    """审查项3：per-category 公平保底——纯 score 排序下高 importance 分类可能
     占满 top-k，其他有命中的分类被整体挤出。保底：每个有命中的分类至少 1 条进
     top-k（前提：有命中分类数 ≤ limit；limit 本身仍是硬上限）。
 
@@ -621,7 +623,7 @@ class MemoryManager:
         history_conclusion/task_state 之一时按 routing.route_bias 对分类乘倍率
         （确定性；None/未知 hint 零行为）。
 
-        fail-safe：底层存储异常降级空列表，绝不炸主链。
+        fail-safe：底层存储异常降级空列表（LeAgent recall 先例），绝不炸主链。
         """
         q = (query or "").strip()
         if not q:

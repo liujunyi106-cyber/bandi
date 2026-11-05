@@ -1,6 +1,6 @@
 # 功能：外部席位执行器——外部 Agent CLI 一次性执行（路线 真外聘）
 #
-# 设计：
+# 设计（多异质 EX 块拍板，docs/技术债务清单.md ）：
 # - 一次性执行：把外部合约（audience=external）拼装为 prompt，喂给外部引擎 CLI
 # - 只换实现不动调度器：实现 SeatExecutor 协议，CompanyDispatcher 按
 # - 降级语义：外部引擎不回报 token——total_tokens 如实标 None +

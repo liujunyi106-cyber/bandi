@@ -45,7 +45,7 @@ def _install(tmp_path: Path, monkeypatch: Any) -> None:
 
 
 def _ctx(team_id: str = "", global_only: bool = False) -> ToolPermissionContext:
-    # 功能：模拟 executor 透传的 per-call 作用域
+    # 功能：模拟 executor 透传的 per-call 作用域（与 role_fs_scopes 同构）
     return ToolPermissionContext(
         extra={"skill_scope": {"team_id": team_id, "global_only": global_only}}
     )

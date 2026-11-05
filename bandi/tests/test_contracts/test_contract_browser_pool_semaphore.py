@@ -1,7 +1,7 @@
 """
 契约族：BrowserPool 信号量生命周期（建页失败不得泄漏 permit）。
 
-背景
+背景（本次全量审查发现，阻塞类）：
 - `tools/web/browser_pool.py::acquire()` 先 `await self._sem.acquire()` 再
   `await self._new_page()`。`_new_page()` 会触发懒加载 `_launch()`（Playwright 启动
   chromium，无系统 Chrome 时还要回退重试）——启动失败/崩溃/new_page 超时都会抛出。

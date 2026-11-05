@@ -2,7 +2,7 @@
 """
   倒排完备性：search_entries 的返回结果必须与「全表 title+hook+body 子串
      匹配」的朴素实现逐条一致（score + 排序顺序）——倒排只做候选剪枝
-     不得改变检索语义
+     不得改变检索语义（审查项 #11/#9，#9 倒排索引 + 稳定 ranking）
   规模加速：候选剪枝成立——含查询 token 的 entry 才被评分，不含的
   稳定 ranking：同 relevantce 的 entry 按 created/entry_id 稳定序（与
      _build_index 排序一致），不因倒排引入随机序
@@ -71,7 +71,7 @@ class TestInvertedCompleteness:
     )
     def test_result_matches_naive_semantics(self, tmp_path: Any, query: str) -> None:
         """倒排结果必须与朴素子串匹配召回一致（集合与顺序不变式）——
-        后 FTS 命中时分数由 bm25 相关度承载（不再恒 1.0）
+        HB-P1后 FTS 命中时分数由 bm25 相关度承载（不再恒 1.0）
         契约钉「不丢/不错排」而非具体分数口径。"""
         store = _seed_entries(_store(tmp_path))
         got = store.search_entries(query, limit=10)

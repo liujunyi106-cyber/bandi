@@ -1,4 +1,4 @@
-# 功能：Checkpoint 持久化与恢证
+# 功能：Checkpoint 持久化与恢复验证
 
 from __future__ import annotations
 

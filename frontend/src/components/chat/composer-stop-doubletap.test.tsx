@@ -34,7 +34,7 @@ function setup() {
   return { onStop, user, stop: screen.getByTestId("composer-stop") };
 }
 
-describe("停止双触发", () => {
+describe("停止双触发（2026-09-30 用户拍板）", () => {
   it("单次点击不停止（首击不得等同于「按钮坏了」）", async () => {
     const { onStop, user, stop } = setup();
     await user.click(stop);

@@ -383,7 +383,7 @@ def strip_images_from_messages(messages: list[Message]) -> tuple[list[Message], 
 def _prune_tool_outputs_by_budget(msgs: list[Message], stats: CompressionStats) -> list[Message]:
     """
     _PRUNE_PROTECT_TOKENS 的更早输出替换规则摘要；最近 _PRUNE_PROTECT_RECENT_TURNS
-    个 user-turn 保护；保护名单豁免；可剪量低于门槛不动作。"""
+    个 user-turn 保护；保护名单豁免；可剪量低于门槛不动作（opencode prune 四维同构）。"""
     from bandi.tools.result_summary import is_already_shaped, rule_summary
 
     result = list(msgs)
@@ -438,8 +438,8 @@ def _prune_tool_outputs_by_budget(msgs: list[Message], stats: CompressionStats) 
 
 
 def prune_before_request(messages: list[Message]) -> tuple[list[Message], int]:
-    """功能：每次 LLM 请求前的零 LLM 免费 prune
-    每请求执行）——旧工具输出超保护预算替换占位符 + 旧附件/确认对清理。
+    """功能：每次 LLM 请求前的零 LLM 免费 prune（审计 2.11，cc-haha microcompactMessages
+    每请求执行同构）——旧工具输出超保护预算替换占位符 + 旧附件/确认对清理。
     低于收益门槛/幂等场景不动消息（既有 prune 语义），返回（消息, 清理计数）。"""
     stats = CompressionStats()
     msgs = _prune_tool_outputs_by_budget(messages, stats)

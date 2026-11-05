@@ -5,6 +5,7 @@
 跨队 fail-closed（A 队角色会话不引用 B 队卡）。
 
 断言「最终产物」：每队卡被各自归属 team 的执行会话完成、执行会话 key 互异
+home team 映射在运行时正确注入。
 """
 
 from __future__ import annotations

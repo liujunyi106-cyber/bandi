@@ -1,6 +1,6 @@
 """契约：任务应答快照不得进长期记忆（第 ⑥ 类事实性闸门）。
 
-L1 G20 组暴露：72 条跑完，长期记忆里灌进多条**助手应答正文**——它们
+真机 L1 G20 组暴露：72 条跑完，长期记忆里灌进多条**助手应答正文**——它们
 "有具体事实"故前五类闸门都拦不住，但本质是**一次查询的结果快照**：
 
 - G20-04「去重后共 5 人，分别是张伟、李娜、王芳、刘洋、**陈敏**」
@@ -32,7 +32,7 @@ REJECT_CASES = [
         id="g20-08-引述型无计数",
     ),
     pytest.param(
-        "已扫描 C:\\Users\\alice\\Desktop\\报告 目录，共 12 个文件", id="无扩展名绝对路径"
+        "已扫描 C:\\Users\\10293\\Desktop\\报告 目录，共 12 个文件", id="无扩展名绝对路径"
     ),
     pytest.param("处理 `out/人员.txt` 内容，合计 40 条记录", id="合计式"),
     pytest.param("`fixtures/staff.csv` 一共有 5 个人", id="一共有+人"),
@@ -40,7 +40,7 @@ REJECT_CASES = [
 
 ALLOW_CASES = [
     pytest.param("老板习惯用 fixtures/ 目录下的数据做分析", id="含路径但无结论"),
-    pytest.param("老板把素材放在 C:\\Users\\alice\\Desktop\\L1评测素材 里", id="绝对路径但无结论"),
+    pytest.param("老板把素材放在 C:\\Users\\10293\\Desktop\\L1评测素材 里", id="绝对路径但无结论"),
     pytest.param("老板的 DeepSeek API key 已配置完成，模型可用", id="无路径的事实"),
     pytest.param("老板要求所有报告输出到 out/ 目录", id="无路径的偏好"),
     pytest.param("项目采用 pytest -n 4 并行跑测试", id="技术约定"),

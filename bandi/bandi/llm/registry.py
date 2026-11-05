@@ -13,10 +13,11 @@ _COMPAT_DEFAULT_BASE_URLS: dict[str, str] = {
     "openrouter": "https://openrouter.ai/api/v1",
     "opencode": "https://opencode.ai/zen/v1",
     "opencode-go": "https://opencode.ai/inference/go/openai/v1",
+    "agnes": "https://apihub.agnes-ai.com/v1",
 }
 
 
-class ProviderRegistry:
+class ProviderRegistry:  # 功能：Provider 注册与工厂，模型/供应商→Provider 映射 + 按需实例化
     def __init__(self, config: BandiConfig | None = None):
         self._providers: dict[str, type[BaseProvider]] = {}
         self._instances: dict[str, BaseProvider] = {}
@@ -26,7 +27,7 @@ class ProviderRegistry:
 
     @staticmethod
     def _resolved(config: BandiConfig) -> BandiConfig:
-        # 功能：套用 Provider 档案覆盖
+        # 功能：套用 Provider 档案覆盖（Day137b-2b 唯一解析入口在 `llm/profiles`）——
         from bandi.llm.profiles import with_resolved_llm
 
         return with_resolved_llm(config)
@@ -55,12 +56,15 @@ class ProviderRegistry:
         self.register("minimax", OpenAICompatProvider)
         self.register("mimo", OpenAICompatProvider)
         self.register("ollama", OpenAICompatProvider)
+        # agnes hub（apihub.agnes-ai.com/v1）同为 OpenAI 兼容协议
+        self.register("agnes", OpenAICompatProvider)
         # opencode zen（opencode.ai/zen/v1）同为 OpenAI 兼容协议；免费档零定价
         self.register("opencode", OpenAICompatProvider)
         # OpenCode Go（opencode.ai/inference/go/openai/v1）——网关强制会话头，
         # 思考挡位经顶层 reasoning_effort（专属适配：x-opencode-session 自动注入）
         self.register("opencode-go", OpenCodeGoProvider)
 
+        # 单一来源——从 ModelCatalog 自动构建模型→provider 映射
         for model_name, spec in BUILTIN_MODELS.items():
             if spec.provider != "mock":
                 self.register_model(model_name, spec.provider)
@@ -91,7 +95,7 @@ class ProviderRegistry:
     ) -> tuple[str, str]:
         # 功能：链候选的端点/凭证解析——归属 provider == 激活档案 provider 时
         # 沿用档案端点/凭证；跨 provider 候选不继承（防「候选被劫持到错误协议
-        # 端点」——端点锁定的真实机制），改经 per-provider 环境变量
+        # 端点」——BC-002 端点锁定的真实机制），改经 per-provider 环境变量
         # （`{PROVIDER}_BASE_URL` / `{PROVIDER}_API_KEY`）与默认端点回退
         profile_provider = (config.llm.provider or "").strip()
         if not profile_provider or provider_name == profile_provider:

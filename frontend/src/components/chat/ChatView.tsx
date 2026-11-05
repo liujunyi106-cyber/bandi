@@ -1,5 +1,5 @@
 /**
- * 功能：对话主视图（）。
+ * 功能：对话主视图（@base docs/前端设计规划.md §6 会话行 / §8 交互规范）。
  * 组成：会话详情加载 + 消息流（keyed 增量）+ 过程块 + 中断恢复提示 + 回滚暂存条 +
  * 挂起交互卡 + Composer（发送/转向/停止）。群聊·单聊视图见 pages/chat 分流。
  */
@@ -20,6 +20,7 @@ import { ProjectSpaceCard } from "@/components/chat/ProjectSpaceCard";
 import { RevertBanner } from "@/components/chat/RevertBanner";
 import { Button } from "@/components/ui/button";
 import { useEmployees } from "@/hooks/use-employees";
+import { useLiveEmployeeProgress } from "@/hooks/use-live-employee-progress";
 import { useT } from "@/i18n";
 import {
   findEmployeeByName,
@@ -154,20 +155,61 @@ export function ChatView() {
     if (pendingReply) return pendingReply;
     const speaker = activeRound?.slots.find((slot) => slot.status === "speaking");
     if (!speaker) return null;
-    const employee = employees.find((item) => item.role_id === speaker.role_id);
+    const employee =
+      employees.find((item) => item.role_id === speaker.role_id) ??
+      employees.find((item) => item.employee_id === speaker.role_id);
+    // 后端可能只给通用标识（role_name="Worker"/岗位名）；解析不到真实员工时不渲染占位，
+    // 否则会出现「W / Worker」或「产品设计师 正在回复中…」这种与真实员工不一致的第二身份。
+    if (!employee?.name) return null;
     return {
       roleId: speaker.role_id,
-      name: speaker.role_name || employee?.name || speaker.role_id,
-      metadata: employee?.metadata,
+      name: employee.name,
+      metadata: employee.metadata,
     };
   }, [pendingReply, activeRound, employees]);
   useEffect(() => {
     if (!pendingReply) return;
     const last = messages[messages.length - 1];
-    if (last?.role === "assistant" && last.senderRole === pendingReply.roleId) {
+    const senderRole = String(last?.senderRole ?? "").toLowerCase();
+    if (last?.role === "assistant" && senderRole && senderRole === pendingReply.roleId.toLowerCase()) {
       setPendingReply(null);
     }
   }, [messages, pendingReply]);
+  // 实时过程块已显示同一员工时，隐藏乐观「正在回复中」占位，避免两个身份头/两个头像。
+  const liveProgress = useLiveEmployeeProgress(activeProjectId, activeSession?.thread_id ?? null);
+  const liveRoleIds = useMemo(
+    () => new Set(liveProgress.map((item) => item.roleId)),
+    [liveProgress],
+  );
+  // 实时进度里的 role_id 与占位的 role_id 不一定同源（岗位名/员工 id 混用），
+  // 再按「解析后的员工名」兜一次去重，避免同一员工出现两个身份头。
+  const liveEmployeeNames = useMemo(
+    () =>
+      new Set(
+        liveProgress
+          .map(
+            (item) =>
+              employees.find((employee) => employee.role_id === item.roleId)?.name ??
+              employees.find((employee) => employee.employee_id === item.roleId)?.name ??
+              "",
+          )
+          .filter(Boolean),
+      ),
+    [liveProgress, employees],
+  );
+  // 最近一条同员工 assistant 消息已在流式或已带过程链时，同样隐藏乐观占位——
+  // 否则私聊/助理无项目上下文（liveProgress 为空）时会出现「占位头像 + 真消息头像」双份。
+  const lastMessage = messages[messages.length - 1];
+  const pendingRoleId = String(pendingReplyEmployee?.roleId ?? "").toLowerCase();
+  const lastMessageIsPendingRole =
+    lastMessage?.role === "assistant" &&
+    pendingRoleId !== "" &&
+    String(lastMessage.senderRole ?? "").toLowerCase() === pendingRoleId;
+  const showPendingReply =
+    Boolean(pendingReplyEmployee) &&
+    !liveRoleIds.has(pendingReplyEmployee?.roleId ?? "") &&
+    !liveEmployeeNames.has(pendingReplyEmployee?.name ?? "") &&
+    !(lastMessageIsPendingRole && (!lastMessage.done || (lastMessage.process?.length ?? 0) > 0));
   useEffect(() => {
     if (!activeProjectId) {
       setProjectHasTeam(null);
@@ -246,7 +288,7 @@ export function ChatView() {
         useChatStore
           .getState()
           .loadMessages(activeSessionId, entriesToMessages(activeSessionId, detail.messages));
-        // 任务台账从会话 metadata 恢复（刷新后任务条不消失）
+        // Day137b-1：任务台账从会话 metadata 恢复（刷新后任务条不消失）
         useChatStore.getState().setTaskLedger(activeSessionId, sessionTaskLedger(detail.session));
         // 模式从会话持久值恢复（sessions.mode；无持久值时保留当前选择）
         const persistedMode = detail.session?.mode;
@@ -329,7 +371,7 @@ export function ChatView() {
         content: String(data.content ?? ""),
         // 成员任务卡关联键（线程消息 message_id = work item id）
         workItemId: String(data.message_id ?? "").trim() || undefined,
-        // 员工执行过程随回复固化（回复消息上方过程块；槽取出即清）
+        // Day137b-1：员工执行过程随回复固化（回复消息上方过程块；槽取出即清）
         // 槽键含 thread（= 这一次执行的身份，与产出回写同源）
         // 落定即结算 running（回写是执行中途快照，残留 running 是死状态）
         process: settleRunningNodes(
@@ -342,7 +384,15 @@ export function ChatView() {
             ),
         ),
       });
-      setPendingReply((current) => (current?.roleId === sender ? null : current));
+      // 回复落地即定稿该员工过程槽：迟到的 thread_progress 不再复活过程块
+      useChatStore
+        .getState()
+        .finishEmployeeProgress(
+          normalizeProjectScope(String(data.project_id ?? "")),
+          String(data.thread_id ?? ""),
+          sender,
+        );
+      setPendingReply(null);
     });
   }, [activeProjectId, employees]);
 
@@ -381,17 +431,6 @@ export function ChatView() {
                 item.chat_kind !== "query",
             ),
           );
-          // 功能：后端无任何 running 工作项时结算前端残留的执行过程帧
-          // （清理/重启后旧帧无 done 帧，会永远显示「正在执行」）
-          if (all.every((item) => item.phase !== "running")) {
-            const state = useChatStore.getState();
-            const settled = state.settleStaleEmployeeProgress();
-            for (const key of settled) {
-              window.setTimeout(() => {
-                useChatStore.getState().expireEmployeeProgressByKey(key);
-              }, 2500);
-            }
-          }
         })
         .catch(() => undefined);
     };
@@ -507,34 +546,48 @@ export function ChatView() {
       (!store.sessionsLoaded || store.sessions.some((item) => item.id === activeSessionId));
     const sessionId = known && activeSessionId ? activeSessionId : newSessionId();
     const pendingOrigin = store.pendingSessionOrigin;
-    const dmTargetRole = isEmployeeDmSession
-      ? activeSessionTargetRole
-      : (pendingEmployee?.role_id ?? "");
+    // 只有既有的员工私聊会话才带 target_role；群聊里选员工走 @ 提及，不新建 DM。
+    const dmTargetRole = isEmployeeDmSession ? activeSessionTargetRole : "";
     const dmEmployee =
       (dmTargetRole
         ? employees.find((employee) => employee.role_id === dmTargetRole)
         : null) ??
       (pendingEmployee?.role_id === dmTargetRole ? pendingEmployee : null);
-    const mentionedRole = text.match(/@([\w-]+)/)?.[1] ?? "";
-    const groupTargetRole =
-      !dmTargetRole && projectHasGroupChat
-        ? projectMemberRoles.includes(mentionedRole)
-          ? mentionedRole
-          : (projectMemberRoles[0] ?? "")
-        : "";
+    // 群聊里从选择器选中的员工转为正文 @ 提及，由后端按 mention 路由。
+    let outgoingText = text;
+    if (projectHasGroupChat && pendingEmployee) {
+      const tagName = `@${pendingEmployee.name}`;
+      const tagRole = `@${pendingEmployee.role_id}`;
+      if (!outgoingText.includes(tagName) && !outgoingText.includes(tagRole)) {
+        outgoingText = `${tagName} ${outgoingText}`.trim();
+      }
+    }
+    const mentionedMember = projectHasGroupChat
+      ? employees.find(
+          (employee) =>
+            projectMemberRoles.includes(employee.role_id) &&
+            (outgoingText.includes(`@${employee.name}`) ||
+              outgoingText.includes(`@${employee.role_id}`)),
+        )
+      : undefined;
+    // 群聊只在用户显式 @ 时才预置身份；不再用成员列表第一个兜底，避免假身份。
+    const groupTargetRole = !dmTargetRole && mentionedMember ? mentionedMember.role_id : "";
     const optimisticRole = dmTargetRole || groupTargetRole;
     const optimisticEmployee =
-      employees.find((employee) => employee.role_id === optimisticRole) ?? dmEmployee;
-    if (optimisticRole) {
+      employees.find((employee) => employee.role_id === optimisticRole) ??
+      employees.find((employee) => employee.employee_id === optimisticRole) ??
+      dmEmployee;
+    // 解析不到真实员工时不下乐观占位，避免出现「W / Worker 正在回复中…」的假身份
+    if (optimisticRole && optimisticEmployee?.name) {
       setPendingReply({
         roleId: optimisticRole,
-        name: optimisticEmployee?.name ?? optimisticRole,
+        name: optimisticEmployee.name,
         metadata: optimisticEmployee?.metadata,
       });
     }
     let title = "";
     if (!known) {
-      title = text.slice(0, 40);
+      title = outgoingText.slice(0, 40);
       store.setActiveSession(sessionId);
       store.upsertSession({
         id: sessionId,
@@ -556,14 +609,14 @@ export function ChatView() {
               : {}),
       });
     }
-    store.appendLocalUser(sessionId, text, attachments);
+    store.appendLocalUser(sessionId, outgoingText, attachments);
     store.markSessionActivity(sessionId, "running");
     const ui = useUiStore.getState();
     sessionSocket.send({
       type: "chat",
-      message: text,
+      message: outgoingText,
       session_id: sessionId,
-      // 模式切换器（后端 resolve_initial_mode；plan=只读规划）
+      // Day137b-1：模式切换器（后端 resolve_initial_mode；plan=只读规划）
       mode: ui.chatMode,
       // 新会话标题由后端创建时一次写入（无 PATCH 竞态；列表刷新后标题不丢）
       ...(title ? { title } : {}),
@@ -585,7 +638,7 @@ export function ChatView() {
         : !dmTargetRole && isNewSession && activeProjectId
           ? { session_origin: "secretary" }
           : {}),
-      // 附件引用（upload_id）+ 会话级模型/思考覆盖（控制条）
+      // Day137b-2：附件引用（upload_id）+ 会话级模型/思考覆盖（控制条）
       ...(attachments?.length
         ? {
             attachments: attachments.map((item) => ({
@@ -605,7 +658,7 @@ export function ChatView() {
     return true;
   };
 
-  // 中断重试：重试属于**新的一次请求**——先终止内核侧
+  // 中断重试（2026-10-15 用户拍板）：重试属于**新的一次请求**——先终止内核侧
   // 可能仍挂着的旧轮（刷新页面不会终止它，槽位未释放时重发会撞 SESSION_BUSY），
   // 再以同内容重发；中断上下文（目标+已执行过程）经会话历史自动携带。
   const retryInterrupted = async (messageId: string) => {
@@ -894,9 +947,9 @@ export function ChatView() {
   const [interactionIndex, setInteractionIndex] = useState(0);
   const pendingInteraction =
     pendingInteractions[Math.min(interactionIndex, pendingInteractions.length - 1)];
-  // ①：作答草稿按 interaction_id 分桶持久化。key={interaction_id} 让切卡时
+  // §18.16①：作答草稿按 interaction_id 分桶持久化。key={interaction_id} 让切卡时
   // 卡片重挂载（-3 要求「卡 A 移除后卡 B 不残留 A 的答案」），但重挂载也会连带丢掉
-  // 用户在 A 上已答的内容——而 ① 的语义恰恰是「先翻到别的决策点，回头再答这张」。
+  // 用户在 A 上已答的内容——而 §18.16① 的语义恰恰是「先翻到别的决策点，回头再答这张」。
   // 分桶后两个语义同时成立：新卡无桶即全新，同卡回访从桶复原；卡片解决时删桶防泄漏。
   const [cardDrafts, setCardDrafts] = useState<Record<string, InteractionDraft>>({});
   // 当前卡被解决/移除后游标回落到有效范围（否则会停在空档）
@@ -954,7 +1007,7 @@ export function ChatView() {
             onClear={() => void clearRevert()}
           />
         ) : null}
-        {/*会话内搜索/历史提问已移至顶栏（AppHeader 渲染，与连接状态同排） */}
+        {/* 2026-09-23 用户拍板：会话内搜索/历史提问已移至顶栏（AppHeader 渲染，与连接状态同排） */}
 
         {activeRound ? <GroupRoundBar round={activeRound} /> : null}
 
@@ -995,7 +1048,7 @@ export function ChatView() {
               usePanelStore.getState().focusArtifact(artifactId, name, path)
             }
           >
-            {pendingReplyEmployee ? (
+            {showPendingReply && pendingReplyEmployee ? (
               <PendingEmployeeReply
                 roleId={pendingReplyEmployee.roleId}
                 name={pendingReplyEmployee.name}
@@ -1005,7 +1058,10 @@ export function ChatView() {
             {/* 员工执行的实时过程随消息流滚动，不固定挂在消息区下方挤占空间；
                 秘书会话不承载员工工作流——不渲染 */}
             {isSecretarySession || !activeProjectId ? null : (
-              <LiveProgressList projectId={activeProjectId} />
+              <LiveProgressList
+                projectId={activeProjectId}
+                threadId={activeSession?.thread_id ?? ""}
+              />
             )}
           </MessageList>
         ) : null}
@@ -1013,7 +1069,7 @@ export function ChatView() {
         {/* 员工执行的实时过程已挪入消息流尾部（MessageList children——随滚动，
             不再固定挤占消息区）；此处原独立渲染块删除 */}
 
-        {/*新建会话英雄区——品牌字段 + 输入框组垂直居中
+        {/* 2026-09-29 用户拍板：新建会话英雄区——品牌字段 + 输入框组垂直居中
             （不再显示秘书头像；秘书提示改挂在输入框下方 below 槽） */}
         <div
           className={cn(
@@ -1118,7 +1174,7 @@ export function ChatView() {
                   ) : null}
                   {pendingInteraction ? (
                     <div className="flex flex-col gap-1" data-testid="interaction-stack">
-                      {/*卡序指示从卡外（本处原「待决策 N 项 · 第 N 项」条）
+                      {/* 2026-10-01 用户拍板：卡序指示从卡外（本处原「待决策 N 项 · 第 N 项」条）
                           挪进 InteractionCard 头部（倒计时左侧，形如 1/2） */}
                       <InteractionCard
                         key={pendingInteraction.interaction_id}
@@ -1159,7 +1215,7 @@ export function ChatView() {
             }
             below={isNewSession ? <ProjectSpaceCard /> : undefined}
           />
-          {/*秘书提示在「整个会话框 + 项目空间卡」之外（壳外、面板居中）；
+          {/* 2026-09-29 用户拍板：秘书提示在「整个会话框 + 项目空间卡」之外（壳外、面板居中）；
             第五轮：与会话框/卡片间距再收（负 margin 抵消 Composer 组件底部留白 pb-5） */}
           {showSecretaryHint ? (
             <p

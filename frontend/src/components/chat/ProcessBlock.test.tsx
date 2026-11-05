@@ -57,7 +57,7 @@ describe("ProcessBlock", () => {
     fireEvent.click(screen.getByTestId("process-bucket-web"));
     const item = screen.getByTestId("process-item");
     expect(item).toHaveTextContent('query="竞品价格"');
-    // 明细行右侧不再常驻耗时（12ms/800ms）
+    // 2026-10-12 用户拍板：明细行右侧不再常驻耗时（12ms/800ms）——
     // 该位置本应承载展开/收起，而工具行的展开入口是点击行打开右侧详情。
     expect(item).not.toHaveTextContent("800ms");
     // 耗时仍由总行汇总呈现
@@ -172,13 +172,14 @@ describe("ProcessBlock", () => {
     fireEvent.click(screen.getByTestId("process-toggle"));
     fireEvent.click(screen.getByTestId("process-bucket-thought"));
 
-    // 明细文本：多行（上限 3 行）+ 纵向滚动，不再单行省略
+    // 明细文本：完整展开（无高度上限 / 无 3 行截断 / 无单行省略）
     const text = screen.getByTestId("process-item-text");
-    expect(text.className).toContain("overflow-y-auto");
     expect(text.className).toContain("whitespace-pre-wrap");
     expect(text.className).toContain("break-words");
-    expect(text.className).toContain("max-h-[58.5px]");
+    expect(text.className).not.toContain("max-h-");
+    expect(text.className).not.toContain("overflow-y-auto");
     expect(text.className).not.toContain("truncate");
+    expect(text).toHaveTextContent("The user just said hello.");
   });
 
 it("总行文案：不再显示「过程消息」字段名，完成态只留「已完成 · 时间」", () => {
@@ -254,7 +255,7 @@ it("总行文案：不再显示「过程消息」字段名，完成态只留「�
   });
 });
 
-describe("ProcessBlock 失败工具行", () => {
+describe("ProcessBlock 失败工具行（2026-10-15 行内操作移除）", () => {
   const failedNode = () =>
     toolNode("t1", "bash", { status: "error", detail: "boom", toolCallId: "call_9" });
 
@@ -272,7 +273,7 @@ describe("ProcessBlock 失败工具行", () => {
     expect(screen.queryByTestId("process-item-resend")).not.toBeInTheDocument();
   });
 
-  it("分类行无悬浮灰态", () => {
+  it("分类行无悬浮灰态（2026-10-15：hover 背景移除，箭头仍可旋转点击）", () => {
     render(<ProcessBlock nodes={[failedNode()]} />);
     fireEvent.click(screen.getByTestId("process-toggle"));
     const row = screen.getByTestId("process-bucket-tool");

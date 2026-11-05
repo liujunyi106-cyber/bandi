@@ -41,33 +41,25 @@ def _new_id(prefix: str) -> str:
 
 
 def _split_sections(text: str) -> list[tuple[str, str]]:
-    """功能：按 Markdown 标题切节，返回 (标题, 正文) 列表。
-
-    第一个标题之前的内容作为无标题首节保留；正文为空的小节丢弃。
-    """
-    lines = text.splitlines()
-    headings = [
-        (index, _HEADING_RE.sub("", line, count=1).strip())
-        for index, line in enumerate(lines)
-        if _HEADING_RE.match(line)
-    ]
-
-    if not headings:
-        body = "\n".join(lines).strip()
-        return [("", body)] if body else []
-
+    """功能：按 Markdown 标题切节（StaffDeck _build_section_nodes 规则版同构）——
+    返回 (标题, 节正文) 列表；标题前导内容作为无标题首节保留不丢。"""
     sections: list[tuple[str, str]] = []
-    first = headings[0][0]
-    preamble = "\n".join(lines[:first]).strip()
-    if preamble:
-        sections.append(("", preamble))
-
-    for position, (start, title) in enumerate(headings):
-        stop = headings[position + 1][0] if position + 1 < len(headings) else len(lines)
-        body = "\n".join(lines[start + 1 : stop]).strip()
-        if body:
-            sections.append((title, body))
-    return sections
+    current_title = ""
+    lines: list[str] = []
+    started = False
+    for line in text.splitlines():
+        if _HEADING_RE.match(line):
+            if started and any(ln.strip() for ln in lines):
+                sections.append((current_title, "\n".join(lines).strip()))
+            current_title = _HEADING_RE.sub("", line, count=1).strip()
+            lines = []
+            started = True
+        else:
+            lines.append(line)
+            started = True
+    if any(ln.strip() for ln in lines):
+        sections.append((current_title, "\n".join(lines).strip()))
+    return [(t, b) for t, b in sections if b]
 
 
 def _paragraph_blocks(text: str) -> list[str]:
@@ -81,28 +73,25 @@ def _hard_split(text: str, max_chars: int) -> list[str]:
 
 
 def _chunk_text(text: str, max_chars: int = _DEFAULT_MAX_CHUNK_CHARS) -> list[str]:
-    """功能：把正文切成不超过 max_chars 的块。
-
-    以段落为装箱单位按序拼接；单段自身超长时单独硬切，保证不丢内容。
-    """
+    """功能：段块装箱分块（StaffDeck _chunk_text 同构）——段块顺序拼接
+    超长段块硬切；单块不超 max_chars（除非单段本身超长则独占硬切）。"""
     chunks: list[str] = []
-    pending: list[str] = []
-
-    def flush() -> None:
-        if pending:
-            chunks.append("\n\n".join(pending))
-            pending.clear()
-
+    buffer = ""
     for block in _paragraph_blocks(text):
         if len(block) > max_chars:
-            flush()
+            if buffer:
+                chunks.append(buffer)
+                buffer = ""
             chunks.extend(_hard_split(block, max_chars))
             continue
-        joined = "\n\n".join([*pending, block])
-        if pending and len(joined) > max_chars:
-            flush()
-        pending.append(block)
-    flush()
+        candidate = f"{buffer}\n\n{block}" if buffer else block
+        if len(candidate) > max_chars and buffer:
+            chunks.append(buffer)
+            buffer = block
+        else:
+            buffer = candidate
+    if buffer:
+        chunks.append(buffer)
     return chunks
 
 
@@ -804,6 +793,8 @@ class KnowledgeStore:
             created_at=row[13],
             updated_at=row[14],
         )
+
+    # -- 行映射 --------------------------------------------------------------
 
     @staticmethod
     def _row_to_document(row: tuple) -> KnowledgeDocument:

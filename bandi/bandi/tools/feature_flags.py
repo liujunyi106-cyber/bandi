@@ -5,7 +5,7 @@ from collections.abc import Mapping
 
 
 class FeatureGate:
-    """"""
+    """功能：把 config 的 tool_groups 映射解析为布尔门控——未列出的组默认开放（零配置全开）。"""
 
     def __init__(self, flags: Mapping[str, bool] | None = None) -> None:
         flags = dict(flags or {})

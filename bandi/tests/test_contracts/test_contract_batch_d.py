@@ -330,5 +330,5 @@ def test_contract_chinese_candidate_window_6() -> None:
     from bandi.eval.hallucination_checker import _collect_chinese_candidates
 
     candidates: set[str] = set()
-    _collect_chinese_candidates(candidates, "某企业知识管理平台")
+    _collect_chinese_candidates(candidates, "深度学习与实践计划")
     assert any(len(g) == 6 for g in candidates), "6 字滑窗必须被收集"

@@ -255,7 +255,7 @@ class TestContextAssemblerToolSurface:
         assert "bash" not in artifacts[0].content
 
     def test_allowed_empty_means_no_restriction(self) -> None:
-        """空列表 = 不限制工具。"""
+        """空列表 = 不限制工具（Day122v e0b91b8 修复语义；空列表不能禁止全部工具）。"""
         assembler = ContextAssembler(
             tool_registry=_FakeToolRegistry(
                 [

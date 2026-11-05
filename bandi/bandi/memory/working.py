@@ -3,9 +3,11 @@
 * KV 中间结果：任务快照/上下文片段按 ``turn:{n}`` 等键暂存，TTL 过期惰性清理；
 * 工具调用历史：轮末自动追加环形缓冲（上限内保留最新），供复盘与检索。
 
-检索升级：中文子串由 n-gram LIKE 全表扫描升级为 FTS5 索引召回
+检索升级（审查残余修复）：中文子串由 n-gram LIKE 全表扫描升级为 FTS5 索引召回
 （同一 UTF-8/2-gram 分词），LIKE 仅在 FTS 失败 / 空条件回退保召回。
-语义一一对应；内存 TTLCache 以 SQLite 落盘 + TTL 惰性清理替代
+与 LeAgent working_scratchpad.py 的映射：set/get/all/clear + append_tool/history
+语义一一对应；LeAgent 内存 TTLCache 以 SQLite 落盘 + TTL 惰性清理替代
+（ADJ 方案 3「逐类增强时同步落盘」，ADR-33 无 RAG 故用检索而非向量）。
 """
 
 from __future__ import annotations

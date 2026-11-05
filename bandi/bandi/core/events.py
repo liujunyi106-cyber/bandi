@@ -17,7 +17,7 @@ class EventType(Enum):  # 功能：系统事件类型枚举（状态变更/转�
     TOOL_COMPLETED = auto()
     TOOL_ERROR = auto()
     TOOL_PROGRESS = auto()  # LA-19：流式工具中间进度（工具时间线 UI 数据源）
-    SKILL_INJECTED = auto()  # 技能注入（前端过程块「Skill 使用组」数据源）
+    SKILL_INJECTED = auto()  # Day137：技能注入（前端过程块「Skill 使用组」数据源）
     ERROR_OCCURRED = auto()
     DEGRADATION = auto()
     SAFETY_GUARD_TRIGGERED = auto()
@@ -30,7 +30,7 @@ class EventType(Enum):  # 功能：系统事件类型枚举（状态变更/转�
     TASK_LEDGER_UPDATED = auto()
     PREFETCH_HITS = auto()
     USER_INPUT_INJECTED = auto()  # A3：用户中途注入新指令，触发新一轮 THINKING
-    OUTPUT_CONTRACT_VIOLATION = auto()  # 席位输出契约校验失败（阻断 SeatResult）
+    OUTPUT_CONTRACT_VIOLATION = auto()  # P1-7：席位输出契约校验失败（阻断 SeatResult）
     # B5b 8.3/8.4：压缩与记忆写入事件（trace 可复盘上下文为何被砍/记忆写了哪些通道）
     COMPRESSION_COMPLETED = auto()
     MEMORY_WRITTEN = auto()

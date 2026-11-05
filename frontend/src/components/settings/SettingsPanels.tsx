@@ -1,5 +1,5 @@
 /**
-  * 功能：设置弹窗各页签内容——系统 / 权限 / 数据 / MCP / 能力 / Computer Use / 关于。
+ * 功能：设置弹窗各页签内容（Day143）——系统 / 权限 / 数据 / MCP / 能力 / Computer Use / 关于。
  * 数据全部走真实端点（/settings/preferences、/system/*、/mcp/*），无本地伪造值；
  * 未实现能力（Computer Use 工具面）显式标注「开发中」，不做点了没反应的按钮。
  */

@@ -259,7 +259,7 @@ class BaseTool(ABC):
         ]
 
     def normalize_params(self, params: dict[str, Any]) -> dict[str, Any]:
-        """
+        """功能：参数别名归一化——别名参数映射回正式键（正式键优先权威
         别名不覆盖正式值）；无别名声明的工具原样返回（零开销不拷贝）。"""
         if not self.param_aliases or not params:
             return params

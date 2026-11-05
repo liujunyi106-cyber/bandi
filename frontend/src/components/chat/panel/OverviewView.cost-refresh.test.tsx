@@ -62,7 +62,7 @@ vi.mock("@/services/company", async (importOriginal) => {
 
 const emptyTasks: TaskLedgerItem[] = [];
 
-describe("OverviewView · 用量刷新", () => {
+describe("OverviewView · 用量刷新（2026-09-28 真机修复）", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useChatStore.setState({

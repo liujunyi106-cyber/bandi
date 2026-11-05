@@ -1,10 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
-# 功能：bandi-sidecar 的 PyInstaller 打包配置。
+# 功能：bandi-sidecar 的 PyInstaller 打包配置（Day147 C-5 / ADR-42）。
 #
 # 产物：onedir 桌面 sidecar（`bandi-sidecar/bandi-sidecar.exe`），供 Electron 壳
 # 在打包态 spawn（electron/sidecar.ts），提供 SPA + API + WS 单端口服务。
 #
-# 构建口径：
+# 构建口径（Windows 实测，见 交付文档收集 §13）：
 #   父解释器 + PYTHONPATH=<repo>/.venv/Lib/site-packages -m PyInstaller 本 spec
 #   （venv 解释器本身在本机 spawn 异常，父解释器借 venv 的包跑 PyInstaller）。
 # B-11 约束：原生二进制不得留在含中文的路径——distpath/workpath 必须指到
@@ -34,10 +34,13 @@ a = Analysis(
     datas=[
         # jsonschema_specifications 以 data 目录形式携带内置 schema 集，
         # PyInstaller 静态分析只收 .py 不收数据——启动时 iterdir 找不到目录即崩
-        # 。
+        # （2026-11-02 sidecar exe 实测：_internal/jsonschema_specifications/schemas 缺失）。
         *collect_data_files("jsonschema_specifications"),
         # rich._unicode_data 的 unicode17-0-0 数据文件同理（实测启动即 ModuleNotFoundError）
         *collect_data_files("rich"),
+        # certifi 的 CA 包：缺了会在建 TLS 连接时抛
+        # FileNotFoundError: [Errno 2]（ssl.create_default_context）
+        *collect_data_files("certifi"),
     ],
     hiddenimports=[
         # uvicorn 动态加载组件（auto.* 按环境二次分派，全量列入以防派生缺失）
@@ -73,6 +76,10 @@ a = Analysis(
         "httpcore._backends.anyio",
         "httpcore._backends.asyncio",
         "httpcore._backends.auto",
+        # tiktoken 通过 entry point 发现编码插件，冻结后 entry points 丢失会报
+        # 「Unknown encoding cl100k_base. Plugins found: []」，必须显式列入
+        "tiktoken_ext",
+        "tiktoken_ext.openai_public",
     ],
     hookspath=[],
     hooksconfig={},

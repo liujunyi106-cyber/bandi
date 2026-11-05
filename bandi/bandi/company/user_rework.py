@@ -1,6 +1,14 @@
-# 功能：用户在对话中修正「某次已派发任务」的执行细节
+# 功能：用户在对话中修正「某次已派发任务」的执行细节（对标 OpenOPC）
 #
-# 用户修正与评审驳回**共用** `rework_feedback` 通道（执行侧一处注入逻辑）。
+# 对标来源（`D:\源码\各Agent源码\openopc`）：
+# - `opc/engine.py:_prepare_company_followup_target`——写 latest_user_directive /
+# user_supplied_input，清旧产出并置卡可重跑；
+# - `opc/database/store.py:reopen_approved_delegation_work_item_for_rework`——named
+# bypass：只允许 → READY_FOR_REWORK|READY，释放执行租约，metadata 合并/unset；
+# - `opc/layer1_perception/context_assembler.py:build_rework_feedback_context`——把
+# 修正理由 + 上一版产出注入 brief（本篇只负责写入面，注入面在 seat_executor）。
+#
+# 设计取舍：用户修正与评审驳回**共用** `rework_feedback` 通道（执行侧一处注入逻辑）
 
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
 # 功能：契约——SkillLoader 双格式兼容（opencode/Claude 风格「frontmatter + 全文」与
-# 风格「## Behavior / ## Instructions」并存）。
+# StaffDeck 风格「## Behavior / ## Instructions」并存）。
 #
 # 钉行为不钉实现：
 # - 正文回落：无 ## Instructions 小节时，frontmatter 之后的全文作为 instructions
@@ -7,7 +7,7 @@
 # - 触发词多源且显式：## Behavior 小节优先，其次 frontmatter triggers
 #   （支持 list 与「分类: 词/词/词」嵌套 dict 两种写法）；
 # - 两者皆无时 triggers 为空（**不猜 description 里的自然语言**——猜即误匹配）；
-# 格式行为不变（回归护栏，双格式不得互相污染）。
+# - StaffDeck 格式行为不变（回归护栏，双格式不得互相污染）。
 from __future__ import annotations
 
 from pathlib import Path
@@ -147,7 +147,7 @@ def test_opencode_style_body_becomes_instructions(tmp_path: Path) -> None:
 
 
 def test_staffdeck_style_unchanged(tmp_path: Path) -> None:
-    # 功能：格式行为不变——只注入 ## Instructions 段，不混入 Behavior/Constraints
+    # 功能：StaffDeck 格式行为不变——只注入 ## Instructions 段，不混入 Behavior/Constraints
     _write(tmp_path, "demo-both", STAFFDECK_STYLE)
 
     skill = _load_one(tmp_path, "demo-both")

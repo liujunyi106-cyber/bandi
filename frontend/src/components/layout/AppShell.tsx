@@ -1,11 +1,11 @@
 /**
-  * 功能：单页壳（）。
+ * 功能：单页壳（@base docs/前端设计规划.md §1 端口架构 B 方案 / §6 AppShell）。
  * 视图切换不换壳、不重连 WS——左栏 + 顶栏常驻，内容区由路由 Outlet 渲染（面板级 ErrorBoundary 兜底）。
  * ：项目面板通高置顶（与左栏对齐，不在顶栏下方）；顶栏收缩按钮
  * 一键「全部收缩/全部展开」（左栏 offcanvas + 项目面板同步）。
  */
 import { useEffect, useState, type CSSProperties } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 
 import { SessionPanelHost } from "@/components/chat/panel/SessionPanelHost";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -23,18 +23,28 @@ import { adaptiveSidebarWidth } from "@/lib/panel-width";
 import { cn } from "@/lib/utils";
 import { usePanelStore } from "@/stores/panel-store";
 import { useUiStore } from "@/stores/ui-store";
+import { useChatStore } from "@/stores/chat-store";
 
 export function AppShell() {
   useKernelSocket();
   useSessionStream();
   useHostEvents();
+  // 左侧导航收缩态（标题栏最左按钮切换；收起后内容区占满）
+  const navCollapsed = useUiStore((state) => state.sidebarCollapsed);
   // 面板整体收缩态（左栏 offcanvas 由 SidebarProvider 管理，本状态控制项目面板）
   const [panelsCollapsed, setPanelsCollapsed] = useState(false);
-  // 命令面板（-3e）：Cmd/Ctrl+K 全局唤起
+  // 左栏与项目面板之间的分隔线：仅当「聊天路由 + 有项目 + 面板未收起」时才画
+  const location = useLocation();
+  const activeProjectId = useChatStore((state) => state.activeProjectId);
+  const showNavDivider =
+    (location.pathname === "/" || location.pathname.startsWith("/chat")) &&
+    Boolean(activeProjectId) &&
+    !panelsCollapsed;
+  // FE-15 命令面板（-3e）：Cmd/Ctrl+K 全局唤起
   const [paletteOpen, setPaletteOpen] = useState(false);
   // 右栏 v5：全屏时占满对话列 + 右栏区域（左栏/项目面板常驻）
   const fullscreen = usePanelStore((state) => state.fullscreen);
-  // 左栏展开宽度随窗口自适应（1024→184 / 1920→216；折叠 rail 64 不受影响）
+  // 拍板：左栏展开宽度随窗口自适应（1024→184 / 1920→216；折叠 rail 64 不受影响）
   const windowWidth = useWindowWidth();
   const uiScale = useUiStore((state) => state.uiScale);
   useEffect(() => {
@@ -58,8 +68,8 @@ export function AppShell() {
       defaultOpen
       style={{ "--sidebar-width": `${adaptiveSidebarWidth(windowWidth)}px` } as CSSProperties}
     >
-      <AppSidebar />
-      <SidebarInset className="flex h-full min-h-0 flex-row overflow-hidden">
+      {navCollapsed ? null : <AppSidebar divider={showNavDivider} />}
+      <SidebarInset className="bg-sidebar flex h-full min-h-0 flex-row overflow-hidden">
         {/* 项目面板：通高（从视口顶部开始，与左栏对齐）；收缩按钮在面板内 */}
         <ProjectPanel
           collapsed={panelsCollapsed}
@@ -67,7 +77,7 @@ export function AppShell() {
         />
         <div
           className={cn(
-            "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
+            "bg-background flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-tl-[14px]",
             fullscreen && "hidden",
           )}
         >

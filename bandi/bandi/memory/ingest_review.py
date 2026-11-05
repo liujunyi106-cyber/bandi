@@ -42,6 +42,17 @@ _PLEASANTRY_WORDS = (
     "好的",
     "收到",
 )
+# 功能：纯确认/回执——没有可复用事实，不得进入情节或长期记忆。
+_ACK_ONLY_RE = re.compile(
+    r"^(?:ok|okay|收到|已收到|好的|好|嗯+|明白|了解|知道了|已记录|谢谢|感谢|辛苦了?)$",
+    re.IGNORECASE,
+)
+# 功能：纯问候/短确认——用户只打招呼或要求回 OK，不构成可复用经历。
+_USER_GREETING_RE = re.compile(
+    r"^(?:你好|您好|嗨|哈喽|在吗|在不在|早上好|下午好|晚上好|hello|hi|hey|"
+    r"只回复\s*ok|只回\s*ok|回复\s*ok|ok)$",
+    re.IGNORECASE,
+)
 _EMOTION_WORDS = (
     "哈哈",
     "呵呵",
@@ -59,7 +70,7 @@ _LONG_TEXT_CHARS = 60
 _PLEASANTRY_MAX_CHARS = 12
 _MARKS = "，。！？!?；;、,.…~～ \t\r\n"
 
-# 功能：可从现状推导的内容——读代码
+# 功能：可从现状推导的内容（cc-haha「What NOT to save」第2–5 类移植）——读代码、
 # `git log`/`git blame` 即可得出，不是经历事实。命中任一即不进经历层。
 _DERIVABLE_PATTERNS = re.compile(
     "|".join(
@@ -118,6 +129,8 @@ def _low_value_reason(text: str) -> str | None:
         return "empty"
     if len(condensed) <= 1:
         return "single_char"
+    if _ACK_ONLY_RE.match(condensed):
+        return "ack_only"
     lowered = body.lower()
     if (
         len(condensed) <= _PLEASANTRY_MAX_CHARS
@@ -199,7 +212,7 @@ _CONCLUSION_SIGNALS = (
 def is_self_intro_reply(reply: str) -> bool:
     """功能：判断助手回复是否为自我介绍/能力清单——这类内容没有可记事实。
 
-    一句「你好呀，你能帮我做什么？」的回复（241 字能力清单）被当成
+    BC-004：一句「你好呀，你能帮我做什么？」的回复（241 字能力清单）被当成
     task_state 写入长期记忆并被召回一次。判据看正文是否以自我指涉或能力
     清单开头，且不含结论类信号。
     """
@@ -247,7 +260,7 @@ def is_conversational_prose(text: str) -> str | None:
     """功能：判定候选是否只是助手的话术而非事实陈述，返回拒绝理由或 None。
 
     助手结论回落进长期记忆时（用户只给指令、事实由助手查出），必须挡住下面
-    几类「读起来像内容、实际不是事实」的输出。L1 72 条曾把 19 条
+    几类「读起来像内容、实际不是事实」的输出。L1 真机实测 72 条曾把 19 条
     助手原话整段入库——拒绝话术、目录清单、执行计划、能力清单、故障说明。
 
     这些不是「价值低」，是**根本不是事实**：入库后会在后续召回里冒充用户的
@@ -299,17 +312,12 @@ def is_conversational_prose(text: str) -> str | None:
         if marker in t:
             return f"inventory:{marker}"
 
-    # ③b 清单形态：连续多行的条目/表格——那是罗列不是叙述
-    lines = [ln for ln in t.splitlines() if ln.strip()]
-    if len(lines) >= 6 and sum(ln.lstrip().startswith(("-", "|", "*", "1.")) for ln in lines) >= 4:
-        return "inventory:list_shape"
-
     # ④ 执行计划/方案——尚未执行，是打算不是事实
     for marker in ("计划如下", "执行步骤", "重构方案", "步骤列表", "## 计划", "修复计划"):
         if marker in t:
             return f"plan:{marker}"
 
-    # ⑤ 能力自我介绍——已拦部分问法，这里兜住 markdown 分档式复述
+    # ⑤ 能力自我介绍——BC-004 已拦部分问法，这里兜住 markdown 分档式复述
     for marker in ("我能帮你做什么", "我能做的", "我可以帮你做", "目前我的能力"):
         if marker in t:
             return f"capability_listing:{marker}"
@@ -317,7 +325,7 @@ def is_conversational_prose(text: str) -> str | None:
     # ⑥ 任务应答正文——引用了工具产物路径 **且** 给出计数/名单结论。
     # 这类文本"有具体事实"故前五类都拦不住，但它是**一次查询的结果快照**：
     # staff.csv 一换内容，"去重后共 5 人"立刻过时，却已固化进记忆库被反复召回。
-    # 更糟的是把当时的幻觉一并存下。
+    # 更糟的是把当时的幻觉一并存下（实测存过"陈敏"，真实是"陈静"）。
     # 需两个信号同时出现才拒——单独出现任一个仍可能是合法事实
     # （「老板偏好 fixtures/ 下的数据」含路径但无结论）。
     has_artifact_ref = bool(_ARTIFACT_REF.search(t))
@@ -368,6 +376,63 @@ def _looks_failed_answer(answer: str) -> bool:
     return bool(_FAILED_ANSWER_PATTERNS.search(answer or ""))
 
 
+def _episode_answer_side(text: str) -> str:
+    """功能：取情节摘要的回答侧（无回答分隔符时返回全文）。"""
+    body = str(text or "").strip()
+    if "→ 回答:" not in body:
+        return body
+    return body.rsplit("→ 回答:", 1)[-1].strip()
+
+
+def _episode_user_side(text: str) -> str:
+    """功能：取情节摘要的用户侧（无回答分隔符时返回全文）。"""
+    body = str(text or "").strip()
+    if "→ 回答:" not in body:
+        return body
+    return body.split("→ 回答:", 1)[0].strip()
+
+
+def _is_greeting_only(text: str) -> bool:
+    """功能：判断输入是否只是问候/要求回 OK（含用户/任务前缀、尾括号与首尾标点）。"""
+    value = str(text or "").strip().strip(_MARKS).strip()
+    value = re.sub(r"^(?:用户|任务|老板)[:：]\s*", "", value)
+    value = re.sub(r"[（(][^）)]*[）)]\s*$", "", value).strip(_MARKS).strip()
+    return bool(_USER_GREETING_RE.match(value))
+
+
+def is_noise_memory(text: str) -> str | None:
+    """功能：统一的「非记忆」噪声判定——审批等待/失败文案/回执/寒暄/自我介绍/可推导。
+
+    返回拒绝理由；None 表示可进入晋升/长期记忆。供情节写入、巩固与维护晋升共用，
+    防止无人值守的 episodic_maintenance 绕过轮末价值门。
+    """
+    body = str(text or "").strip()
+    if not body:
+        return "empty"
+    # 用户显式说「记住/我的偏好/以后」时，短确认回复也是用户要求的内容。
+    if has_explicit_remember(body):
+        return None
+    if "→ 回答:" in body and _is_greeting_only(_episode_user_side(body)):
+        return "greeting"
+    if is_approval_wait_text(body):
+        return "approval_wait"
+    answer = _episode_answer_side(body)
+    for candidate in {body, answer}:
+        if _looks_failed_answer(candidate):
+            return "failed_turn"
+        low_value = _low_value_reason(candidate)
+        if low_value is not None:
+            return low_value
+    if is_self_intro_reply(answer):
+        return "self_intro"
+    if _DERIVABLE_PATTERNS.search(answer):
+        return "derivable"
+    prose = is_conversational_prose(answer)
+    if prose is not None:
+        return prose
+    return None
+
+
 def review_ingest(
     candidate: str, *, memory_type: str, source: str = "agent_turn", user_input: str = ""
 ) -> IngestVerdict:
@@ -382,12 +447,14 @@ def review_ingest(
     text = str(candidate or "")
     # 显式触达不受话术闸门约束——用户说「记住」时他就是要记这段话
     explicit = any(word in f"{user_input}\n{text}" for word in _EXPLICIT_REMEMBER_WORDS)
+    if not explicit and _is_greeting_only(user_input):
+        return IngestVerdict("reject", "greeting", 0.0)
     if not explicit:
         prose_reason = is_conversational_prose(text)
         if prose_reason is not None:
             return IngestVerdict("reject", prose_reason, 0.0)
     low_value = _low_value_reason(text)
-    if low_value is not None:
+    if low_value is not None and not explicit:
         return IngestVerdict("reject", low_value, 0.0)
     fields = extract_memory_fields(text)
     lowered = text.lower()
@@ -431,8 +498,10 @@ def review_ingest(
 def review_episodic_ingest(candidate: str) -> IngestVerdict:
     """功能：经历层入库判断——拒「不该存的内容」+ 空/寒暄，业务句才记录。
 
-    负面清单是唯一**显式覆盖用户显式指令**的记忆门槛：用户说「保存这个」也不能把
-    可从代码/git 推导的内容写成记忆，只留真正反直觉的部分。落到经历层，适配四类噪音：
+    移植 cc-haha `WHAT_NOT_TO_SAVE_SECTION`（`src/memdir/memoryTypes.ts:183-195`）：
+    那一版的负面清单是唯一**显式覆盖用户显式指令**的记忆门槛——用户说「保存这个」
+    也不能把可从代码/git 推导的内容写成记忆，只留真正反直觉的部分。本移植把同一
+    思路落到经历层，适配我们的四类噪音：
 
     1. 助手自我介绍/能力清单——可由提示词推导，不是经历事实
     2. 代码模式/架构/文件路径——读代码即可推导
@@ -441,7 +510,7 @@ def review_episodic_ingest(candidate: str) -> IngestVerdict:
     5. 瞬时任务细节——当前对话上下文本身
 
     第 1 类同时堵住 recall_count 虚高：这类情节会被相似问句反复召回，把自己顶成
-    高价值候选，进而生成噪音晋升审批。
+    高价值候选（实测自我介绍 recall_count 达8），进而生成噪音晋升审批。
     """
     text = str(candidate or "")
     body = text.strip()
@@ -450,6 +519,9 @@ def review_episodic_ingest(candidate: str) -> IngestVerdict:
         return IngestVerdict("reject", "empty", 0.0)
     if len(condensed) <= 1:
         return IngestVerdict("reject", "single_char", 0.0)
+    noise = is_noise_memory(body)
+    if noise is not None:
+        return IngestVerdict("reject", noise, 0.0)
     lowered = body.lower()
     if (
         len(condensed) <= _PLEASANTRY_MAX_CHARS

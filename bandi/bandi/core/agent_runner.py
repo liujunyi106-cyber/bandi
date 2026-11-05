@@ -87,6 +87,7 @@ def _long_term_source_text(
     - 用户陈述了可记的事实/偏好（由下游 review_ingest 判价值）。
 
     助手回复永不直写：回复落进长期记忆会以 task_state 名义污染记忆库
+    （BC-004：一句寒暄把 241 字能力清单存成长期记忆，并被召回一次）。
 
     `final_message` 仅用于 `is_rememberable_user_input` 的自我介绍判定
     （回复是自我介绍时用户输入不作数），不参与内容源选择。
@@ -258,9 +259,9 @@ def _acquire_session_slot(
                         expires = datetime.fromisoformat(str(expires_at))
                         now = datetime.now(expires.tzinfo) if expires.tzinfo else datetime.now()
                         if expires > now and claim.get("instance_id") != inst:
-                            # 单内核部署：异实例租约 = 上一进程崩溃/重启的残留。
+                            # ADR-35 单内核部署：异实例租约 = 上一进程崩溃/重启的残留。
                             # 不接管则崩溃后 300s 内的重试全部 SESSION_BUSY
-                            # 本实例接管并继续写 claim。
+                            # （真机实证 2026-10-15）；本实例接管并继续写 claim。
                             logger.warning(
                                 "stale lease from other instance on session %s — taking over",
                                 session_id,
@@ -639,7 +640,7 @@ class _HandlerBindings:
         await self.handler.on_note(self.session_id, "compaction")
 
     async def _on_memory_written(self, event: Event) -> None:
-        # 功能：记忆写入通道明细 → 过程块「记入记忆 xN」行
+        # 功能：记忆写入通道明细 → 过程块「记入记忆 xN」行（Day137b-1）
         if await self._forward_subagent(event):
             return
         if not self._owns(event):
@@ -650,7 +651,7 @@ class _HandlerBindings:
         await self.handler.on_memory_written(self.session_id, channels)
 
     async def _on_task_ledger(self, event: Event) -> None:
-        # 功能：任务台账更新 → 前端会话任务条
+        # 功能：任务台账更新 → 前端会话任务条（实时帧，Day137b-1）
         if await self._forward_subagent(event):
             return
         if not self._owns(event):
@@ -874,7 +875,7 @@ _PREVIEW_SKIP_MARKERS = ("你好", "您好", "老板", "我是", "帮你", "我�
 def memory_preview(content: str, memory_type: str, *, max_chars: int = 120) -> str:
     """功能：待审批记忆的**提炼预览**——人话类型标签 + 事实主体。
 
-    用户反馈：旧摘要直接截内容开头，展示的是「你好，老板！我是 Bandi 的助手…」这类
+    用户反馈（真机）：旧摘要直接截内容开头，展示的是「你好，老板！我是 Agnes…」这类
     回复的寒暄/自我介绍，看不出**要记住什么**。此处跳过引导句后取正文主体。
     """
     label = _MEMORY_TYPE_LABELS.get(str(memory_type), str(memory_type))
@@ -1193,7 +1194,7 @@ def _clip_sentence(text: str, max_chars: int) -> str:
 
 def _compaction_importance(ctx: Any) -> float:
     """功能：压缩摘要动态 importance——保真缺失率越高越可疑（0.7+0.2*(1-ratio)）
-    无保真报告回退 0.7 基线。"""
+    无保真报告回退 0.7 基线（ADJ-03）。"""
     meta = getattr(ctx, "meta", None) or {}
     stats = meta.get("last_compression_stats")
     ratio = getattr(stats, "fidelity_missing_ratio", None) if stats is not None else None
@@ -1496,6 +1497,7 @@ async def _persist_memory(
         fields = extract_memory_fields(episode_summary, user_input=raw_input, source="agent_turn")
         verdict = review_episodic_ingest(episode_summary)
         episode = Episode(
+            # 不重复记录（原 uuid4() 每次新 id 致重复经历），对齐 long_term 稳定键先例
             episode_id=f"ep:{session_id}:{turn_index}",
             # 4.10：句边界裁剪替代字符硬切（不句中断裂）
             summary=episode_summary,
@@ -1911,7 +1913,7 @@ def resolve_initial_mode(bandi_config: BandiConfig | None, requested: str) -> st
 
 
 def _format_attachment_notes(attachments: list[dict[str, Any]] | None) -> str:
-    """功能：附件注记段（名称 + 文本类正文）——LLM 请求专用。"""
+    """功能：附件注记段（名称 + 文本类正文）——LLM 请求专用（Day137b-2）。"""
     if not attachments:
         return ""
     sections: list[str] = []
@@ -1998,6 +2000,7 @@ async def run_agent_turn(
     # `default_model`，而 `build_provider` 内部会再解析一次档案 ⇒ 显式传入的
     # provider_config.default_model 被档案**静默吞掉**（注入不存在的模型 id 仍成功回复）。
     # 修法：显式覆盖场景先让档案落位、再把 provider_config 压在档案之上，并在建 provider
+    # 时走 `_build_provider_direct`（不再二次档案解析，与 judge/feedback 路径同先例）。
     _explicit_model = ""
     if provider_config:
         from bandi.llm.profiles import with_resolved_llm
@@ -2481,7 +2484,7 @@ async def run_agent_turn(
                 store.append_message(session_id, assistant_msg)
         elif logger_instance is not None:
             logger_instance.debug("assistant 落库跳过：%s 终态无模型真实输出", ctx.terminal_reason)
-        # 中断上下文持久化：用户终止/网络波动属于中断现象
+        # 中断上下文持久化（2026-10-15 用户拍板）：用户终止/网络波动属于中断现象，
         # 重试属于**新的一次请求**——但 LLM 需记得中断前的目标与过程。
         # SYSTEM 注记进会话历史，重试轮的上下文装配自然携带（不污染用户可见消息流）。
         if terminal_reason is not None and terminal_reason.name == "USER_INTERRUPT":

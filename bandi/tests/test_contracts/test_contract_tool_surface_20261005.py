@@ -182,7 +182,9 @@ class TestHallucinationJudgePromptExemption:
             provider=object(),
         )
         blob = " ".join(str(m.get("content", "")) for m in captured["messages"])
-        assert "自我介绍" in blob and "不计入" in blob, "judge 指令必须显式豁免问候/自我介绍"
+        assert "自我介绍" in blob and "不计入" in blob, (
+            "judge 指令必须显式豁免问候/自我介绍（真机误杀根修）"
+        )
         assert report.hallucination_score == 0.0
 
 

@@ -683,6 +683,7 @@ def build_policy_engine(
     from bandi.core.permission.role_mapping import check_role_map, effective_role_for
     from bandi.core.permission.roles import register_builtin_role
 
+    # 装配期自检：坏映射启动即告警（按映射指纹去重，不随每轮执行刷屏）
     check_role_map(role_map)
 
     engine = PolicyEngine()
@@ -906,6 +907,7 @@ def build_agent_context(
         project_root=project_root,
         rules=perm_rules,
     )
+    # bind_registry 先例）——registry 内工具实例化无 ui，不 bind 则真实链 LLM
     if user_interaction is not None:
         _ui_tool = tool_registry.get("request_user_input")
         if _ui_tool is not None and hasattr(_ui_tool, "bind_ui"):
@@ -1285,7 +1287,7 @@ async def run_agent(
     模型路由，键名对齐 LLMConfig 字段，如 default_model/api_key/base_url）。
     user_id + account_store 传入时启用「用户 → 权限档」解析（方案 A 续）；
     缺省不触发绑定查询，行为与改造前一致。
-    stream_handler 传入时透传过程帧。
+    stream_handler 传入时透传过程帧（公司链路 = 员工执行过程广播；Day137b-1 插队批）。
     user_interaction 传入时装配员工交互通道（多问卡/权限卡真挂起，员工链路由
     seat_executor 经 interaction_provider 构建）。
     approval_capture 传入时回填本轮审批锚点（tool_call_id/tool_name，供调度精确恢复）。

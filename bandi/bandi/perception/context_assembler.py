@@ -119,7 +119,7 @@ class ContextAssembler:
 
         闲聊/能力询问轮只留按需检索入口：同一份工具面还会经 `tools` 参数旁路发送，
         两处必须同口径裁剪，否则首轮会把全量 108 个工具（≈6100 tokens）以文本再送一遍
-        台账中这是首轮 system 比稳态多出的全部部分。
+        ——真机台账中这是首轮 system 比稳态多出的全部部分。
         """
         if self._tool_registry is None:
             return None

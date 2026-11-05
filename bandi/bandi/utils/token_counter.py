@@ -37,14 +37,30 @@ class TokenCounter:
     _encode_cache: dict[str, int] = {}
     _ENCODE_CACHE_MAX = 4096
 
+    @staticmethod
+    def _install_frozen_encodings() -> None:
+        """功能：冻结包内补注册 tiktoken 编码——entry point 元数据在 PyInstaller
+        环境中不存在，registry.ENCODINGS 为空会抛「Unknown encoding」；有元数据时不动。"""
+        try:
+            from tiktoken import registry
+
+            if registry.ENCODINGS:
+                return
+            from tiktoken_ext import openai_public
+
+            registry.ENCODINGS = list(openai_public.ENCODINGS)
+        except (ImportError, AttributeError):
+            return
+
     @classmethod
     def _get_encoder(cls):
         if cls._encoder is None:
             try:
+                cls._install_frozen_encodings()
                 import tiktoken
 
                 cls._encoder = tiktoken.get_encoding("cl100k_base")
-            except (ImportError, OSError):
+            except (ImportError, OSError, ValueError):
                 cls._encoder = False
         return cls._encoder
 

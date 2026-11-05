@@ -68,7 +68,7 @@ _STARTED_MONO = "_startedMono"
 
 
 def _apply_child_progress(parent: dict[str, Any], kind: str, payload: dict[str, Any]) -> None:
-    # 功能：子代理过程节点累积到 task 节点 children
+    # 功能：子代理过程节点累积到 task 节点 children（与主列表节点同构，单层）
     children: list[dict[str, Any]] = parent.setdefault("children", [])
 
     def _new_id() -> str:

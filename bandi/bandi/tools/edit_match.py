@@ -1,4 +1,5 @@
-# 功能：Edit 回退匹配链——按由严到宽的匹配策略逐级尝试，取第一个命中的级别。
+# 功能：Edit 回退匹配链（opencode 10 级链 + cc-haha 引号归一合体，纯函数无 IO）
+# （findActualString/preserveQuoteStyle）+ FileEditTool.ts:275-311（外部修改由工具层消费）
 from __future__ import annotations
 
 import re
@@ -37,7 +38,7 @@ class EditMatch:
 
 
 def normalize_quotes(text: str) -> str:
-    # 功能：弯引号 → 直引号
+    # 功能：弯引号 → 直引号（cc-haha normalizeQuotes 移植）
     return (
         text.replace(LEFT_SINGLE_CURLY_QUOTE, "'")
         .replace(RIGHT_SINGLE_CURLY_QUOTE, "'")
@@ -368,7 +369,7 @@ def _apply_curly_double(text: str) -> str:
 
 
 def _apply_curly_single(text: str) -> str:
-    # 功能：直单引号套弯引号
+    # 功能：直单引号套弯引号（缩写撇号保留右弯 + cc-haha 开闭启发式）
     chars = list(text)
     result: list[str] = []
     for i, char in enumerate(chars):
@@ -391,7 +392,7 @@ def _apply_curly_single(text: str) -> str:
 
 
 def preserve_quote_style(old: str, actual_old: str, new: str) -> str:
-    # 功能：命中经引号归一时把 new 套上文件的弯引号风格
+    # 功能：命中经引号归一时把 new 套上文件的弯引号风格（cc-haha preserveQuoteStyle）
     if old == actual_old:
         return new
     has_double = LEFT_DOUBLE_CURLY_QUOTE in actual_old or RIGHT_DOUBLE_CURLY_QUOTE in actual_old

@@ -1,5 +1,5 @@
 ﻿/**
- * 功能：员工单聊视图。
+ * 功能：员工单聊视图（@base docs/前端设计规划.md §6 / ——Day137 完整增强）。
  * 对话容器 = 与目标员工的讨论线程（participants=[user, target]）：
  * 历史/实时经线程通道（GET threads + thread_message 帧），发送经 /ws/company target_role
  * （触发员工执行，产出经 回写路由流入同一线程）。
@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Composer } from "@/components/chat/Composer";
 import { EmptyEmployeeState } from "@/components/chat/EmptyEmployeeState";
+import { EmployeeIdentityHeader } from "@/components/chat/EmployeeIdentityHeader";
 import { InteractionCard } from "@/components/chat/InteractionCard";
 import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
 import { ProcessBlock } from "@/components/chat/ProcessBlock";
@@ -43,7 +44,7 @@ const EMPTY_PROGRESS: ProcessNode[] = [];
 const ACTIVE_EXECUTION_PHASES = new Set(["running", "claimed", "executing"]);
 
 /** 功能：历史过程快照结算——消息已到达即该轮结束；历史事件无真实时间戳，
- * 去掉回放瞬间生成的 `startedAt`，避免显示「已完成 · 1ms」这类假耗时。 */
+ *  去掉回放瞬间生成的 `startedAt`，避免显示「已完成 · 1ms」这类假耗时。 */
 function settleHistoryProcess(events: unknown[]): ProcessNode[] {
   return settleRunningNodes(
     nodesFromEvents(events).map((node) => ({
@@ -98,6 +99,7 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
     [employees],
   );
   const [threadId, setThreadId] = useState<string | null>(null);
+  const [threadSessionId, setThreadSessionId] = useState("");
   const [messages, setMessages] = useState<DmMessage[]>([]);
   const [activeCount, setActiveCount] = useState<number | null>(null);
   // 本轮是否已发出、尚未收到员工回复——回复落位即结束（不依赖工作项卡终态滞后）
@@ -157,17 +159,14 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
     return () => useUiStore.getState().clearHeaderTools();
   }, [toolItems]);
 
-  // 插队批：员工执行过程实时块（thread_progress 帧归并——不依赖 work-items 轮询）
+  // Day137b-1 插队批：员工执行过程实时块（thread_progress 帧归并——不依赖 work-items 轮询）
   // 只认**本单聊线程**的槽（线程未建立时匹配空线程键）；不跨线程兜底——
   // 否则群聊/其他会话的执行过程会串进单聊视图（「回复完了还在执行」的串台源）。
   const progressNodes = useChatStore((state) => {
     const key = `${normalizeProjectScope(projectId)}::${threadId ?? ""}::${targetRole}`;
     return state.employeeProgress[key] ?? EMPTY_PROGRESS;
   });
-  const progressText = useChatStore((state) => {
-    const key = `${normalizeProjectScope(projectId)}::${threadId ?? ""}::${targetRole}`;
-    return state.employeeProgressText[key] ?? "";
-  });
+
 
   const refreshTasks = useCallback(() => {
     if (!targetRole) return;
@@ -221,6 +220,7 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
     if (!targetRole) return;
     let cancelled = false;
     setThreadId(null);
+    setThreadSessionId("");
     setMessages([]);
     setRetiredName("");
     setRetiredLocked(false);
@@ -235,6 +235,7 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
         const found = findDirectThread(threads, targetRole);
         if (!found || cancelled) return;
         setThreadId(found.thread_id);
+        if (found.session_id) setThreadSessionId(found.session_id);
         const detail = await companyApi.thread(found.thread_id, projectId);
         if (cancelled) return;
         // 历史消息带回写时持久化的过程快照——刷新后过程块可回看
@@ -270,6 +271,7 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
     return socket.on("thread_message", (frame) => {
       const data =
         frame.data && typeof frame.data === "object" ? (frame.data as Record<string, unknown>) : {};
+      // 检查修复：项目过滤（company 空间映射 "company"）
       // 两侧统一走 normalizeProjectScope——原「帧侧 ?? "company"」与
       // 「视图侧 || "company"」是两套写法，空 project 帧会与写侧键错开
       const frameProject = normalizeProjectScope(String(data.project_id ?? ""));
@@ -282,19 +284,26 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
         participants.includes("user") &&
         participants.includes(targetRole);
       if (!isDirect) return;
-      // 已确定线程时按 thread_id 过滤（防其他线程串入本单聊视图）
+      // 线程的 chat session id：上下文环/会话 token 的数据源
+      const frameSessionId = String(data.session_id ?? "").trim();
+      if (frameSessionId) setThreadSessionId(frameSessionId);
+      // 精确线程时用 thread_id 过滤，避免其他线程串入本单聊视图
       const incoming = String(data.thread_id ?? "");
       const current = threadIdRef.current;
       if (current && incoming && incoming !== current) return;
       // 首条消息前线程 id 尚未落地：用服务端帧里的线程 id 补位，
       // 否则实时过程槽（按键含 thread）对不上本视图的槽键。
       if (!current && incoming) setThreadId(incoming);
-      // 员工执行过程随回复固化——**先消费槽再 setState**
+      // Day137b-1：员工执行过程随回复固化——**先消费槽再 setState**（updater 必须纯函数：
       // 在 updater 内消费会因 React 重放 updater 导致第二次取到空槽、过程块丢失）
       // 槽键含 thread（当时用于过滤的同一 thread_id ⇒ 过程与回复精确配对）
       const processNodes = useChatStore
         .getState()
         .consumeEmployeeProgress(normalizeProjectScope(projectId), incoming, targetRole);
+      // 回复落地即定稿过程槽：迟到的 thread_progress 不得复活过程块
+      useChatStore
+        .getState()
+        .finishEmployeeProgress(normalizeProjectScope(projectId), incoming, targetRole);
       // 实时槽为空时回落帧内过程快照（页面在回写瞬间打开等错过过程帧的场景）
       const frameEvents = Array.isArray(data.process_events)
         ? (data.process_events as unknown[])
@@ -420,7 +429,10 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
 
   // 中断失效修复——原来 onStop={noop} + busy={false}
   // 单聊里停止按钮根本不出现。busy 从过程槽派生（实时），中断走 abort 端点。
-  const employeeBusy = progressNodes.length > 0 || awaitingReply;
+  // 180s 只是长任务兜底；只要线程里仍有 running 工作项就必须维持执行态
+  const dmRunning =
+    progressNodes.length > 0 || awaitingReply || (activeCount ?? 0) > 0;
+  const employeeBusy = dmRunning;
   const stopEmployee = () => {
     void companyApi
       .workItems(targetRole)
@@ -471,7 +483,7 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
         />
         <span className="text-chat-ink text-sm font-medium">{displayName}</span>
         <span className="text-chat-muted text-xs">· {t("chat.dm.hint")}</span>
-        {/* MEM-SCOPE-4 前端入口：选择已通过任务 → 对话修正其执行细节 */}
+        {/* 2026-09-23 MEM-SCOPE-4 前端入口：选择已通过任务 → 对话修正其执行细节 */}
         <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
           <PopoverTrigger asChild>
             <button
@@ -570,29 +582,22 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
                     data-chat-anchor-key={message.message_id}
                     className={cn("flex w-full flex-col", isUser ? "items-end" : "items-start")}
                   >
-                    {/*用户消息不带「我」标签；员工行 = 头像 + 姓名 + 时间戳 */}
+                    {/* 2026-09-23 用户拍板：用户消息不带「我」标签；员工行 = 头像 + 姓名 + 时间戳 */}
                     {!isUser ? (
-                      <span
-                        data-testid="dm-message-meta"
-                        className="text-chat-muted mb-1 flex items-end gap-1.5 text-sm leading-none"
-                      >
-                        <EmployeeAvatar
-                          name={resolveEmployeeName(employees, message.sender)}
-                          metadata={
-                            employees.find((item) => item.role_id === message.sender)?.metadata
-                          }
-                          className="size-6 rounded-full text-xs"
-                          testId="dm-message-avatar"
-                        />
-                        {resolveEmployeeName(employees, message.sender)}
-                      </span>
+                      <EmployeeIdentityHeader
+                        name={resolveEmployeeName(employees, message.sender)}
+                        metadata={
+                          employees.find((item) => item.role_id === message.sender)?.metadata
+                        }
+                        testId="dm-message-meta"
+                        avatarTestId="dm-message-avatar"
+                      />
                     ) : null}
                     {/* 内容包裹层：pl-5 与姓名对齐（子元素 w-full 自动收窄，右缘不超出消息列） */}
                     <div
                       className={cn(
                         "flex w-full flex-col",
                         isUser ? "items-end" : "items-start",
-                        !isUser && "pl-5",
                       )}
                     >
                       {!isUser && message.process?.length ? (
@@ -627,28 +632,17 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
                 );
               })
             )}
-            {/*正在执行显示在员工头像下方、与头像左缘对齐；
+            {/* 2026-09-23 用户拍板：正在执行显示在员工头像下方、与头像左缘对齐；
               插队批：thread_progress 帧到达即展示实时过程块（有过程帧优先于静态提示） */}
             {progressNodes.length > 0 || awaitingReply ? (
-              <div className="flex flex-col gap-0.5" data-testid="dm-running">
-                <EmployeeAvatar
+              <div className="flex w-full flex-col items-start" data-testid="dm-running">
+                <EmployeeIdentityHeader
                   name={displayName}
                   metadata={targetEmployee?.metadata}
-                  className="size-6 rounded-full text-xs"
-                  testId="dm-running-avatar"
+                  avatarTestId="dm-running-avatar"
                 />
                 {progressNodes.length > 0 ? (
-                  <>
-                    <ProcessBlock nodes={progressNodes} />
-                    {progressText ? (
-                      <p
-                        data-testid="dm-running-text"
-                        className="text-chat-ink mt-1 whitespace-pre-wrap break-words text-sm"
-                      >
-                        {progressText}
-                      </p>
-                    ) : null}
-                  </>
+                  <ProcessBlock nodes={progressNodes} />
                 ) : (
                   <span className="text-chat-muted flex items-center gap-1.5 text-xs">
                     <Loader2 className="size-3 animate-spin" />
@@ -711,10 +705,10 @@ export function DmChatView({ targetRole, projectId = "" }: DmChatViewProps) {
           </div>
         </div>
       ) : null}
-      {/*对话框与其它会话统一（公共 Composer）；单聊不显示模式控件。
-busy 从过程槽派生 ⇒ 中断按钮出现；onStop 走 E-6 abort（原 noop 失效）。
-开 enhanced 拿到控制条（模型/思考模式）+ ⊕ 的上传与@引用文件；
-单聊不消费「选择员工」（@团队成员仅项目群聊会话提供）——allowTeamPicker=false。 */}
+      {/* 2026-09-23 用户拍板：对话框与其它会话统一（公共 Composer）；单聊不显示模式控件。
+          2026-09-24：busy 从过程槽派生 ⇒ 中断按钮出现；onStop 走 E-6 abort（原 noop 失效）。
+          2026-09-30 用户拍板：开 enhanced 拿到控制条（模型/思考模式）+ ⊕ 的上传与@引用文件；
+          2026-10-02：单聊不消费「选择员工」（@团队成员仅项目群聊会话提供）——allowTeamPicker=false。 */}
       <Composer
         busy={employeeBusy}
         disabled={retiredLocked}
@@ -723,6 +717,7 @@ busy 从过程槽派生 ⇒ 中断按钮出现；onStop 走 E-6 abort（原 noop
         allowTeamPicker={false}
         attachmentsEnabled
         projectId={projectId}
+        sessionId={threadSessionId}
         // A 方案：员工配了独立模型（llm_config.default_model）时
         // 控制条显示该员工实际使用的模型并锁定切换——全局模型切换对它无效
         employeeModel={employeeOwnModel}

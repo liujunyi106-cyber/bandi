@@ -93,6 +93,7 @@ def test_summary_persisted_to_long_term_with_high_importance(tmp_path: Any) -> N
     )
 
     hits = manager.long_term.retrieve("seed 参数", limit=5)
+    # item_id 键取 session_id 前 8 字符（与既有 turn: 键截断先例一致）
     compaction = [h for h in hits if h.id.startswith("compaction:sess-abc")]
     assert compaction, f"必须落库 compaction 条目（实际 {[h.id for h in hits]}）"
     entry = compaction[0]
@@ -340,7 +341,7 @@ async def test_run_agent_turn_compaction_persisted_and_recalled(
 
 
 def _build_production_like_manager(tmp_path: Any) -> Any:
-    """按生产 _build_memory_manager 组装（episodic 可省略不影响本断言）。"""
+    """按生产 _build_memory_manager 同构组装（episodic 可省略不影响本断言）。"""
     from bandi.memory.long_term import LongTermMemory
     from bandi.memory.memory_provider import MemoryManager
     from bandi.memory.working import ScratchpadStore

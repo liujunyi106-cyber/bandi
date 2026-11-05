@@ -1,5 +1,5 @@
 /**
-  * 功能：模型配置弹窗契约——创建自动激活、编辑回显掩码 key
+ * 功能：模型配置弹窗契约（Day137b2b-3）——创建自动激活、编辑回显掩码 key
  * 高级折叠区默认收起、校验失败不出请求、删除/激活回调。
  * settingsApi 用真实模块 + mock `@/services/api`（走服务层形状，不 mock 业务）。
  */
@@ -45,7 +45,7 @@ const PROFILE: ProfileSummary = {
   api_key_masked: "sk-***5678",
 };
 
-describe("ModelConfigDialog", () => {
+describe("ModelConfigDialog（Day137b-2b）", () => {
   beforeEach(() => {
     vi.clearAllMocks(); // 清调用历史——calls[0] 断言不得吃到上一用例的请求
     apiMocks.get.mockResolvedValue({});
@@ -156,7 +156,7 @@ describe("ModelConfigDialog", () => {
     expect(apiMocks.post.mock.calls[0][1].extra.thinking_mode).toBe("high");
   });
 
-  it("破坏者：本弹窗只做「新增/编辑配置」——编辑态不得出现 删除 / 设为当前", () => {
+  it("破坏者：本弹窗只做「新增/编辑配置」——编辑态不得出现 删除 / 设为当前（2026-09-24 用户拍板）", () => {
     render(
       <ModelConfigDialog
         open
@@ -205,7 +205,7 @@ describe("ModelConfigDialog", () => {
     expect(apiMocks.put.mock.calls[0][1].provider).toBe("openrouter");
   });
 
-  it("布局一致性：下拉与输入框等宽 + 弹窗限高内滚 + 页脚弱化", () => {
+  it("布局一致性（2026-09-24 真机反馈）：下拉与输入框等宽 + 弹窗限高内滚 + 页脚弱化", () => {
     render(
       <ModelConfigDialog
         open
@@ -237,7 +237,7 @@ describe("ModelConfigDialog", () => {
     expect(document.querySelectorAll('[data-slot="dialog-content"]').length).toBe(1);
   });
 
-  it("模型候选按字母序", () => {
+  it("模型候选按字母序（2026-09-24 用户拍板：全段字母自动排序）", () => {
     const shuffled: ModelOption[] = [
       { name: "o4-mini", provider: "openai", supports_reasoning: true, reasoning_efforts: [] },
       { name: "gpt-4o", provider: "openai", supports_reasoning: false, reasoning_efforts: [] },

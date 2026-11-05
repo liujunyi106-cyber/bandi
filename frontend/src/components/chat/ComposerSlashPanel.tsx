@@ -1,5 +1,5 @@
 /**
-  * 功能：Composer 斜杠命令面板。
+ * 功能：Composer 斜杠命令面板（输入 / 触发；键盘导航由 Composer 处理——Day137b-2）。
  * 命令清单与过滤见 `lib/slash-commands.ts`。
  */
 import { useT } from "@/i18n";

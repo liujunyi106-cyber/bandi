@@ -70,7 +70,7 @@ def test_state_block_omits_empty_slots() -> None:
 
 
 def test_collect_uses_latest_earlier_snapshot(tmp_path: Any) -> None:
-    """形态：快照存在断档（turn:2 之后几轮未写入），状态块仍须取最近一条更早快照。"""
+    """真机形态：快照存在断档（turn:2 之后几轮未写入），状态块仍须取最近一条更早快照。"""
     from bandi.memory.context_projection import collect_state_block
     from bandi.memory.working import ScratchpadStore
 
@@ -118,7 +118,7 @@ def test_collect_includes_hint_even_without_other_sources() -> None:
 
 
 def test_collect_hint_survives_blank_raw_slot() -> None:
-    """形态：「本轮原话」槽因去重被置空，换任务判定仍须用原文（hint_source）。"""
+    """真机形态：「本轮原话」槽因去重被置空，换任务判定仍须用原文（hint_source）。"""
     from bandi.memory.context_projection import collect_state_block
 
     block = collect_state_block(

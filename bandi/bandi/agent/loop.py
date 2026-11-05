@@ -202,7 +202,7 @@ def _mark_dispatched_tool_calls(ctx: ExecutionContext) -> None:
 
 def _assistant_tool_segment_end(messages: list[Any], call_id: str) -> int | None:
     """功能：定位声明 call_id 的 assistant 消息之后「连续 TOOL 段」的插入位——
-    与 tool_message_guard 的 stub 插位；找不到返回 None（调用方回落 append）。"""
+    与 tool_message_guard 的 stub 插位同构；找不到返回 None（调用方回落 append）。"""
     for idx, msg in enumerate(messages):
         calls = getattr(msg, "tool_calls", None) or []
         if msg.role != MessageRole.ASSISTANT or not calls:
@@ -450,7 +450,7 @@ class AgentLoop:  # 功能：Agent 主循环（状态机驱动的思考→工具
         fairness = getattr(result, "fairness_report", None)
         # intent_hint / domain_route 只作观测、不驱动路由，但必须**落盘**——
         # 评测的「意图命中率 / domain 精度」靠 events 对照用例标注集算，
-        # 不落盘这两项就没有基准可比。
+        # 不落盘这两项就没有基准可比（真机 L1 实测：算得出来却查不到）。
         domain_route = getattr(result, "domain_route", None)
         await ctx.bus.emit(
             Event(

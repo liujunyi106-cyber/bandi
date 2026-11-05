@@ -96,7 +96,7 @@ class TestPipelineMerge:
     def _merge(allowed: list[str]) -> list[str]:
         """功能：复刻 pipeline 的并入逻辑。
 
-        非空域白名单 ∪ 全域交互通道；**空名单 = 不限制**→ 原样返回。
+        非空域白名单 ∪ 全域交互通道；**空名单 = 不限制**（Day122v 语义）→ 原样返回。
         """
         if not allowed:
             return allowed

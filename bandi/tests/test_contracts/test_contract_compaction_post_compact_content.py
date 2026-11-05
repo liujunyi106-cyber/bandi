@@ -1,4 +1,4 @@
-# 功能：post-compact 回注真实文件内容（而非仅路径）契约。
+# 功能：P0-2 post-compact 回注真实文件内容（而非仅路径）契约。
 from __future__ import annotations
 
 from pathlib import Path

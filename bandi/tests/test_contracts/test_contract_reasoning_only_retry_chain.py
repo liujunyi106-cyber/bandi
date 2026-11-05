@@ -56,7 +56,7 @@ def _bandi_config(chain: list[str]) -> Any:
 async def test_retry_ignores_bandi_config_chain_direct_mode() -> None:
     """①③ 链配置被忽略（候选通道已删）——重试=同模型保底重发一次。"""
     current = _FakeProvider("deepseek-flash", "retry-ok")
-    retry = _FakeProvider("hub-flash", "should-not-use")
+    retry = _FakeProvider("agnes-2.5-flash", "should-not-use")
     registry = _FakeRegistry(retry)
     ctx = _ctx(current)
 
@@ -65,7 +65,7 @@ async def test_retry_ignores_bandi_config_chain_direct_mode() -> None:
         [{"role": "user", "content": "hi"}],
         allow_stream=False,
         registry=registry,
-        bandi_config=_bandi_config(["hub-flash", "xiaomi/mimo-v2.6-flash"]),
+        bandi_config=_bandi_config(["agnes-2.5-flash", "xiaomi/mimo-v2.6-flash"]),
     )
 
     assert out is not None and out.content == "retry-ok"
@@ -99,7 +99,7 @@ async def test_fallback_same_model_reuses_current_provider() -> None:
 async def test_retry_uses_current_model_even_when_chain_lists_others() -> None:
     """破坏者：链列出其他模型也被忽略——仍同模型重发（不得触发 resolver）。"""
     current = _FakeProvider("deepseek-flash", "retry-ok")
-    registry = _FakeRegistry(_FakeProvider("hub-flash", "should-not-use"))
+    registry = _FakeRegistry(_FakeProvider("agnes-2.5-flash", "should-not-use"))
     ctx = _ctx(current)
 
     out = await states_mod._retry_reasoning_only(
@@ -107,7 +107,7 @@ async def test_retry_uses_current_model_even_when_chain_lists_others() -> None:
         [{"role": "user", "content": "hi"}],
         allow_stream=False,
         registry=registry,
-        bandi_config=_bandi_config(["deepseek-flash", "hub-flash"]),
+        bandi_config=_bandi_config(["deepseek-flash", "agnes-2.5-flash"]),
     )
 
     assert out is not None and out.content == "retry-ok"

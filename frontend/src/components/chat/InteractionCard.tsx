@@ -1,12 +1,12 @@
 /**
-  * 功能：统一决策卡
+ * 功能：统一决策卡（@base docs/前端设计规划.md §8 / v5 原型；
  * -3a 起为「统一决策区」内卡片——呈现在输入框上方）。
  * 分流（payload 优先）：
  * - `ui_variant=permission` → 权限三态（仅本次允许 / 本会话始终允许 / 拒绝）→ approval-decision 端点；
  * - `payload.notify` → 非交互提示（无按钮/无倒计时——）；
  * - choices 选项（单选/多选 multi_select + allow_custom → clarify 应答）；
  * - 无 choices → 允许/拒绝两态（confirm）或 input 文本（clarify）；
-  * 倒计时。
+ * - 倒计时（expires_in → mm:ss，超时禁用作答；Day137b-1）。
  */
 import { ChevronLeft, ChevronRight, Info, ListChecks, ShieldQuestion } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -23,7 +23,7 @@ interface InteractionCardProps {
   onResolved: (interactionId: string) => void;
   onError: (message: string) => void;
   /**
-    * 功能：作答草稿（①）。
+   * 功能：作答草稿（§18.16①）。
    * 多张决策卡并存时用户会切走再切回，卡片一旦卸载其本地作答即丢失；
    * 由父级按 interaction_id 分桶持久化，切回时经 initialDraft 复原。
    * 缺省时组件自持草稿（单卡场景与单测无需父级参与）。
@@ -419,7 +419,7 @@ export function InteractionCard({
                 );
               })
             : null}
-          {/*有选项时**同时**保留自由输入框（选项覆盖不到的答案直接手打）；
+          {/* 2026-10-01 用户拍板：有选项时**同时**保留自由输入框（选项覆盖不到的答案直接手打）；
               无选项时必给输入框（否则无从作答）。allow_custom=false 且带选项时才只留按钮 */}
           {allowCustom || currentChoices.length === 0 ? (
             <input
@@ -437,7 +437,7 @@ export function InteractionCard({
               }
             />
           ) : null}
-          {/*去掉「（部分作答）」按钮备注与左下角未答提示——
+          {/* 2026-10-01 用户拍板：去掉「（部分作答）」按钮备注与左下角未答提示——
               确定按钮统一文案，未答语义由 Agent 侧 note 处理，不在卡上提示用户 */}
           <div className="mt-1 flex items-center justify-end gap-2">
             {cancelButton}

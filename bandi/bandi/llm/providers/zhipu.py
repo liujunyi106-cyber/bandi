@@ -1,5 +1,5 @@
 # 功能：Zhipu / GLM provider——GLM-5.2 及以上用 `thinking.type` +
-# 顶层 `reasoning_effort`
+# 顶层 `reasoning_effort`（官方值域 max/high/low；low|medium 会被服务端映射为 high
 # 强制思考**：传 `thinking.type="disabled"` 请求失败 ⇒ 这些模型的空档（UI「关闭」）
 # 下发最低档 "low"，而非 disabled。
 from __future__ import annotations
@@ -11,6 +11,7 @@ from bandi.llm.providers.openai import OpenAICompatProvider
 # GLM-5.3 系（强制思考）：仅 max / high / low
 _GLM_ALWAYS_ON_MARKERS = ("glm-5.3",)
 # 官方值域 = max / high / low（语义：low 与 medium 在服务端均按 high 执行——
+# 客户端发送原值即可；本表仅对 medium 做显式映射，low 原样透传，语义等价）。
 _GLM_EFFORT = {
     "minimal": "low",
     "low": "low",

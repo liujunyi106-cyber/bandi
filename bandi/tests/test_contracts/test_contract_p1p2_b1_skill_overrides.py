@@ -1,7 +1,7 @@
 """契约：技能级模型/思考档位覆盖真实生效（不再只回显）。
 
 口径：`fork` 技能把 model/effort 传给子代理；子代理按覆盖后的配置解析 provider；
-解析失败回退父 provider 且不阻断执行。`paths` 已从模型/载荷移除。
+解析失败回退父 provider 且不阻断执行。`paths` 无消费方，已从模型/载荷移除。
 """
 
 from __future__ import annotations

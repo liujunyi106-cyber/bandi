@@ -1,6 +1,7 @@
 # 功能：对话附件存储（上传落盘 + 读回）——项目附件目录
 # `~/.bandi/company/projects/<pid>/uploads/`（company 缺省 `~/.bandi/company/uploads/`）；
 # 落盘名 `<upload_id>__<安全原名>`；大小上限 fail-closed + 文件名安全化（防目录逃逸）。
+# 参考先例：projects.py（store 模式）/ path_guard（路径片段白名单）。
 from __future__ import annotations
 
 import re
@@ -110,7 +111,7 @@ class AttachmentStore:
         return path.name.split("__", 1)[-1]
 
 
-# 功能：文本类附件内容提取
+# 功能：文本类附件内容提取（LLM 注记注入用——Day137b-2）
 MAX_ATTACHMENT_TEXT_BYTES = 20 * 1024
 TEXT_EXTENSIONS = frozenset(
     {

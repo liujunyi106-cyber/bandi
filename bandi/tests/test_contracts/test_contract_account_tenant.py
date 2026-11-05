@@ -1,5 +1,6 @@
-# 功能：FE-账号/tenant 轻量抽象契约
+# 功能：Day133 FE-账号/tenant 轻量抽象契约（ADR-34 预留）
 # 背景：账号层 User 模型 + tenant_id 落库 + RoleBinding 关联；不做登录/密码/token/UI。
+# 数据层 tenant_id 预置 = entities 表 ALTER 列（沿 project_id 先例，不建多租户逻辑）。
 # 契约钉行为：AccountStore CRUD/持久化/tenant 默认/roles 白名单/RoleBinding 关联/
 # ensure_local_user 幂等/Entity.tenant_id 字段与落库往返。
 from __future__ import annotations

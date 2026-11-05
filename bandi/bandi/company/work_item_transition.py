@@ -543,7 +543,10 @@ def refresh_dependents(
 ) -> bool:
     """Walk all work items and propagate dependency state to parent phases.
 
-    One synchronous pass over the store:
+    Synchronous Bandi adaptation of OpenOPC ``refresh_dependents_for_run``:
+    the run_id dimension collapses to the single global store, and the
+    update path collapses to ``store.save`` (Bandi's field-level
+    ``update_delegation_work_item`` has no equivalent here). One pass:
 
     - WAITING_DEPENDENCIES → READY / READY_FOR_REWORK when all deps approve.
     - WAITING_FOR_CHILDREN → READY as a synthesis turn when delegated

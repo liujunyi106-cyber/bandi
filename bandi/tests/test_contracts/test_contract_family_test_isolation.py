@@ -23,7 +23,7 @@ REAL_DB = Path.home() / ".bandi" / "checkpoints.db"
 
 
 def _row_count(path: Path) -> int:
-    conn = sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True)
+    conn = sqlite3.connect(f"file:{path.as_posix()}?mode=ro&immutable=1", uri=True)
     try:
         return conn.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0]
     finally:

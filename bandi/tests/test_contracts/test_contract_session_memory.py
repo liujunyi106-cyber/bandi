@@ -73,7 +73,7 @@ def test_summary_returns_none_without_snapshots(tmp_path: Any) -> None:
 
 
 def test_summary_capped_by_total_token_budget(tmp_path: Any) -> None:
-    """契约：摘要总 token 必须受上限约束
+    """契约（P1c，审查项3）：摘要总 token 必须受上限约束（防海量 turn 快照把
     摘要撑到失控，进 SYSTEM 消息挤爆上下文）——超过预算时保留最近 turn（尾部
     优先，会话记忆新近性），内容不丢可发现性（至少最新快照进入摘要）。"""
     from bandi.memory.session_memory import build_session_memory_summary
@@ -323,6 +323,7 @@ async def test_second_sm_compact_keeps_single_summary(tmp_path: Any) -> None:
         assert len(summaries) == 1, f"二次 SM 压缩后摘要必须恒一条（实际 {len(summaries)}）"
 
 
+@pytest.mark.timing
 @pytest.mark.asyncio
 async def test_run_agent_turn_sm_compact_end_to_end(tmp_path: Any, monkeypatch: Any) -> None:
     """

@@ -20,9 +20,9 @@ const dir: ModelOption[] = [
 
 describe("mergeConfiguredProfiles", () => {
   it("并入目录外的档案模型（网关私有模型）", () => {
-    const merged = mergeConfiguredProfiles(dir, [{ model: "custom-hub-flash", provider: "custom_hub" }]);
-    expect(merged.map((item) => item.name)).toContain("custom-hub-flash");
-    expect(merged.find((item) => item.name === "custom-hub-flash")?.provider).toBe("custom_hub");
+    const merged = mergeConfiguredProfiles(dir, [{ model: "agnes-2.5-flash", provider: "agnes" }]);
+    expect(merged.map((item) => item.name)).toContain("agnes-2.5-flash");
+    expect(merged.find((item) => item.name === "agnes-2.5-flash")?.provider).toBe("agnes");
   });
 
   it("与目录等价（归一后同模型）不重复追加", () => {
@@ -33,20 +33,20 @@ describe("mergeConfiguredProfiles", () => {
   });
 
   it("不虚报思考能力（目录外模型默认无挡位）", () => {
-    const merged = mergeConfiguredProfiles(dir, [{ model: "custom-hub-flash", provider: "custom_hub" }]);
-    const extra = merged.find((item) => item.name === "custom-hub-flash");
+    const merged = mergeConfiguredProfiles(dir, [{ model: "agnes-2.5-flash", provider: "agnes" }]);
+    const extra = merged.find((item) => item.name === "agnes-2.5-flash");
     expect(extra?.supports_reasoning).toBe(false);
     expect(extra?.reasoning_efforts).toEqual([]);
   });
 
   it("多个档案全部并入且顺序稳定（目录在前）", () => {
     const merged = mergeConfiguredProfiles(dir, [
-      { model: "custom-hub-flash", provider: "custom_hub" },
+      { model: "agnes-2.5-flash", provider: "agnes" },
       { model: "deepseek-v4.1-flash", provider: "deepseek" },
     ]);
     expect(merged.map((item) => item.name)).toEqual([
       "mimo-v2.6-flash",
-      "custom-hub-flash",
+      "agnes-2.5-flash",
       "deepseek-v4.1-flash",
     ]);
   });
@@ -88,9 +88,9 @@ describe("configuredModelOptions", () => {
   });
 
   it("目录外档案模型保留但不虚报思考能力", () => {
-    const result = configuredModelOptions(dir, [{ model: "custom-hub-flash", provider: "custom_hub" }], "", false);
+    const result = configuredModelOptions(dir, [{ model: "agnes-2.5-flash", provider: "agnes" }], "", false);
     expect(result).toHaveLength(1);
-    expect(result[0].name).toBe("custom-hub-flash");
+    expect(result[0].name).toBe("agnes-2.5-flash");
     expect(result[0].supports_reasoning).toBe(false);
   });
 });

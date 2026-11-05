@@ -6,6 +6,7 @@ import os
 import sqlite3
 from pathlib import Path
 
+# sqlite3.connect 默认 timeout（秒）。**注意**：CPython 把该参数直接映射为
 # sqlite3_busy_timeout(timeout * 1000)，即 `timeout` 本身就是写等待上限。
 DEFAULT_TIMEOUT_SECONDS = 5.0
 

@@ -71,7 +71,7 @@ class TestPythonExecTool:
                 with pytest.raises(asyncio.CancelledError):
                     await tool.execute({"code": "print('x')", "timeout": 1})
         mock_tree.assert_called_once_with(proc), "取消时必须杀整棵进程树"
-        proc.kill.assert_not_called(), "禁止回退到只杀首进程"
+        proc.kill.assert_not_called(), "禁止回退到只杀首进程（P1-7 同族）"
 
     @pytest.mark.asyncio
     async def test_cancel_reap_wait_hang_does_not_block(self, tool: PythonExecTool) -> None:

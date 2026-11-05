@@ -64,7 +64,7 @@ def _registered_role_ids(org_engine: Any | None) -> set[str]:
 
 
 def _registered_name_map(org_engine: Any | None) -> dict[str, str]:
-    """"""
+    """功能：显示名（lower）→ 注册角色 id 映射——仅唯一名收录，同名歧义不参与匹配。"""
     if org_engine is None:
         return {}
     name_to_ids: dict[str, list[str]] = {}
@@ -79,7 +79,7 @@ def _registered_name_map(org_engine: Any | None) -> dict[str, str]:
 def _mention_name_map(
     org_engine: Any | None, member_role_ids: set[str] | None = None
 ) -> dict[str, str]:
-    """
+    """功能：@ 显示名映射——全局唯一名直用；歧义名在项目成员内唯一时收敛到该成员
     （同名「产品经理」跨团队共存时按当前项目成员消歧；仍歧义不收录=宁可不路由不误路由）。"""
     if org_engine is None:
         return {}
@@ -148,6 +148,7 @@ def resolve_mentions(
     - is_broadcast：全部未命中注册角色时为 True；`@all` / `@所有人` 已废弃，
       按普通未注册提及处理，不再触发广播。
     - names：显示名（lower）→ 角色 id 第二通道——id 未命中时兜底；
+      同名歧义不在映射内（宁可不建卡也不误路由）。
     """
     name_map = {key.lower(): value for key, value in (names or {}).items()}
     display_matches = _display_name_matches(content, name_map)
@@ -213,6 +214,7 @@ def unresolved_mentions(
     """功能：@ 提及中未注册的角色清单——提示用，不路由。
 
     带空格显示名（@UI 设计 → 正则仅提取 UI）按其注册显示名前缀视为已路由，
+    不进入未注册提示；显示名映射与路由同源（含项目成员内消歧）。
     `@all` / `@所有人` 已废弃，按未注册提及提示。
     """
     mentions = extract_mentions(content)
@@ -248,7 +250,7 @@ def _handle_user_rework(
     """功能：用户对话修正「某次已派发任务」——不新建卡，受控回转原卡并
     把修正指令写进其元数据（执行侧 brief 注入），线程消息照落以保持对话连续。
 
-    `_prepare_company_followup_target`：修正指令落 `latest_user_directive`
+    对标 OpenOPC `_prepare_company_followup_target`：修正指令落 `latest_user_directive`
     等价键（我们写 `user_rework_directive` + 复用 `rework_feedback` 注入通道）。
 
     仅支持已 的卡（`reopen_approved_work_item_for_rework` fail-closed 抛
@@ -327,7 +329,7 @@ _DEFAULT_ROUND_SERVICES: dict[tuple[str, int], Any] = {}
 
 
 def _round_mention_resolver(org_engine: Any | None) -> Any:
-    """"""
+    """功能：群聊接力提及解析——复用注册角色与显示名映射，限定本轮成员。"""
 
     def _resolve(text: str, members: list[str]) -> list[str]:
         registered = sorted(_registered_role_ids(org_engine))

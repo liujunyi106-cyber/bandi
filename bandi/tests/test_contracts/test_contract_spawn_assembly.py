@@ -2,7 +2,7 @@
 
 重建根因：factory.build_tool_registry 以裸构造注册 SpawnThreadTaskTool()，生产链路
 （EngineSeatExecutor→run_agent→run_agent_turn）必须在 registry 建成后注入 deps
-否则工具对 LLM 可见但每次调用必 fail-closed。
+否则工具对 LLM 可见但每次调用必 fail-closed（被审查复现：execute → requires deps）。
 """
 
 from __future__ import annotations
@@ -78,7 +78,7 @@ def test_registry_spawn_tool_starts_bare() -> None:
 
 @pytest.mark.asyncio
 async def test_registry_spawn_tool_bind_deps_then_executes(tmp_path) -> None:
-    """"""
+    """沿 bind_registry/bind_ui 先例：registry 裸实例 bind_deps 后 execute 必须真实可用。"""
     from bandi.company.discussion_thread import ThreadManager
     from bandi.company.store import WorkItemStore
 

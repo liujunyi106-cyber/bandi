@@ -1,7 +1,7 @@
-"""契约：~修复批次。
+"""契约：~审查修复批次（RF-1..RF-17）。
 
-覆盖：三路破坏者发现的 6 真缺陷 + 11 建议项
-交付文档收集/B1B5报告与修复清单-.md）。
+覆盖：三路破坏者审查发现的 6 真缺陷 + 11 建议项（清单见
+交付文档收集/B1B5审查报告与修复清单-.md）。
 
 生产调用路径：PermissionsPipeline / ToolExecutor / AuditReporter / TraceExplainer /
 MemoryCompactor / ExecutionContext（live 口径/窗口/缓存）/ EventBus /
@@ -10,7 +10,6 @@ GlobalMemoryStore / repair_tool_arguments / subagent 装配 / google_stream。
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
 from typing import Any
 
 import pytest
@@ -25,12 +24,6 @@ from bandi.observability.trace_explainer import TraceExplainer
 from bandi.tools.permissions_pipeline import PermissionsPipeline
 from bandi.tools.registry import ToolRegistry
 
-# 功能：部分用例断言「本地时间相对 UTC 的偏移」，在 UTC 机器上无从体现
-requires_non_utc_local = pytest.mark.skipif(
-    datetime.now().astimezone().utcoffset() == timedelta(0),
-    reason="用例依赖非 UTC 的本地时区",
-)
-
 
 class _AutoApprove:
     async def ask_permission(self, tool_name: str, args: dict[str, Any], risk: str) -> bool:
@@ -42,7 +35,7 @@ def _pp(tmp_path: Any) -> PermissionsPipeline:
 
 
 def test_rf1_quoted_redirect_target_denied(tmp_path: Any) -> None:
-    """契约：引号包裹的越界重定向目标必须提取并拒绝
+    """契约（RF-1 破坏者）：引号包裹的越界重定向目标必须提取并拒绝——
     原正则排除引号致 `> "C:/越界"` 完整绕过沙箱落盘。"""
     pp = _pp(tmp_path)
     tc = ToolCall(id="b1", name="bash", arguments={"command": 'echo x > "C:/evil/x.txt"'})
@@ -51,7 +44,7 @@ def test_rf1_quoted_redirect_target_denied(tmp_path: Any) -> None:
 
 
 def test_rf1_home_and_variable_targets_fail_closed(tmp_path: Any) -> None:
-    """契约：~ / $HOME 展开为 home 绝对路径（workspace 外拒绝）
+    """契约（RF-1 破坏者）：~ / $HOME 展开为 home 绝对路径（workspace 外拒绝）；
     其他变量/命令替换无法静态解析 → fail-closed。
 
     注：workspace 用 tmp_path/ws 与 home（隔离后 = tmp_path）分离——否则
@@ -70,7 +63,7 @@ def test_rf1_home_and_variable_targets_fail_closed(tmp_path: Any) -> None:
 
 
 def test_rf1_git_and_sed_variants_detected(tmp_path: Any) -> None:
-    """契约：git 全局配置参数间隔变体与 sed --in-place 长选项同样
+    """契约（RF-1）：git 全局配置参数间隔变体与 sed --in-place 长选项同样
     提取目标（原 `git -c k=v config --global` / `sed --in-place` 漏报）。"""
     from bandi.tools.permissions_pipeline import extract_shell_write_targets
 
@@ -81,7 +74,7 @@ def test_rf1_git_and_sed_variants_detected(tmp_path: Any) -> None:
 
 
 def test_rf2_exec_tools_declare_execute() -> None:
-    """契约：python_exec/browser 权限 action 必须为 execute
+    """契约（RF-2）：python_exec/browser 权限 action 必须为 execute——
     原推导归 write 致 member 由 execute 拒绝松弛为审批后可执行任意代码。"""
     from bandi.tools.browser import BrowserTool
     from bandi.tools.executor import ToolExecutor
@@ -92,7 +85,7 @@ def test_rf2_exec_tools_declare_execute() -> None:
 
 
 def test_rf3_tool_failure_rate_from_tool_messages(tmp_path: Any) -> None:
-    """契约：失败率分母必须来自 TOOL 消息（生产每调用落一条）
+    """契约（RF-3 破坏者）：失败率分母必须来自 TOOL 消息（生产每调用落一条）
     而非 assistant metadata tool_calls（生产 assistant 不带 → 恒 0 假绿）。"""
     store = SessionStore(str(tmp_path / "s.db"))
     sid = store.create_session(title="t")
@@ -120,7 +113,7 @@ def test_rf3_tool_failure_rate_from_tool_messages(tmp_path: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_rf4_verdict_visible_with_event_session(tmp_path: Any) -> None:
-    """契约：事件 data 无 session_id 时
+    """契约（RF-4 破坏者）：事件 data 无 session_id 时（生产 VERDICT/COMPRESSION
     形态）必须取 event.session_id 归桶——原落 _default 致 explain 不可见。"""
     store = SessionStore(str(tmp_path / "s.db"))
     bus = EventBus()
@@ -133,7 +126,7 @@ async def test_rf4_verdict_visible_with_event_session(tmp_path: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_rf5_system_excerpt_survives_truncation(tmp_path: Any) -> None:
-    """契约：压缩区超 source 预算（生产规模）时，system 约束
+    """契约（RF-5 破坏者）：压缩区超 source 预算（生产规模）时，system 约束
     摘录必须仍进入摘要源——原追加尾部被保前缀截断必丢。"""
     from bandi.memory.compaction import MemoryCompactor
 
@@ -163,7 +156,7 @@ async def test_rf5_system_excerpt_survives_truncation(tmp_path: Any) -> None:
 
 
 def test_rf6_live_token_count_includes_arguments() -> None:
-    """契约：live_token_count 必须计 tool_calls.arguments
+    """契约（RF-6 破坏者）：live_token_count 必须计 tool_calls.arguments——
     原只计 content，大参数（写文件类）被低估致压缩/超窗漏判。"""
     from bandi.agent.base import ExecutionContext
     from bandi.core.config import AgentConfig
@@ -191,7 +184,7 @@ def test_rf6_live_token_count_includes_arguments() -> None:
 
 
 def test_rf7_output_path_sensitive_and_media_guard(tmp_path: Any) -> None:
-    """契约：output_path 参数名进入敏感校验面；生成落盘
+    """契约（RF-7 破坏者）：output_path 参数名进入敏感校验面；生成落盘
     （save_generation_output）覆盖 .env 必须拒绝。"""
     pp = _pp(tmp_path)
     tc = ToolCall(id="s1", name="image_generate", arguments={"output_path": ".env"})
@@ -210,7 +203,7 @@ async def test_rf7_media_save_rejects_env(tmp_path: Any) -> None:
 
 
 def test_rf8_executor_fallback_pipeline_gets_project_root(tmp_path: Any) -> None:
-    """契约：ToolExecutor fallback 构造的权限管道必须继承
+    """契约（RF-8）：ToolExecutor fallback 构造的权限管道必须继承
     project_root（原裸构造致沙箱基准=全局 workspace）。"""
     from bandi.tools.executor import ToolExecutor
 
@@ -220,7 +213,7 @@ def test_rf8_executor_fallback_pipeline_gets_project_root(tmp_path: Any) -> None
 
 @pytest.mark.asyncio
 async def test_rf9_recovery_syncs_seen_window(tmp_path: Any) -> None:
-    """契约：enable_persistence 恢复的 event_id 必须同步进
+    """契约（RF-9 破坏者）：enable_persistence 恢复的 event_id 必须同步进
     滑动窗口 deque（原只 add set，窗口逐出永不可达）。"""
     path = tmp_path / "events.jsonl"
     bus1 = EventBus(persist_path=path)
@@ -238,9 +231,8 @@ async def test_rf9_recovery_syncs_seen_window(tmp_path: Any) -> None:
         bus2.disable_persistence()
 
 
-@requires_non_utc_local
 def test_rf10_search_normalizes_mixed_timestamps(tmp_path: Any) -> None:
-    """契约：旧本地 naive 与新 UTC ISO 混排时按真实时间
+    """契约（RF-10 破坏者）：旧本地 naive 与新 UTC ISO 混排时按真实时间
     DESC（字符串序会颠倒：本地 10:00 = UTC 02:00 应排 UTC 04:00 之后）。"""
     store = GlobalMemoryStore(tmp_path / "g.db")
     try:
@@ -260,7 +252,7 @@ def test_rf10_search_normalizes_mixed_timestamps(tmp_path: Any) -> None:
 
 
 def test_rf11_empty_arguments_actionable_error() -> None:
-    """契约：空串 arguments 不得静默降级 {}
+    """契约（RF-11 破坏者）：空串 arguments 不得静默降级 {}（写工具会按默认
     参数执行）——repair 返回 None，解析入口转可行动错误。"""
     from bandi.core.message import repair_tool_arguments
     from bandi.llm.adapters.openai_compat import _parse_tool_calls
@@ -273,7 +265,7 @@ def test_rf11_empty_arguments_actionable_error() -> None:
 
 
 def test_rf12_maintenance_mode_dead_code_removed() -> None:
-    """契约：零消费死函数 _is_maintenance_mode 必须删除
+    """契约（RF-12）：零消费死函数 _is_maintenance_mode 必须删除（真判定在
     states.on_compressing 的 compressible/effective 口径）。"""
     import bandi.agent.deps as deps_mod
 
@@ -281,7 +273,7 @@ def test_rf12_maintenance_mode_dead_code_removed() -> None:
 
 
 def test_rf13_small_window_effective_not_degenerate() -> None:
-    """契约：reserve >= window 时有效窗口不得退化为 1
+    """契约（RF-13 破坏者）：reserve >= window 时有效窗口不得退化为 1
     （原 max(1, window-reserve) 全链 PROMPT_TOO_LONG）。"""
     from bandi.agent.base import ExecutionContext
     from bandi.core.config import AgentConfig
@@ -299,7 +291,7 @@ def test_rf13_small_window_effective_not_degenerate() -> None:
 
 
 def test_rf14_encode_cache_hit() -> None:
-    """契约：同文本重复计数必须命中编码缓存
+    """契约（RF-14）：同文本重复计数必须命中编码缓存（原每次全量 tiktoken
     重复编码，单轮多口径 30-54ms/次）。"""
     from bandi.utils.token_counter import TokenCounter
 
@@ -311,7 +303,7 @@ def test_rf14_encode_cache_hit() -> None:
 
 @pytest.mark.asyncio
 async def test_rf16_google_stream_usage_merge() -> None:
-    """契约：流式 usageMetadata 增量帧缺字段不得清零既有值
+    """契约（RF-16 破坏者）：流式 usageMetadata 增量帧缺字段不得清零既有值
     （原整体重建——中间帧缺 promptTokenCount 会把 prompt_tokens 归 0）。"""
     from bandi.llm.adapters.google import google_stream
 
@@ -350,7 +342,7 @@ async def test_rf16_google_stream_usage_merge() -> None:
 
 
 def test_rf18_contextvar_reset_prevents_leak() -> None:
-    """契约：set_event_context 后必须 reset_event_context 恢复
+    """契约（RF-18）：set_event_context 后必须 reset_event_context 恢复——
     泄漏会让后续 emit 被错误填充 session_id（c1 契约原误用 set(token=...)
     致全量顺序污染 trace 归桶）。"""
     import asyncio
@@ -376,7 +368,7 @@ def test_rf18_contextvar_reset_prevents_leak() -> None:
 
 
 def test_rf17_cut_summary_reserves_appendix() -> None:
-    """契约：_cut_summary 必须为尾部附录预留预算
+    """契约（RF-17 破坏者）：_cut_summary 必须为尾部附录预留预算（原预算
     不含附录，极端输入总产物超 max_summary_chars）。"""
     from bandi.memory.compaction import MemoryCompactor
 

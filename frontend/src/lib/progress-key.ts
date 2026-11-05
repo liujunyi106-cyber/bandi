@@ -11,6 +11,7 @@
  * ⚠️ 注意后端 `_build_runtime` 的**最终**兜底是 `"default"`（工作项归属 > communication > "default"）
  * 二者只在「不可达的空值路径」上不同；若将来引入非 company 的默认项目，本常量须改为镜像后端。
  *
+ * @base docs/技术债务清单.md § ；后端先例 `bandi/company/session_scoping.py`
  * （单一键构造器 + 统一 `strip()` 归一化）。
  */
 

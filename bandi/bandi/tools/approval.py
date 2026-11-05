@@ -701,6 +701,7 @@ _DENY_TOKENS = frozenset(
 
 
 def parse_approval_decision(content: str | None) -> ApprovalDecision | None:
+    # 功能：把用户审批卡回复映射为决策（中英文 token + JSON 形态）
     raw = (content or "").strip()
     if not raw:
         return None
@@ -832,7 +833,7 @@ def build_approval_question(
 
 # 结构化写入工具的中文意图说明（权限卡 prompt 与 detail 用）：
 # 卡片必须说清「调用什么工具、提取什么内容、写入哪里」——泛化英文 prompt
-# 让用户在不知情下批准结构化写入。
+# 让用户在不知情下批准结构化写入（用户拍板 2026-10-14）。
 _TOOL_INTENT_PROMPTS: dict[str, str] = {
     "ontology_define": "允许 Agent 调用 `ontology_define` 向本体库声明词汇（类与关系）吗？",
     "ontology_assert": "允许 Agent 调用 `ontology_assert` 向本体库写入实体与事实吗？",
@@ -860,7 +861,7 @@ def _clip(text: str, limit: int = 60) -> str:
 
 
 def approval_params_preview(params: dict[str, Any] | None, *, limit: int = 500) -> dict[str, Any]:
-    # 功能：审批卡参数预览——敏感键打码、长值截断，供前端命令/路径。
+    # 功能：审批卡参数预览——敏感键打码、长值截断，供前端审查命令/路径。
     out: dict[str, Any] = {}
     for key, value in (params or {}).items():
         name = str(key)

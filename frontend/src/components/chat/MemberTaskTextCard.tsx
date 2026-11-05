@@ -1,7 +1,7 @@
 /**
  * 功能：正文「## 成员任务」段 → 卡片区（串行派单的「下一个执行成员」任务卡）。
  *
-  * 成员派发不作文本平铺——从回复正文抽出「成员任务」段
+ * 用户拍板（2026-10-16）：成员派发不作文本平铺——从回复正文抽出「成员任务」段，
  * 渲染成内置卡片（默认折叠，可展开完整任务）；位置在正文其余内容（含风险）之后。
  * 并行派发不写该段（执行链表已足够）；串行链只写下一个执行成员。
  */
@@ -12,7 +12,7 @@ import { useT } from "@/i18n";
 import { cn } from "@/lib/utils";
 
 /** 功能：从回复正文抽出「成员任务」段（至下一个标题或文末）。
- * 兼容两种形态：`## 成员任务`（各级标题）与 `**成员任务**` 加粗行。 */
+ *  兼容两种形态：`## 成员任务`（各级标题）与 `**成员任务**` 加粗行。 */
 export function extractMemberTaskSection(text: string): { body: string; section: string } {
   const match =
     /(?:^|\n)(?:#{1,4}[ \t]*成员任务\*{0,2}|\*\*成员任务\*\*)[^\n]*\n([\s\S]*?)(?=\n#{1,4}[ \t]|\s*$)/.exec(
@@ -53,8 +53,8 @@ function stripInlineHtml(value: string): string {
 }
 
 /** 功能：成员任务块解析——模型可能用 `<details><summary>标题</summary>正文</details>`
- * 结构（折叠态渲染标题与正文，不显示 `<details>` 标签）。
- * 提取 summary 为标题、details 内部为正文；无 details 时首行作标题。 */
+ *  结构（折叠态渲染标题与正文，不显示 `<details>` 标签）。
+ *  提取 summary 为标题、details 内部为正文；无 details 时首行作标题。 */
 function normalizeBlockText(text: string): { title: string; body: string } {
   const summaryMatch = /<summary>([\s\S]*?)<\/summary>/i.exec(text);
   // 剥离模型附带的「（点击展开）」类提示词——展开操作由卡片自身的箭头承担

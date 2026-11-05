@@ -42,7 +42,7 @@ def ensure_unique_node_ids(
 
 
 def skill_card_with_unique_step_ids(data: dict[str, Any]) -> tuple[SkillCard, list[str]]:
-    """
+    """功能：整卡唯一化（nodes/edges/start/terminal 引用重映射）+ 图拓扑保底
     返回通过 闭环校验的 SkillCard 与修正警告。
     输入为模型原始字典（含重复 node_id 或死引用时的安全兜底）。"""
     content = {key: value for key, value in data.items()}

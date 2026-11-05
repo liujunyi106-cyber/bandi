@@ -98,7 +98,7 @@ def test_referer_checked_when_origin_absent(client: TestClient) -> None:
 
 def test_null_origin_is_rejected(client: TestClient) -> None:
     # 破坏者：沙箱 iframe / file:// 页面的 Origin 是 "null"——不得借此绕过来源基线。
-    # 桌面壳必须由 FastAPI 同源托管页面；改自定义协议时需显式登记允许来源。
+    # 桌面壳必须由 FastAPI 同源托管页面；P5-6 改自定义协议时需显式登记允许来源。
     response = client.post(
         _PROBE,
         headers={"Origin": "null", "Sec-Fetch-Site": "cross-site"},

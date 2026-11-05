@@ -399,3 +399,93 @@ def test_delegate_whitelist_injected_from_can_spawn(tmp_path: Path) -> None:
     )
     assert query_items
     assert "allowed_delegate_role_ids" not in query_items[0].metadata
+
+
+def test_contract_group_thread_kind_and_session_binding(tmp_path: Path) -> None:
+    """群聊消息必须落 kind=group、session_id=群聊会话的线程（回复卡片据此落位）。"""
+    from bandi.api.company_chat import handle_chat_message
+    from bandi.company.discussion_thread import ThreadManager
+
+    store = WorkItemStore(str(tmp_path / "wi.db"))
+    org = _mk_org("worker-1")
+    comm = CommunicationManager(
+        workspace=str(tmp_path / "ws"), project_id="p1", session_id="s1", org_engine=org
+    )
+    threads = ThreadManager(workspace=str(tmp_path / "ws"), project_id="p1", session_id="s1")
+
+    created = handle_chat_message(
+        content="你好 @worker-1",
+        sender_role="user",
+        communication=comm,
+        store=store,
+        org_engine=org,
+        thread_manager=threads,
+        session_id="group-session",
+        project_id="p1",
+        member_role_ids={"worker-1"},
+    )
+
+    thread = threads.find_by_session("group-session")
+    assert thread is not None, "群聊消息必须绑定会话线程"
+    assert thread.kind == "group", f"群聊线程 kind 应为 group，实际 {thread.kind}"
+    assert created, "群聊 @ 员工应创建回合卡"
+    assert created[0].metadata.get("thread_id") == thread.thread_id
+
+
+def test_contract_group_default_route_binds_group_thread(tmp_path: Path) -> None:
+    """群聊无 @ 时由默认角色承接，同样必须绑定 kind=group 的会话线程。"""
+    from bandi.api.company_chat import handle_chat_message
+    from bandi.company.discussion_thread import ThreadManager
+
+    store = WorkItemStore(str(tmp_path / "wi.db"))
+    org = _mk_org("worker-1")
+    comm = CommunicationManager(
+        workspace=str(tmp_path / "ws"), project_id="p1", session_id="s1", org_engine=org
+    )
+    threads = ThreadManager(workspace=str(tmp_path / "ws"), project_id="p1", session_id="s1")
+
+    handle_chat_message(
+        content="你好",
+        sender_role="user",
+        communication=comm,
+        store=store,
+        org_engine=org,
+        thread_manager=threads,
+        session_id="group-default",
+        project_id="p1",
+        member_role_ids={"worker-1"},
+        default_role="worker-1",
+    )
+
+    thread = threads.find_by_session("group-default")
+    assert thread is not None, "默认路由也必须绑定会话线程"
+    assert thread.kind == "group"
+
+
+def test_contract_employee_dm_thread_keeps_dm_kind(tmp_path: Path) -> None:
+    """员工私聊仍必须落 kind=dm 线程，与群聊隔离。"""
+    from bandi.api.company_chat import handle_chat_message
+    from bandi.company.discussion_thread import ThreadManager
+
+    store = WorkItemStore(str(tmp_path / "wi.db"))
+    org = _mk_org("worker-1")
+    comm = CommunicationManager(
+        workspace=str(tmp_path / "ws"), project_id="p1", session_id="s1", org_engine=org
+    )
+    threads = ThreadManager(workspace=str(tmp_path / "ws"), project_id="p1", session_id="s1")
+
+    handle_chat_message(
+        content="你好",
+        sender_role="user",
+        communication=comm,
+        store=store,
+        org_engine=org,
+        thread_manager=threads,
+        session_id="dm-session",
+        project_id="p1",
+        target_role="worker-1",
+    )
+
+    thread = threads.find_by_session("dm-session")
+    assert thread is not None, "员工私聊必须绑定会话线程"
+    assert thread.kind == "dm", f"私聊线程 kind 应为 dm，实际 {thread.kind}"

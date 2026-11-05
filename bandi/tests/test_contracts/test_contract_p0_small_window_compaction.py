@@ -1,4 +1,4 @@
-# 功能：小窗口渐进压缩契约——32K/64K 窗口不得退化为 truncate
+# 功能：P0-1 小窗口渐进压缩契约——32K/64K 窗口不得退化为 truncate
 from __future__ import annotations
 
 import pytest

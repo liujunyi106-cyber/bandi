@@ -1,5 +1,5 @@
 /**
-  * 功能：图谱三态占位（loading / error / empty，）。
+ * 功能：图谱三态占位（loading / error / empty，@base docs/前端设计规划.md §8 空态与加载规范）。
  * 空态给「为什么还没有」的解释与去向提示，不用光秃秃的空列表。
  */
 import { Loader2, Network, TriangleAlert } from "lucide-react";

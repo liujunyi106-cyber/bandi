@@ -4,6 +4,7 @@
 
   1. MemoryCompactor.compact —— compaction.py（单块全量摘要）
   2. ProgressiveCompressor.compress 分块路径 —— compression_pipeline.py
+     （内部复用 MemoryCompactor，故单块下与 compact 行为同构）
   3. ProgressiveCompressor.compress final merge —— compression_pipeline.py
 契约钉行为不钉实现：只断言「最终摘要内容 + 请求/重试次数 + 告警日志 + 统计」。
 """
@@ -335,7 +336,7 @@ def test_fidelity_key_entity_loss_still_degraded() -> None:
 
 
 def test_blocked_status_flattened_to_done_is_degraded() -> None:
-    """契约：源含未完成/阻塞标记，摘要却写成已完成/成功
+    """契约（.12，审查项2 破坏者）：源含未完成/阻塞标记，摘要却写成已完成/成功
     （或清空状态）→ status_degraded，degraded 必须为真——续作脚手架据此误判任务
     已收尾是致命失真。"""
     source = "- 任务B：阻塞在外部 API 权限\n- 任务C：等待审批"
@@ -375,7 +376,7 @@ def test_status_retry_hint_guides_restore() -> None:
 
 
 def test_intent_verbs_flattened_is_degraded() -> None:
-    """契约：源含明确动作动词（修复/实现），摘要却把任务
+    """契约（.16，审查项3 破坏者）：源含明确动作动词（修复/实现），摘要却把任务
     动作全部抽象化（如「讨论相关事宜」「进展顺利」）→ intent_degraded，degraded 必为真——
     续作脚手架据此无法恢复「用户要做什么」。"""
     source = "请修复压缩模块的导出缺陷，并实现增量备份"

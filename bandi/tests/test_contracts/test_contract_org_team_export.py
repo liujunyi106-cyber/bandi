@@ -42,7 +42,7 @@ def _seed_team(api: Any) -> None:
         json={
             "id": "t-alpha_lead",
             "name": "负责人",
-            "responsibility": "决策",
+            "responsibility": "拍板",
             "team_id": "t-alpha",
             "can_spawn": ["t-alpha_kid"],
             "tool_tags": ["bash", "write"],

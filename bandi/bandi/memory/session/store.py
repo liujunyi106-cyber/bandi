@@ -609,7 +609,7 @@ class SessionStore:
         self, session_id: str, turn_index: int, nodes: list[dict[str, Any]]
     ) -> str:
         """-3c：轮末过程节点落一条（entry_type="process"；content 空，节点在
-        metadata.process——与前端 ProcessNode）。非 message 条目不进对话链
+        metadata.process——与前端 ProcessNode 同构）。非 message 条目不进对话链
         （_get_latest_leaf 只取 message），fork/恢复语义不受影响。"""
         entry_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
@@ -736,6 +736,37 @@ class SessionStore:
             return None
         return payload if isinstance(payload, dict) else None
 
+    def get_context_usage_for_thread(
+        self, project_id: str, thread_id: str
+    ) -> dict[str, Any] | None:
+        """功能：按项目 + 线程聚合员工 role-session 的上下文快照（取已用 token 最大者）。
+
+        群聊/员工私聊的 chat session 本身没有快照；真实执行快照记在
+        `role-session::<project>::<thread>::...` 名下。
+        """
+        project = str(project_id or "").strip()
+        thread = str(thread_id or "").strip()
+        if not project or not thread:
+            return None
+        base = f"role-session::{project}::{thread}::"
+        escaped = base.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        with self._lock:
+            rows = self._sqlite.execute(
+                "SELECT payload FROM session_context_usage WHERE session_id LIKE ? ESCAPE '\\'",
+                (f"{escaped}%",),
+            ).fetchall()
+        snapshots: list[dict[str, Any]] = []
+        for row in rows:
+            try:
+                payload = json.loads(row[0])
+            except (TypeError, ValueError):
+                continue
+            if isinstance(payload, dict):
+                snapshots.append(payload)
+        if not snapshots:
+            return None
+        return max(snapshots, key=lambda item: int(item.get("used_tokens") or 0))
+
     def skip_process_tool_node(self, session_id: str, tool_call_id: str) -> bool:
         """-3c：跳过态随存——按 tool_call_id 定位本会话 process 条目内的工具节点
         翻转 status error→skipped。定位失败返回 False（不静默成功）。"""
@@ -814,7 +845,7 @@ class SessionStore:
         return self.get_branch(session_id, full=True)
 
     def resolved_branch(self, session_id: str, at: str | None = None) -> list[dict]:
-        """无状态预览：返回会话分支按恢复点 at 截断（含自身）的视图。
+        """Day127 无状态预览：返回会话分支按恢复点 at 截断（含自身）的视图。
 
         起 at=None 返回**全量历史**（审计/时间旅行视图），活动切片走
         get_branch()。at 指向不存在的 entry 显式报错，不静默回退。
@@ -868,7 +899,7 @@ class SessionStore:
         return id_map
 
     def truncate_branch(self, session_id: str, entry_id: str) -> int:
-        """截断——删除恢复点 entry 之后的所有条目并归档，保留恢复点自身。"""
+        """Day127：截断——删除恢复点 entry 之后的所有条目并归档，保留恢复点自身。"""
         removed, _operation_id = self.truncate_branch_archived(session_id, entry_id)
         return removed
 

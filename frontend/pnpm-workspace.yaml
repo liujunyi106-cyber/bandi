@@ -1,5 +1,8 @@
-# 功能：pnpm 工程设置。
-# 这两个包的构建脚本必须放行：electron 靠它下载运行时二进制，esbuild 靠它校验平台包。
+# 功能：pnpm 工程设置（@base docs/ADR.md ADR-42 / 本机 npm EPERM 口径见交付文档 Day135 §六.6）。
+# 功能：放行构建脚本——electron 下载运行时二进制、esbuild 校验平台包、electron-winstaller 选 7z 架构。
 allowBuilds:
   electron: true
+  electron-winstaller: true
   esbuild: true
+# 功能：node_modules 采用扁平布局，包之间不使用 junction 链接。
+nodeLinker: hoisted

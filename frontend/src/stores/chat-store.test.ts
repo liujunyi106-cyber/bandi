@@ -1,5 +1,5 @@
 /**
-  * 功能：chat-store 行为测试。
+ * 功能：chat-store 行为测试（Day136 keyed 增量归并 / 多会话隔离 / 草稿采纳 / 通知）。
  * 钉行为不钉实现：断言渲染产物（消息内容与状态），不依赖 React 渲染。
  */
 import { beforeEach, describe, expect, it } from "vitest";
@@ -417,7 +417,7 @@ describe("chat store keyed stream merge", () => {
   });
 });
 
-describe("过程消息数据源（记忆行 / 任务台账）", () => {
+describe("Day137b-1 过程消息数据源（记忆行 / 任务台账）", () => {
   beforeEach(resetStore);
 
   it("applyMemoryWritten 追加记忆写入行（相邻同类型去重防重复帧）", () => {
@@ -473,7 +473,7 @@ describe("过程消息数据源（记忆行 / 任务台账）", () => {
   });
 });
 
-describe("插队批（员工执行过程 thread_progress）", () => {
+describe("Day137b-1 插队批（员工执行过程 thread_progress）", () => {
   beforeEach(resetStore);
 
   it("applyProgressNode：thinking 累积 + 工具 start→progress→result 归并", () => {
@@ -504,7 +504,7 @@ describe("插队批（员工执行过程 thread_progress）", () => {
   });
 
   it("破坏者：done/error 终态必须收尾所有 running 节点（快照回放不得残留「正在执行」）", () => {
-    // 回复已落地/失败 + 页面刷新后，过程块仍显示「正在执行」
+    // 真机：回复已落地/失败 + 页面刷新后，过程块仍显示「正在执行」——
     // 根因是 done/error 落入 default 不收尾，回放的 running 节点永久悬浮。
     let nodes: ProcessNode[] = [];
     nodes = applyProgressNode(nodes, { type: "thinking_delta", data: { text: "想" } });
@@ -560,7 +560,11 @@ describe("插队批（员工执行过程 thread_progress）", () => {
     expect(useChatStore.getState().employeeProgress["p1::t1::r1"]).toHaveLength(1);
     expect(useChatStore.getState().employeeProgress["p1::t1::r1"][0].status).toBe("success");
 
-    // 新执行首帧 → 清槽重建（无旧节点残留、无陈旧标记）
+    // 新执行首帧（started）→ 清槽重建（无旧节点残留、无陈旧标记）
+    useChatStore.getState().applyEmployeeProgress("p1", "t1", "r1", {
+      type: "started",
+      data: {},
+    });
     useChatStore.getState().applyEmployeeProgress("p1", "t1", "r1", {
       type: "thinking_delta",
       data: { text: "新思路" },
@@ -675,6 +679,9 @@ describe("插队批（员工执行过程 thread_progress）", () => {
 
     useChatStore
       .getState()
+      .applyEmployeeProgress("p1", "t1", "r1", { type: "started", data: {} });
+    useChatStore
+      .getState()
       .applyEmployeeProgress("p1", "t1", "r1", { type: "thinking_delta", data: { text: "新" } });
     const nodes = useChatStore.getState().employeeProgress["p1::t1::r1"];
     expect(nodes).toHaveLength(1);
@@ -729,6 +736,10 @@ describe("插队批（员工执行过程 thread_progress）", () => {
     });
     useChatStore.getState().finishEmployeeProgress("p1", "t1", "r1");
 
+    useChatStore.getState().applyEmployeeProgress("p1", "t1", "r1", {
+      type: "started",
+      data: {},
+    });
     useChatStore.getState().applyEmployeeProgress("p1", "t1", "r1", {
       type: "thinking_delta",
       data: { text: "下一轮" },
@@ -795,7 +806,7 @@ describe("会话回收（removeSessionLocal）", () => {
   });
 });
 
-describe("abortLocalStream", () => {
+describe("abortLocalStream（2026-09-24 真机反馈：停止后残留兜底）", () => {
   beforeEach(resetStore);
 
   it("有内容的挂起消息 → 定稿 done + 槽释放（保留已产出部分）", () => {
@@ -984,7 +995,7 @@ describe("137b-3c 过程条目还原（detail 解析恢复）", () => {
   });
 });
 
-describe("draftReferences", () => {
+describe("draftReferences（@ 引用项目文件草稿——2026-09-29）", () => {
   it("增删清 + 同路径去重（不叠加 chips）", () => {
     useChatStore.setState({ draftReferences: [] });
     useChatStore.getState().addDraftReference({ path: "a.md", name: "a.md" });
@@ -998,7 +1009,7 @@ describe("draftReferences", () => {
   });
 });
 
-describe("entriesToMessages · checkpoint 条目不进对话", () => {
+describe("entriesToMessages · checkpoint 条目不进对话（2026-10-12 排查）", () => {
   it("role=null / content=空的 checkpoint 条目被过滤（不渲染空壳）", () => {
     const entries = [
       {

@@ -45,8 +45,9 @@ class DegradationState:
 
 class RecoveryManager:
     def __init__(self, bus: EventBus | None = None, escalate_threshold: int = 3):
-        # escalate_threshold：同一层连续错误达此数即升级终止。默认 3 次——
-        # 再多会让上游故障场景白等数分钟。
+        # escalate_threshold：同一层连续错误达此数即升级终止。默认 3（对齐参考源
+        # LeAgent `_TRANSIENT_RETRY_ATTEMPTS=3` / deepseek-harness `maxRetries=2`）——
+        # 10 次会让上游故障场景白等数分钟（真机实证：503 重试 10 次 ≈ 2.5 分钟）。
         self.consecutive_errors: dict[str, int] = {}
         self.degradation = DegradationState()
         self._bus = bus
@@ -56,7 +57,7 @@ class RecoveryManager:
     def _classify(self, error: Exception, layer: str) -> ErrorSeverity:
         # 功能：错误分档——决定「重试整个回合 / 降级继续 / 立即终止」
         #
-        # 无可用候选分两类
+        # 无可用候选分两类（参考源共识：deepseek-harness `INVALID_CREDENTIAL` 排除默认重试集，
         # 理由是「每次尝试都会同样失败」；opencode `server_error`/`overloaded` 判可重试）：
         # - 配置类（模型名不在目录 / 无 base_url / 无 provider / 4xx 非 429）→ FATAL 立即终止；
         # - 暂时故障（429 限流 / 5xx 上游故障）→ RECOVERABLE，重试有意义。

@@ -1,6 +1,6 @@
 # 功能：组织工作项规划构建——org 蓝图 → 公司运行时计划（数据模型见 work_item_plan_types.py）
 
-"""Org-driven company work-item runtime planning ."""
+"""Org-driven company work-item runtime planning (aligned OpenOPC org_work_item_planner.py)."""
 
 from __future__ import annotations
 

@@ -59,7 +59,7 @@ def test_both_v41_naming_variants_are_equally_priced() -> None:
 
 
 def test_fallback_chain_is_user_configured_only() -> None:
-    """契约①：降级链**只来自用户配置**，产品不预设。
+    """契约①（2026-10-09 拍板修订）：降级链**只来自用户配置**，产品不预设。
 
     原契约「默认链同时含两个命名」已随「本地产品不预设降级」作废——模板不含该字段
     ⇒ 默认值生效；预设跨厂商链会让每个用户白烧注定打不通的请求。双命名解析能力本身

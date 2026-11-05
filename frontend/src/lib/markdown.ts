@@ -1,12 +1,12 @@
 /**
  * 功能：Markdown 渲染纯函数（mermaid 块切分 / @提及高亮）——与组件分离
-  * 便于独立测试与复用。
+ * 便于独立测试与复用（Day137b-1）。
  */
 export type MarkdownSegment =
   { type: "markdown"; content: string } | { type: "mermaid"; code: string };
 
 /** 功能：长内容判定（含代码块/标题/列表/引用/表格/多段落 → 全宽文档布局；
-   * 对齐：shouldUseDocumentLayout）。 */
+ * 参考源对齐：cc-haha shouldUseDocumentLayout 同构）。 */
 export function shouldUseDocumentLayout(content: string): boolean {
   const normalized = content.trim();
   if (!normalized) return false;

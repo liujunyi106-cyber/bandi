@@ -19,7 +19,7 @@ MIN_TICK_INTERVAL_SEC = 1.0
 
 @dataclass
 class SchedulerConfig:
-    """"""
+    """now_fn 可注入（测试确定性）；tick_interval_sec 下限钳制防忙循环（先例）。"""
 
     tick_interval_sec: float = 30.0
     now_fn: Callable[[], datetime] = datetime.now

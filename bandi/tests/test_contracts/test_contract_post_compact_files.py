@@ -104,7 +104,7 @@ async def test_attachment_extracted_from_removed_tool_calls() -> None:
 
 @pytest.mark.asyncio
 async def test_attachment_respects_max_five_recent_first() -> None:
-    """契约：触碰文件超过上限时附件最多 5 条且最近触碰优先
+    """契约：触碰文件超过上限时附件最多 5 条且最近触碰优先（cc-haha
     POST_COMPACT_MAX_FILES_TO_RESTORE 语义）。"""
     touches = [(t, f"src/f{i}.py") for i, t in enumerate(["read"] * 7)]
     msgs = _dialogue_with_touches(touches, rounds=12)

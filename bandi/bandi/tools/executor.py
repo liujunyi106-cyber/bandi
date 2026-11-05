@@ -131,7 +131,7 @@ _NETWORK_TOOL_HINTS: tuple[str, ...] = (
 
 
 def _with_network_next_step(result: ToolResult) -> ToolResult:
-    """功能：网络/检索类失败追加转向指引。
+    """功能：网络/检索类失败追加转向指引（对齐 LeAgent 的 next_step 语义）。
 
     模型在"网络不可用"时若无明确转向指令，会反复换工具诊断网络直到耗尽轮次。
     失败结果直接带上下一步路径（知识库/记忆/现有产物、缺失标「待取证」）。
@@ -647,6 +647,7 @@ class ToolExecutor:  # 功能：工具执行引擎（并发/串行分区执行 +
             if abort_seen:
                 aborted = True
 
+        # 按原始调用顺序重建结果——dedup 映射指向执行过的唯一调用，按 tool_call_id 定位
         ordered: list[ToolResult] = []
         try:
             for tc in tool_calls:
@@ -889,7 +890,7 @@ class ToolExecutor:  # 功能：工具执行引擎（并发/串行分区执行 +
         if not needs:
             return None
 
-        # 员工工作区免审批：员工会话（role-session）内
+        # 员工工作区免审批（用户拍板 2026-10-16）：员工会话（role-session）内
         # 文件写入/bash 且目标全落在本 run 工作区内、无敏感/危险特征 → 自动放行。
         # 该判定先于 UI/headless 分叉：cache_approved 让 pipeline 的 UI 询问
         # （_check_ui）直接缓存命中放行——有交互通道时不再弹权限卡；工作区外/
@@ -1560,7 +1561,7 @@ class ToolExecutor:  # 功能：工具执行引擎（并发/串行分区执行 +
         return await self._as_cache_hit(tc, cached)
 
     async def _as_cache_hit(self, tc: ToolCall, cached: ToolResult) -> ToolResult:
-        """
+        """功能：把缓存结果按「命中」语义落到本调用——重映射 tool_call_id + 补发事件。
 
         修复：等待者复用赢家结果时保留 meta（如 error_class）与 should_abort。
         修复：失败命中与赢家 `_fail_result` 同口径发 TOOL_ERROR（带 error_message）
@@ -1609,6 +1610,7 @@ class ToolExecutor:  # 功能：工具执行引擎（并发/串行分区执行 +
         """功能：缓存未命中时按 key 单飞执行——同 key 并发只真跑一次，等待者按命中复用。
 
         只给「可缓存」工具（result_cache 存在 + cache_ttl>0）接单飞；等待者拿到的是
+        赢家产物，须经 `_as_cache_hit` 重映射自己的 tool_call_id 后再落账（防串号）。
         receipt_key：审批回执键（空=非审批授权路径，不落回执）。
         """
         if self._result_cache is None or tool.cache_ttl <= 0:

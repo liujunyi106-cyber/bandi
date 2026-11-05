@@ -1,6 +1,6 @@
-# 功能：审批回执契约——服务端不可变请求 + 回执幂等 + 一次性消费。
+# 功能：P0-3 审批回执契约——服务端不可变请求 + 回执幂等 + 一次性消费。
 # 钉行为：同一 approval 的二次执行（网络失败/重开页面后的 re-issue）必须返回
-# 同一结果而不重放副作用；改参数视为另一次调用。
+# 同一结果而不重放副作用；改参数视为另一次调用（P0-6 已由 once 参数级承担）。
 from __future__ import annotations
 
 import asyncio
@@ -150,7 +150,7 @@ def test_session_grant_repeats_execution_not_receipt() -> None:
 
 
 def test_different_args_are_a_new_call_not_a_receipt_hit() -> None:
-    """契约：改参数视为另一次调用——不会命中旧回执。"""
+    """契约：改参数视为另一次调用——不会命中旧回执（配合 P0-6 once 参数级）。"""
     from bandi.tools.approval import get_approval_store, params_digest, reset_approval_store
 
     reset_approval_store()

@@ -1,4 +1,4 @@
-# 功能：员工执行隔离契约——每员工独立 workspace + 独立浏览器 profile。
+# 功能：P0-5 员工执行隔离契约——每员工独立 workspace + 独立浏览器 profile。
 from __future__ import annotations
 
 from pathlib import Path

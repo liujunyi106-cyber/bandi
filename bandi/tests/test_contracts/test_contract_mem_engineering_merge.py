@@ -330,7 +330,7 @@ def test_consolidation_merges_directly_without_staging_gate(
     finally:
         episodic.close()
 
-    assert report.staged == ["ep_hi"], "晋升走暂存门"
+    assert report.staged == ["ep_hi"], "晋升走暂存门（HB-P2：staged 与 promoted 分账）"
     assert report.merged, "consolidation 必须报告合并结果（merged 字段）"
     targets = report.merged
     assert all(item_id.startswith("merged:") for item_id in targets)
@@ -527,7 +527,7 @@ def test_suggest_merges_excludes_compaction_but_includes_turn_and_consolidated(
 ) -> None:
     """契约（破坏者）：`compaction:` 是压缩快照内部产物，不得参与合并；
     `turn:` 与 `consolidated:` 都要参与——它们是同一份事实的两次落库，
-    留着两份会让「记忆×草稿去重」预期落空（计划 -2 已放开 `consolidated:`）。
+    留着两份会让「记忆×草稿去重」预期落空（计划 §3.1-2 已放开 `consolidated:`）。
 
     `turn:` 另有两道保护：未被召回 + 够老（`_turn_merge_eligible`），本例
     两条都刚写入，故仍应被排除——排除理由是年龄，不是前缀。
@@ -763,7 +763,7 @@ def test_consolidation_report_exposes_merged_sources(tmp_path: Any) -> None:
     lt.close()
 
 
-# ── turn: 前缀合并双保护─────────────────────
+# ── turn: 前缀合并双保护（未被召回 + 够老；用户拍板）─────────────────────
 
 _TURN_OLD_TS = time.time() - 30 * 86400.0
 _TURN_TEXT = "竞品分析报告：三家主要对手的价格与渠道对比结论已经确认"

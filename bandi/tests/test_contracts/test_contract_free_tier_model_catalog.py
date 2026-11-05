@@ -4,7 +4,7 @@
 # 1. 目录收录 free 档模型（provider 与调用方 provider 不同时走网关实时价分支的风险面）
 # 2. 定价为 0 时 cost_tracker 必须按目录价记 0，**不得**回落到预算下限估价
 # 3. 未定价模型仍按预算下限扣（对照：免费 ≠ 未定价，两者语义不同）
-# 4. 上下文窗口取下限，不得臆造
+# 4. 上下文窗口取实测下限，不得臆造
 from __future__ import annotations
 
 import json
@@ -24,7 +24,7 @@ def _tracker(tmp_path: Path) -> CostTracker:
 
 class TestFreeTierCatalogEntry:
     def test_entry_exists_with_measured_window(self) -> None:
-        # 功能：免费档模型在目录中可查，窗口为下限而非臆造上限
+        # 功能：免费档模型在目录中可查，窗口为实测下限而非臆造上限
         spec = BUILTIN_MODELS.get("space-bunny-free")
         assert spec is not None, "免费档模型未收录目录——会回落默认窗口并按预算下限估价"
         assert spec.context_window == 400000

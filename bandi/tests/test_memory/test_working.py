@@ -98,5 +98,5 @@ def test_turn_rows_partial_index_created(store: ScratchpadStore) -> None:
     ).fetchone()
     conn.close()
 
-    assert row is not None, "scratch_kv 缺少 turn:* 部分索引"
+    assert row is not None, "scratch_kv 缺少 turn:* 部分索引（P2-7 裁剪将全表扫描）"
     assert "WHERE" in (row[0] or "").upper(), "索引必须是部分索引（只覆盖 turn:% 行）"

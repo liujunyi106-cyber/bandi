@@ -1,5 +1,5 @@
 ﻿/**
- * 功能：右栏概览视图（v5，）——数字员工工作台首页：
+ * 功能：右栏概览视图（v5，@base docs/前端设计规划.md §8）——数字员工工作台首页：
  * 会话作用域 = 摘要卡（会什么/花了多少/在干什么/产出了什么）+ 计划树（SOP 流程节点 /
  * 团队工作项[带领取者] / 普通 Todo 分流）+ 产出列表（删除独立
  * 「项目团队」板块——团队信息只保留计划段工作项与员工卡数据面）；
@@ -14,7 +14,13 @@ import { useT } from "@/i18n";
 import { boundSkillsFor, resolveEmployeeName } from "@/lib/employee";
 import type { PanelScope } from "@/lib/panel-scope";
 import { cn } from "@/lib/utils";
-import { companyApi, type EmployeeSummary, type WorkItemSummary } from "@/services/company";
+import {
+  companyApi,
+  findDirectThread,
+  type EmployeeSummary,
+  type ThreadSummary,
+  type WorkItemSummary,
+} from "@/services/company";
 import { panelApi, type CostDetail, type InstalledSkill, type SopProgress } from "@/services/panel";
 import { sessionsApi, type SessionArtifact } from "@/services/sessions";
 import { useChatStore, type TaskLedgerItem } from "@/stores/chat-store";
@@ -197,6 +203,27 @@ function SopSection({ sop }: { sop: SopProgress }) {
 function EmployeeOverview({ scope }: { scope: Extract<PanelScope, { kind: "employee" }> }) {
   const [employees, setEmployees] = useState<EmployeeSummary[] | null>(null);
   const [skills, setSkills] = useState<InstalledSkill[] | null>(null);
+  // 单聊直聊线程：会话级 token/上下文按该线程取，不能回落到项目累计
+  const [thread, setThread] = useState<ThreadSummary | null>(null);
+
+  useEffect(() => {
+    if (!scope.projectId) {
+      setThread(null);
+      return;
+    }
+    let cancelled = false;
+    companyApi
+      .threads(scope.projectId)
+      .then(({ threads }) => {
+        if (!cancelled) setThread(findDirectThread(threads, scope.roleId));
+      })
+      .catch(() => {
+        if (!cancelled) setThread(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [scope.projectId, scope.roleId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -227,9 +254,11 @@ function EmployeeOverview({ scope }: { scope: Extract<PanelScope, { kind: "emplo
         roleId={scope.roleId}
         description={list.find((item) => item.role_id === scope.roleId)?.description}
         metadata={list.find((item) => item.role_id === scope.roleId)?.metadata}
-        sessionId=""
+        sessionId={thread?.session_id || ""}
+        threadId={thread?.thread_id}
         projectId={scope.projectId}
         skills={boundSkillsFor(skills, list.find((item) => item.role_id === scope.roleId)?.skills)}
+        useSessionCost
         expanded
         onToggle={() => undefined}
       />
@@ -279,7 +308,7 @@ function SessionOverview({ sessionId }: { sessionId: string }) {
     setSop(null);
     setWorkItems(null);
     // 产物数据源按作用域分流：项目会话（群聊）用**项目聚合**（含全部员工执行会话
-    // 产物——每名员工跑完即出现一条，用户要求）；无项目/秘书会话回落会话级。
+    // 产物——每名员工跑完即出现一条，真机用户要求）；无项目/秘书会话回落会话级。
     const artifactsRequest =
       projectId && !isSecretary
         ? panelApi.projectArtifacts(projectId).then((result) => result.artifacts)
@@ -311,7 +340,7 @@ function SessionOverview({ sessionId }: { sessionId: string }) {
         .then(async (result) => {
           const project = result.projects.find((item) => item.project_id === projectId);
           const memberRoles = new Set((project?.members ?? []).map((member) => member.role_id));
-          // 技能数 = **团队员工绑定技能合计**
+          // 技能数 = **团队员工绑定技能合计**（用户拍板 2026-10-16；此前为全局技能库存）
           void companyApi
             .employees()
             .then((empResult) => {
@@ -411,7 +440,7 @@ function SessionOverview({ sessionId }: { sessionId: string }) {
         <p className="text-chat-muted px-1 pb-1 text-[11px] font-medium">
           {t("chat.panel.planTitle")}
         </p>
-        {/*合并：任务只在一处呈现——SOP > 团队工作项（含领取者）> 会话 Todo */}
+        {/* 2026-10-02 用户拍板合并：任务只在一处呈现——SOP > 团队工作项（含领取者）> 会话 Todo */}
         {sop ? (
           <SopSection sop={sop} />
         ) : !isSecretary && workItems && workItems.length > 0 ? (

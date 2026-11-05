@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""功能：构建 bandi-sidecar（PyInstaller onedir）。
+"""功能：构建 bandi-sidecar（PyInstaller onedir）——Day147 C-5。
 
-口径
+口径（Windows 实测，见 交付文档收集 §13）：
   父解释器借 venv 的包跑 PyInstaller（本机 venv 解释器 spawn 异常）：
     PYTHONPATH=<repo>/.venv/Lib/site-packages  <parent_python> -m PyInstaller bandi-sidecar.spec
   本脚本自动完成：venv site-packages 解析、PYTHONPATH 注入、distpath/workpath
@@ -53,6 +53,9 @@ def main() -> int:
     parser.add_argument(
         "--dist-dir", default=None, help="产物目录（默认 ~/.bandi/sidecar-build/dist）"
     )
+    parser.add_argument(
+        "--work-dir", default=None, help="中间目录（默认 ~/.bandi/sidecar-build/build）"
+    )
     args = parser.parse_args()
 
     if not SPEC.is_file():
@@ -68,19 +71,21 @@ def main() -> int:
 
     ascii_dir = default_ascii_dir()
     dist_dir = Path(args.dist_dir).expanduser() if args.dist_dir else ascii_dir / "dist"
-    work_dir = ascii_dir / "build"
+    work_dir = Path(args.work_dir).expanduser() if args.work_dir else ascii_dir / "build"
 
     env = {
         **os.environ,
         "PYTHONPATH": str(site) + os.pathsep + os.environ.get("PYTHONPATH", ""),
     }
     # B-11：PyInstaller 自己也是原生子进程，工作目录放 ASCII 路径
-    os.makedirs(ascii_dir, exist_ok=True)
+    if args.dist_dir is None or args.work_dir is None:
+        os.makedirs(ascii_dir, exist_ok=True)
 
     # 解释器优先级：venv python（干净 sys.path，产物最小）> 父解释器 -S + PYTHONPATH
+    # （本机 venv 解释器 spawn 异常时的兜底口径，见 交付文档 §13/§14）。
     # -S：跳过 base 解释器的 site-packages——否则 PyInstaller 会扫进本机全部无关包
     # （paddle/modelscope 等 ML 大件），既拖慢构建（20min+）又可能因 import 探测
-    # 崩溃，产物也虚胖数百 MB。
+    # 崩溃（paddle.jit.sot 实测炸构建），产物也虚胖数百 MB。
     venv_python = REPO_ROOT / ".venv" / "Scripts" / "python.exe"
     if os.name != "nt":
         venv_python = REPO_ROOT / ".venv" / "bin" / "python"
@@ -129,14 +134,18 @@ def main() -> int:
         print(f"[build] OK：{product}（整体 {size_mb:.1f} MB）")
 
         # 同步到 electron-builder extraResources 源目录（frontend/build/sidecar/），
-        # 与 electron-builder.yml 的 extraResources 配置对齐。
+        # 与 electron-builder.yml 的 extraResources 配置对齐（C-6）。
         staging = REPO_ROOT.parent / "frontend" / "build" / "sidecar"
         target = staging / "bandi-sidecar"
+        source = dist_dir / "bandi-sidecar"
         try:
-            if target.exists():
-                shutil.rmtree(target)
-            shutil.copytree(dist_dir / "bandi-sidecar", target)
-            print(f"[build] 已同步到 electron-builder 资源目录：{target}")
+            if source.resolve() == target.resolve():
+                print("[build] dist 与 electron-builder 资源目录同路径，跳过同步")
+            else:
+                if target.exists():
+                    shutil.rmtree(target)
+                shutil.copytree(source, target)
+                print(f"[build] 已同步到 electron-builder 资源目录：{target}")
         except OSError as exc:
             print(f"[build] 同步到 {target} 失败（不阻断构建）：{exc}", file=sys.stderr)
 

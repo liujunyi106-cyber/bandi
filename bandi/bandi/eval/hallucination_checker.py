@@ -230,7 +230,7 @@ def _collect_chinese_candidates(candidates: set[str], seq: str) -> None:
     seq = seq.strip()
     if len(seq) < 2:
         return
-    # 5/6 字实体名（如「某企业知识管理平台」）漏召回
+    # 5/6 字实体名（如「深度学习与实践计划」）漏召回
     for size in range(2, min(len(seq), 6) + 1):
         for i in range(len(seq) - size + 1):
             gram = seq[i : i + size]

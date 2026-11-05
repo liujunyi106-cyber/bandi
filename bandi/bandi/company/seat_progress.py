@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class EmployeeProgressHandler:
     """把员工执行过程转发为 thread_progress 事件（实现 core StreamHandler Protocol）。
 
-    事件结构与前端会话帧（event.type/data，复用前端归并逻辑）
+    事件结构与前端会话帧同构（event.type/data，复用前端归并逻辑）；
     归属字段 project_id/thread_id/role_id 逐帧携带（前端按项目/员工过滤）；
     广播为 best-effort——回调异常不中断员工执行。
     事件同时累积快照（`snapshot()`）供回写持久化——刷新后过程块可回看。
