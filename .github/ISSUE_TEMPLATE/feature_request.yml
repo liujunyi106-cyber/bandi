@@ -1,0 +1,43 @@
+name: Feature request
+description: 提出一个功能或改进建议
+title: "[feat] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 你想解决什么问题
+      description: 描述场景，而不是直接给方案——这样更容易找到更合适的做法
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 你设想的做法
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 影响范围
+      options:
+        - 组织 / 角色 / 团队模板
+        - 调度 / 项目 / 工作项
+        - 记忆 / 知识库
+        - 工具 / 权限 / 审批
+        - 模型与供应商
+        - 前端交互
+        - 桌面壳
+        - 其它
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: 是否愿意提交 PR
+      options:
+        - label: 我可以自己实现
+        - label: 我可以帮忙测试

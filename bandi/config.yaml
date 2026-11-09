@@ -1,0 +1,118 @@
+llm:
+  default_model: deepseek-v4.1-flash
+  # 静态加密（Windows DPAPI）：.\scripts\protect-secret.ps1 -Secret "sk-..." 生成
+  # dpapi:<base64> 值粘贴到此处；加载时自动解密（非 Windows/解密失败保留原值不阻断）
+  api_key: ""
+  base_url: ""
+  timeout: 60
+
+agent:
+  mode: execute
+  max_iterations: 15
+  # 员工/委托回合墙钟上限（秒）；0=不限
+  turn_timeout_sec: 1860
+
+company:
+  # 公司调度并发：同时在跑的工作项上限（1 = 完全串行）
+  max_concurrent: 3
+  # 单次 tick 的补位预算（秒）：超时后不再派新卡，在跑卡继续收尾
+  tick_budget_sec: 300
+  max_items_per_tick: 64
+  # 质量门：false=有评审人时留待人工/经理裁决；true=无裁决时自动通过
+  auto_approve_reviews: false
+
+execution_isolation:
+  mode: local_hardened
+  image: python:3.12-slim
+  network: none
+  memory_mb: 1024
+  cpu_seconds: 300
+  # E2 只读无进展循环检测窗口；0=默认 5，>0 显式覆盖
+  loop_detection_window: 0
+
+tools:
+  temp_dir: "~/.bandi/tmp"
+  mcp_autostart: true
+  mcp_lazy_exposure: true
+  mcp_max_exposed_tools: 5
+  mcp_servers: []
+  task_ledger:
+    enabled: true
+    max_items: 24
+    persist_to_session: true
+    persist_to_work_item: true
+    emit_runtime_events: true
+  feature_flags:
+    #   workflow: false
+    tool_groups:
+      workflow: true
+      gen: true
+      util: true
+      chart: true
+      image: true
+      media: true
+      canvas: true
+      web: true
+      data: true
+      db: true
+      integration: true
+
+prefetch:
+  enabled: false
+  timeout_secs: 1.0
+  max_chars: 4000
+  focused_memory: true
+
+models_dev:
+  enabled: true
+  url: "https://models.dev/api.json"
+  cache_ttl_hours: 24.0
+  timeout_secs: 5.0
+
+verification:
+  enabled: true
+  min_todos_for_verification: 3
+  require_on_code_edits: true
+  stagnation_threshold: 3
+
+
+permissions:
+  rules: []
+  deny_tools: []
+  ask_tools: ["bash", "write", "ontology_define", "ontology_assert", "python_exec", "browser"]
+  bypass_tools: ["read", "web_search", "web_fetch", "glob", "grep", "ontology_query", "request_user_input", "todo_read", "todo_write"]
+  deny_commands: ["rm -rf /", "format *", "del /f /s", "rd /s /q"]
+  ask_risk_levels: ["high", "critical"]
+  # 安全加固：岗位绑定读取失败策略——false（默认）= 告警并回落 agent_role；
+  # true = fail-closed 抛错拒绝执行（防 DB 故障把受限用户按高权限档放行）
+  strict_role_binding: false
+
+# 安全：command 默认按 exec 拆分执行（分号/重定向是字面参数，无 shell 展开）；
+# 确需 shell 语义时显式加 shell: true（注入面自担）。
+# hooks:
+#   PreToolUse:
+#     - matcher: bash
+#       type: command
+#       command: "python scripts/check_bash.py"
+#       # shell: true   # 显式开启系统 shell；缺省为 exec 拆分
+
+safety:
+  l2_threshold: 0.3
+  block_threshold: 0.7
+
+# D1：记忆/会话生命周期维护（调度器 /api/scheduler/start 后按间隔执行；
+# enabled=false 或 interval_hours<=0 关闭）
+memory_maintenance:
+  enabled: true
+  interval_hours: 24
+  session_ttl_days: 90
+  forget_older_than_days: 120
+  promote_limit: 48
+  # 草稿池：超容量才触发再过滤→把最有价值的若干条晋级到审批队列
+  draft_pool_limit: 30
+  review_batch_limit: 5
+  draft_min_score: 0.4
+  # 时间兜底：草稿非空且最老一条等满该小时数时，即使未超容量也晋级一条
+  draft_promote_after_hours: 24
+
+preferred_language: zh-CN

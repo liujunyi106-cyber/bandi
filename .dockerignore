@@ -1,0 +1,26 @@
+# 镜像只装后端，前端与桌面壳不进容器
+frontend/
+assets/
+.github/
+docs/
+评测/
+交付文档收集/
+
+# 仓库与本地环境
+.git/
+.gitignore
+.gitattributes
+.venv/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# 测试与开发脚本不进运行镜像
+bandi/tests/
+bandi/scripts/
+
+# 生成本地产物
+*.log
+*.db
+*.tmp

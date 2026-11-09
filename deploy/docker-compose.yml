@@ -1,0 +1,40 @@
+# 功能：后端内核容器编排（生产形态）。前端与桌面壳仍在本机运行，连过来用同一套 API。
+#
+# 用法（仓库根目录执行）：
+#   cp deploy/.env.example deploy/.env
+#   docker compose -f deploy/docker-compose.yml up -d --build
+#   docker compose -f deploy/docker-compose.yml logs -f bandi
+
+name: bandi
+
+services:
+  bandi:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: bandi-kernel:${BANDI_IMAGE_TAG:-local}
+    container_name: bandi-kernel
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      BANDI_HOME: /data
+      BANDI_PORT: "8766"
+    ports:
+      # 默认只发布到回环地址，与直跑时的绑定口径一致
+      - "${BANDI_BIND:-127.0.0.1}:${BANDI_PORT:-8766}:8766"
+    volumes:
+      - bandi-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8766/health', timeout=4).status == 200 else 1)
+      interval: 30s
+      timeout: 5s
+      start_period: 25s
+      retries: 3
+
+volumes:
+  bandi-data:

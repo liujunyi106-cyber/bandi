@@ -1,0 +1,629 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* 字体本地打包（免 CDN，本地优先产品） */
+@import "@fontsource-variable/inter";
+@import "@fontsource/jetbrains-mono";
+
+/* 仅 light 主题：dark 变体绑到永不出现的 .dark 类，锁死浅色 */
+@custom-variant dark (&:is(.dark *));
+
+/* 桌面壳自绘标题栏：44px 拖拽区与主进程 titleBarOverlay 同高同色，页面整体下移 */
+:root {
+  --titlebar-h: 0px;
+}
+html.desktop-shell {
+  --titlebar-h: 44px;
+  --app-h: calc(100svh - var(--titlebar-h));
+}
+html.desktop-shell body {
+  padding-top: var(--titlebar-h);
+}
+.titlebar-drag {
+  display: none;
+}
+html.desktop-shell .titlebar-drag {
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--titlebar-h);
+  background: var(--sidebar);
+  -webkit-app-region: drag;
+  z-index: 9999;
+}
+
+/* 拖拽区内的按钮必须排除拖拽，否则点不动 */
+html.desktop-shell .titlebar-drag-button {
+  -webkit-app-region: no-drag;
+}
+
+/* ── 底座 token── */
+:root {
+  --radius: 0.625rem;
+
+  /* SD1 冷白灰工作台 */
+  --background: #e8eaee;
+  --foreground: #111111;
+
+  --card: #ffffff;
+  --card-foreground: #111111;
+
+  --popover: #ffffff;
+  --popover-foreground: #111111;
+
+  /* 品牌主色 = 近黑重灰。
+     与对话区 ink（#18181a）同族，无彩色偏移；白字在其上对比度 >15:1。 */
+  --primary: #18181b;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f3f4f6;
+  --secondary-foreground: #111111;
+
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280;
+
+  --accent: #f3f4f6;
+  --accent-foreground: #111111;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  /* @提及（仅 @角色/员工）——2026-10-01 重开的**唯一蓝色例外**：
+     沿用 2026-09-29 废除前的蓝相（#315eff），但饱和度 100%→69%、亮度 60%→55%
+     （用户反馈原蓝「饱和过高过亮」）；在用户气泡 #f6f6f6 上对比度 5.24（AA 达标）。
+     注意：这是提及专用色，**不参与**选中/激活/聚焦（那些仍走中性近黑）。 */
+  --mention: #3b5bdb;
+
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  /* 输入框聚焦描线：只比未选中（--input #e5e7eb）重一点点；
+ 2026-09-29 取消 focus ring / 光晕（眩晕效果），仅加深外部描线 */
+  --input-focus: #c2c6cd;
+  /* 聚焦环随品牌改为中性重灰（弹窗输入/选项卡/开关不再出现蓝色选中效果） */
+  --ring: #18181b;
+
+  /* 图表色板（图表与统计消费方使用） */
+  --chart-1: #0f766e;
+  --chart-2: #6366f1;
+  --chart-3: #d97706;
+  --chart-4: #e11d48;
+  --chart-5: #0284c7;
+
+  /* 知识图谱节点灰阶：5 档从近黑到浅灰（图谱内全部类型用灰阶区分，不用彩色） */
+  --graph-gray-1: #1f2328;
+  --graph-gray-2: #3a3f47;
+  --graph-gray-3: #5c626b;
+  --graph-gray-4: #8a8f98;
+  --graph-gray-5: #b7bcc4;
+
+  /* 侧栏（shadcn sidebar 组件必需） */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #111111;
+  --sidebar-primary: #18181b;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f3f4f6;
+  --sidebar-accent-foreground: #111111;
+  --sidebar-border: #eceef1;
+  --sidebar-ring: #18181b;
+
+  /* Bandi 扩展 token */
+  /* 项目面板底色：介于左侧导航（纯白）与内容背景（#e8eaee）之间，三者分层可辨 */
+  --panel-bg: #f4f5f7;
+  --divider: #eceef1;
+  --border-strong: #d4d4d8;
+  --muted-foreground-weak: #9ca3af;
+  --warning: #b45309;
+  --success: #138a55;
+
+  /* 员工 tone：四档全中性/土色，不再含蓝色（原第 4 档随品牌蓝改为石墨灰） */
+  --tone-ink: #343633;
+  --tone-copper: #a85d32;
+  --tone-olive: #6f7b42;
+  --tone-graphite: #6b7280;
+
+  --shadow-float: 0 8px 24px rgba(17, 17, 17, 0.1);
+  --shadow-soft: 0 1px 2px rgba(17, 17, 17, 0.045);
+
+  /* 对话区独立冷白子色板 */
+  --chat-bg: #fcfcfc;
+  --chat-rail: #f4f4f4;
+  --chat-ink: #18181a;
+  --chat-muted: #858b9c;
+  --chat-hairline: #e3e7f1;
+  --chat-user-bubble: #f6f6f6;
+
+  --font-sans:
+    "Inter Variable", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+}
+
+@theme inline {
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-tile: 22px;
+  --radius-bubble: 14px;
+  --radius-iconbtn: 8px;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-mention: var(--mention);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-focus: var(--input-focus);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-divider: var(--divider);
+  --color-border-strong: var(--border-strong);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
+  --color-tone-ink: var(--tone-ink);
+  --color-tone-copper: var(--tone-copper);
+  --color-tone-olive: var(--tone-olive);
+  --color-tone-graphite: var(--tone-graphite);
+  --color-muted-foreground-weak: var(--muted-foreground-weak);
+  /* 对话区子色板 */
+  --color-chat-bg: var(--chat-bg);
+  --color-chat-rail: var(--chat-rail);
+  --color-chat-ink: var(--chat-ink);
+  --color-chat-muted: var(--chat-muted);
+  --color-chat-hairline: var(--chat-hairline);
+  --color-chat-user-bubble: var(--chat-user-bubble);
+
+  --shadow-float: var(--shadow-float);
+  --shadow-soft: var(--shadow-soft);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    /* 功能：界面字号比例（90%~130%，6 档）——根级 zoom，配套高度补偿 */
+    --ui-scale: 1;
+    /* 功能：补偿后的视口高度——zoom 会放大 svh/vh，所有外壳高度统一走这个变量 */
+    --app-h: calc(100vh / var(--ui-scale));
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  #root {
+    height: var(--app-h);
+    overflow: hidden;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-synthesis-weight: none;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+/* ── 文本选中高亮：浏览器默认蓝 → 中性灰 ── */
+::selection {
+  background: rgba(24, 24, 27, 0.16);
+  color: inherit;
+}
+
+/* ── 滚动条（上下拖拽）：细、圆角、颜色很浅 ──
+   注意：不能声明标准属性 scrollbar-width/scrollbar-color——Chromium 一旦见到它们
+   就改用原生滚动条并忽略 ::-webkit-scrollbar 的圆角与配色（表现为方角粗条）。 */
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(17, 17, 17, 0.13);
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(17, 17, 17, 0.22);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ── 消息正文 Markdown── */
+/* Tailwind preflight 会清掉 ol/ul/li/p 的默认列表符号、缩进与间距，
+   导致 marked 渲染出的有序列表视觉上「不是分点」——此处逐项还原。 */
+.chat-md {
+  font-size: 0.875rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.chat-md > *:first-child {
+  margin-top: 0;
+}
+
+.chat-md > *:last-child {
+  margin-bottom: 0;
+}
+
+.chat-md ol,
+.chat-md ul {
+  list-style: revert;
+  margin: 0.35em 0;
+  padding-left: 1.5em;
+}
+
+.chat-md ol {
+  list-style-type: decimal;
+}
+
+.chat-md ul {
+  list-style-type: disc;
+}
+
+.chat-md ul ul {
+  list-style-type: circle;
+}
+
+.chat-md li {
+  margin: 0.2em 0;
+}
+
+.chat-md li > p {
+  margin: 0.2em 0;
+}
+
+.chat-md p {
+  margin: 0.5em 0;
+}
+
+.chat-md h1,
+.chat-md h2,
+.chat-md h3,
+.chat-md h4,
+.chat-md h5,
+.chat-md h6 {
+  margin: 0.8em 0 0.4em;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.chat-md h1 {
+  font-size: 1.2em;
+}
+
+.chat-md h2 {
+  font-size: 1.1em;
+}
+
+.chat-md h3 {
+  font-size: 1em;
+}
+
+.chat-md blockquote {
+  margin: 0.5em 0;
+  padding-left: 0.75em;
+  border-left: none;
+  color: inherit;
+}
+
+.chat-md hr {
+  margin: 0.8em 0;
+  border: 0;
+  border-top: 1px solid var(--divider);
+}
+
+.chat-md code {
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: var(--muted);
+  font-size: 0.9em;
+  font-family: var(--font-mono);
+}
+
+.chat-md pre {
+  margin: 0.5em 0;
+  padding: 0.6em 0.75em;
+  border-radius: 8px;
+  background: var(--muted);
+  overflow-x: auto;
+}
+
+.chat-md pre code {
+  padding: 0;
+  background: none;
+}
+
+.chat-md table {
+  width: 100%;
+  margin: 0.5em 0;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.chat-md th,
+.chat-md td {
+  padding: 0.3em 0.5em;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+.chat-md strong {
+  font-weight: 600;
+}
+
+.chat-md p {
+  margin: 0.4em 0;
+}
+
+.chat-md h1,
+.chat-md h2,
+.chat-md h3,
+.chat-md h4 {
+  margin: 0.9em 0 0.4em;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.chat-md h1 {
+  font-size: 1.25em;
+}
+
+.chat-md h2 {
+  font-size: 1.15em;
+}
+
+.chat-md h3 {
+  font-size: 1.05em;
+}
+
+.chat-md ul,
+.chat-md ol {
+  margin: 0.4em 0;
+  padding-left: 1.35em;
+}
+
+.chat-md ul {
+  list-style: disc;
+}
+
+.chat-md ol {
+  list-style: decimal;
+}
+
+.chat-md li {
+  margin: 0.15em 0;
+}
+
+.chat-md li > ul,
+.chat-md li > ol {
+  margin: 0.15em 0;
+}
+
+.chat-md a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.chat-md code {
+  background: var(--chat-rail);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+.chat-md pre {
+  background: var(--chat-rail);
+  border-radius: 8px;
+  margin: 0.5em 0;
+  padding: 0.65em 0.8em;
+  overflow-x: auto;
+}
+
+.chat-md pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.82em;
+}
+
+.chat-md blockquote {
+  border-left: none;
+  color: inherit;
+  margin: 0.5em 0;
+  padding-left: 0.75em;
+}
+
+.chat-md hr {
+  border: 0;
+  border-top: 1px solid var(--chat-hairline);
+  margin: 0.9em 0;
+}
+
+.chat-md table {
+  border-collapse: collapse;
+  margin: 0.5em 0;
+  width: 100%;
+  font-size: 0.92em;
+}
+
+.chat-md th,
+.chat-md td {
+  border: 1px solid var(--chat-hairline);
+  padding: 0.3em 0.55em;
+  text-align: left;
+}
+
+.chat-md th {
+  background: var(--chat-rail);
+  font-weight: 600;
+}
+
+.chat-md img {
+  max-width: 100%;
+  border-radius: 8px;
+}
+
+.chat-md .mermaid-figure svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 思考挡位滑杆：
+   结构 = 胶囊容器（背景 hairline + 已滑过部分填充层变色）+ 原生 range（bg 透明、
+   只承担交互与白色圆钮 thumb）+ 灰色竖条刻度层（DOM，首尾不放、与胶囊垂直居中）。
+   填充宽度由组件按当前 index 内联（--thinking-fill），拖动经 React 受控回填连续更新；
+   transition 让填充丝滑。reduced-motion 由下方兜底。 */
+.thinking-shell {
+  position: relative;
+  height: 18px;
+  border-radius: 9999px;
+  background: var(--chat-hairline);
+}
+.thinking-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--primary) 28%, transparent);
+  transition: width 120ms ease-out;
+}
+.thinking-slider {
+  appearance: none;
+  -webkit-appearance: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+}
+.thinking-slider:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.thinking-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: none;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  cursor: grab;
+  transition: transform 150ms ease;
+}
+.thinking-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.12);
+}
+.thinking-slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.05);
+}
+.thinking-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: none;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  cursor: grab;
+}
+@media (prefers-reduced-motion: reduce) {
+  .thinking-slider::-webkit-slider-thumb,
+  .thinking-slider::-moz-range-thumb,
+  .thinking-fill {
+    transition: none;
+  }
+}
+
+/* 2026-09-29 用户反馈：消息中心/设置等功能 icon 按钮「点开浮层 → 点空白取消」后
+   残留一圈外部描边。根因：Radix 浮层关闭时把焦点归还触发器，shadcn Button 基类的
+   `focus-visible:ring-3 + border-ring` 随即显现（鼠标点击亦可能被判定 focus-visible）。
+ 2026-10-01 **全面取消焦点环**（不止浮层触发型）——键盘焦点改由光标/既有描边承担。
+   保留 `.no-focus-ring` 选择器（历史用例/语义更明确，冗余但无害）。 */
+:focus,
+:focus-visible,
+.no-focus-ring:focus,
+.no-focus-ring:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.no-focus-ring:focus-visible {
+  border-color: transparent;
+}
+
+/* 2026-10-02 批量选择复选框——轻圆角（4px）+ 边缘线 = 多选卡片底色
+   （border-primary/5）；选中态实心主色 + 白勾。项目面板与左栏批量操作共用（BulkCheckbox）。 */
+.bulk-checkbox {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 4px;
+  border: 1.5px solid color-mix(in srgb, var(--primary) 5%, transparent);
+  background-color: transparent;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease-out,
+    background-color 150ms ease-out;
+}
+.bulk-checkbox:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.2 2.2 4.8-4.8' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-size: 10px 10px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bulk-checkbox {
+    transition: none;
+  }
+}

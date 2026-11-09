@@ -1,0 +1,31 @@
+# 功能：开发形态编排——源码挂进容器，改代码自动重载，不用每次重建镜像。
+#
+# 用法（仓库根目录执行）：
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.dev.yml up --build
+
+name: bandi
+
+services:
+  bandi:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: production
+    command:
+      - python
+      - -m
+      - uvicorn
+      - bandi.api.app:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8766"
+      - --reload
+      - --reload-dir
+      - /app/bandi
+    environment:
+      BANDI_ENV: dev
+      PYTHONPATH: /app
+    volumes:
+      - ../bandi/bandi:/app/bandi:ro
+      - bandi-data:/data
