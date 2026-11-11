@@ -1,6 +1,6 @@
 /**
  * 功能：正文「## 成员任务」段 → 卡片（提取纯函数 + 渲染折叠 + 破坏者）。
- * （2026-10-16）：成员派发不作文本平铺；串行链只写下一个执行成员。
+ * 用户拍板（2026-10-16）：成员派发不作文本平铺；串行链只写下一个执行成员。
  */
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";

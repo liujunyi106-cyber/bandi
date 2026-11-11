@@ -153,7 +153,7 @@ class TestSkillCardValidation:
                 SkillCard(**raw)
 
     def test_unreachable_node_rejected(self) -> None:
-        """契约：存在从 start 经 edges
+        """契约（闭环核心，StaffDeck 开环漏检）：存在从 start 经 edges
         **不可达**的节点 → 构造失败。绕过防护：仅把孤立节点加入 terminal 或挂出边
         都不行——图必须整体从 start 连通。"""
         raw = _linear_card()

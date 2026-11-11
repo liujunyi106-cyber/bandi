@@ -87,7 +87,7 @@ def ensure_agents_md(root_dir: str) -> bool:
     return True
 
 
-# 功能：项目文件列表
+# 功能：项目文件列表（@文件引用数据源——Day137b-2）
 _FILE_LIST_MAX = 2000
 _IGNORED_DIRS = frozenset(
     {".git", "node_modules", "__pycache__", ".venv", "venv", "dist", "build", ".pytest_cache"}

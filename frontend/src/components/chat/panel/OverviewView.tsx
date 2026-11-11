@@ -1,5 +1,5 @@
 /**
- * 功能：右栏概览视图——数字员工工作台首页：
+ * 功能：右栏概览视图（v5，@base docs/前端设计规划.md §8）——数字员工工作台首页：
  * 会话作用域 = 摘要卡（会什么/花了多少/在干什么/产出了什么）+ 计划树（SOP 流程节点 /
  * 团队工作项[带领取者] / 普通 Todo 分流）+ 产出列表（删除独立
  * 「项目团队」板块——团队信息只保留计划段工作项与员工卡数据面）；
@@ -70,8 +70,8 @@ function TaskRow({
   );
 }
 
-/** 功能：工作项树（parent_id 分组；无 parent 为根——最多两层缩进展示）。
- * 按承接员工分组：各员工任务独立成节（不再总和展示）。行带状态标签（团队计划表口径）。 */
+/** 功能：员工状态清单（每位员工只显示最新工作项——状态实时替换，不堆叠历史卡）。
+ * 完整任务树在看板/工作页查看；右栏只承担当前状态摘要。 */
 function WorkItemTree({ items }: { items: WorkItemSummary[] }) {
   const t = useT();
   const { employees } = useEmployees();
@@ -82,33 +82,38 @@ function WorkItemTree({ items }: { items: WorkItemSummary[] }) {
     return (roleId: string) => map.get(roleId) ?? roleId;
   }, [employees]);
   const sections = useMemo(() => {
-    const childrenOf = new Map<string, WorkItemSummary[]>();
-    const roots: WorkItemSummary[] = [];
-    const ids = new Set(items.map((item) => item.id));
+    const latest = new Map<string, WorkItemSummary>();
+    const active = new Set([
+      "running",
+      "claimed",
+      "executing",
+      "needs_attention",
+      "waiting_approval",
+    ]);
+    const rank = (item: WorkItemSummary) => (active.has(item.phase) ? 1 : 0);
     for (const item of items) {
-      const parent = item.parent_id ?? "";
-      if (parent && ids.has(parent)) {
-        childrenOf.set(parent, [...(childrenOf.get(parent) ?? []), item]);
-      } else {
-        roots.push(item);
+      const key = item.assignee_role || "";
+      const previous = latest.get(key);
+      const itemUpdated = item.updated_at ?? "";
+      const previousUpdated = previous?.updated_at ?? "";
+      if (
+        !previous ||
+        itemUpdated > previousUpdated ||
+        (itemUpdated === previousUpdated && rank(item) > rank(previous))
+      ) {
+        latest.set(key, item);
       }
     }
-    const flatOf = (root: WorkItemSummary): Array<{ item: WorkItemSummary; depth: number }> => {
-      const flat: Array<{ item: WorkItemSummary; depth: number }> = [];
-      const walk = (item: WorkItemSummary, depth: number) => {
-        flat.push({ item, depth: Math.min(depth, 2) });
-        for (const child of childrenOf.get(item.id) ?? []) walk(child, depth + 1);
-      };
-      walk(root, 0);
-      return flat;
-    };
-    const grouped = new Map<string, Array<{ item: WorkItemSummary; depth: number }>>();
-    for (const root of roots) {
-      const key = root.assignee_role || "";
-      grouped.set(key, [...(grouped.get(key) ?? []), ...flatOf(root)]);
-    }
-    return [...grouped.entries()];
-  }, [items]);
+    return [...latest.entries()]
+      .map(
+        ([assignee, item]) =>
+          [assignee, [{ item, depth: 0 }]] as [
+            string,
+            Array<{ item: WorkItemSummary; depth: number }>,
+          ],
+      )
+      .sort(([a], [b]) => nameOf(a).localeCompare(nameOf(b)));
+  }, [items, nameOf]);
   return (
     <div className="space-y-1" data-testid="panel-work-items">
       {sections.map(([assignee, rows]) => (
@@ -337,7 +342,7 @@ function SessionOverview({ sessionId }: { sessionId: string }) {
         .then(async (result) => {
           const project = result.projects.find((item) => item.project_id === projectId);
           const memberRoles = new Set((project?.members ?? []).map((member) => member.role_id));
- // 技能数 = **团队员工绑定技能合计**
+          // 技能数 = **团队员工绑定技能合计**（用户拍板 2026-10-16；此前为全局技能库存）
           void companyApi
             .employees()
             .then((empResult) => {
@@ -352,7 +357,9 @@ function SessionOverview({ sessionId }: { sessionId: string }) {
             .catch(() => {
               if (!cancelled) setSkillCount(0);
             });
-          const items = await companyApi.workItems();
+          // 必须带 hide_chat=false：后端默认隐藏 chat_mention/chat_dm 根卡，
+          // 前端再按 parentId 保留时根卡已丢失，计划树只剩 auto_chain 子卡。
+          const items = await companyApi.workItems("", false);
           // 只展示**当前会话窗口**的工作项：会话 → 线程绑定查询（群聊线程
           // session_id = 会话 id）。此前按项目全量展示，历史自动建链子卡会
           // 以「视觉设计师：本环节交付」等同名条目反复堆叠。
@@ -362,25 +369,33 @@ function SessionOverview({ sessionId }: { sessionId: string }) {
             .catch(() => []);
           const boundThread = threads.find((thread) => thread.session_id === sessionId);
           const threadId = boundThread?.thread_id ?? "";
-          return (
-            items.items
-              .filter((item) => (threadId ? item.thread_id === threadId : false))
-              .filter((item) =>
-                item.project_id
-                  ? item.project_id === projectId
-                  : Boolean(item.assignee_role && memberRoles.has(item.assignee_role)),
-              )
-              // 团队计划表口径：只展示分工任务（agent_to_agent 等）——
-              // 会话卡（chat_mention/chat_dm）是对话记录不进计划树；咨询问答卡
-              // （chat_kind=query）同样不出发计划
-              .filter(
-                (item) =>
-                  item.source !== "chat_mention" &&
-                  item.source !== "chat_dm" &&
-                  item.chat_kind !== "query",
-              )
-              .sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""))
+          const projectScoped = items.items.filter((item) =>
+            item.project_id
+              ? item.project_id === projectId
+              : Boolean(item.assignee_role && memberRoles.has(item.assignee_role)),
           );
+          // 群聊卡优先按 origin_session_id 归会话；thread 只作旧数据回退。
+          const sessionScoped = projectScoped.filter((item) =>
+            item.origin_session_id
+              ? item.origin_session_id === sessionId
+              : threadId
+                ? item.thread_id === threadId
+                : false,
+          );
+          const scoped = sessionScoped.length > 0 ? sessionScoped : projectScoped;
+          // 会话卡本身是“谁的活”的根节点：若它已有分工子卡（auto_chain 等）
+          // 必须保留，否则子卡会被当成无主根节点，计划树只剩最后一个员工。
+          // 无子卡的纯对话卡仍不进计划树；咨询问答卡一律不出发计划。
+          const parentIds = new Set(scoped.map((item) => item.parent_id).filter(Boolean));
+          return scoped
+            .filter((item) => item.chat_kind !== "query")
+            .filter(
+              (item) =>
+                (item.source !== "chat_mention" && item.source !== "chat_dm") ||
+                item.phase !== "approved" ||
+                parentIds.has(item.id),
+            )
+            .sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""));
         })
         .then((related) => {
           if (!cancelled) setWorkItems(related);

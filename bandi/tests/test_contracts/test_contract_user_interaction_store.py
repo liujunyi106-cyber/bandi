@@ -1,4 +1,4 @@
-# 功能：InteractionStore 契约——pending 交互登记/真挂起恢复/超时/拒绝 生命周期
+# 功能：Day132c InteractionStore 契约——pending 交互登记/真挂起恢复/超时/拒绝 生命周期
 # 背景：confirm/clarify 交互协议的地基。LLM 工具执行路径遇交互需求时 register + await
 # get_decision（同一 turn 内真挂起）；用户 POST /confirm|/clarify 经 resolve/reject 唤醒。
 # 契约钉行为：register→await→resolve 恢复闭环、超时返回 None、状态机 pending→resolved/expired。

@@ -25,7 +25,7 @@ _DISTILL_BUDGET_SEC = 30.0
 _DISTILL_MAX_TOKENS = 512
 
 # 功能：提炼提示词——固定 JSON 契约（kind/key/content/importance），
-# 参考 参考实现 memory_extractor_prompt 的稳定键与不存流水纪律。
+# 参考 StaffDeck memory_extractor_prompt 的稳定键与不存流水纪律。
 DISTILL_PROMPT = """你是长期记忆提炼助手。从下面一段对话经历摘要中提炼一条**稳定的长期记忆**。
 
 严格遵守：
@@ -112,9 +112,11 @@ def rule_distill(summary: str, *, importance: float = 0.0) -> DistilledMemory:
     """功能：规则降级提炼——优先用户侧；用户侧无内容时只收「带结论的回答侧」。
 
     绝不无条件搬运「→ 回答:」之后的助手回复：执行汇报与功能清单写进长期记忆后，
-    会在后续召回里冒充「项目做过什么」。回答侧只有在自身不是噪声、且明确带结论信号
+    会在后续召回里冒充「项目做过什么」（真机实证：审批卡出现「做好了老板！待办
+    列表 App 已生成：预览路径…」）。回答侧只有在自身不是噪声、且明确带结论信号
     （结论/决定/约定/教训/原因/下一步）时才被采用——用户随口一问、助手查出关键
-    事实的场景仍然留得下来。"""
+    事实的场景仍然留得下来。
+    """
     from bandi.memory.ingest_review import MEMORY_VALUE_SIGNALS, is_noise_memory
 
     user_side, answer_side = strip_wrapper(summary)
@@ -189,6 +191,7 @@ async def distill_episode_async(episode: Episode, provider: Any) -> DistilledMem
             ],
             label="memory_distill",
             session_id="memory_distill",
+            agent_id="memory_distill",
             max_tokens=_DISTILL_MAX_TOKENS,
             budget_sec=_DISTILL_BUDGET_SEC,
         )

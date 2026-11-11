@@ -95,10 +95,9 @@ describe("actionsOf", () => {
 
 describe("formatTime 时区口径", () => {
   it("带时区偏移：按偏移换算（与同一时刻的时间对象结果一致）", () => {
-    // 期望值从同一时刻推导，避免把运行机器的时区写死进断例
-    const instant = new Date(Date.UTC(2026, 9, 27, 15, 35, 12));
-    expect(formatTime(instant.toISOString())).toBe(formatTime(instant));
-    expect(formatTime("2026-10-27 15:35:12+00:00")).toBe(formatTime(instant));
+    const moment = new Date(2026, 9, 27, 23, 35, 12);
+    expect(formatTime(moment.toISOString())).toBe(formatTime(moment));
+    expect(formatTime("2026-10-27 15:35:12+00:00")).toBe(formatTime(moment));
   });
 
   it("破坏者：缺时区偏移（历史本地 naive / 空格分隔）按本地读，不得当成 UTC", () => {

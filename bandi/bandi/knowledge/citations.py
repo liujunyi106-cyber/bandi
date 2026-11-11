@@ -1,4 +1,4 @@
-# 功能：知识库引用链（citation）——参考实现 backend/app/knowledge/citations.py
+# 功能：知识库引用链（citation）——StaffDeck backend/app/knowledge/citations.py 同构：
 # 从检索结果构建去重引用、按正文首次出现重编号；excerpt/summary 截断上限对齐。
 
 from __future__ import annotations

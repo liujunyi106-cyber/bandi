@@ -124,7 +124,7 @@ class TestModePassthroughStatic:
 
 class TestNoStaleLeakArtifacts:
     def test_plan_leak_file_absent(self) -> None:
-        """门禁 G05-02 的直接断言：plan_leak.txt 不得存在于工作区
+        """真机门禁 G05-02 的直接断言：plan_leak.txt 不得存在于工作区
         （跑门禁用例时被正确拒绝）。这里只查默认工作区，评测工作区由
         L1 门禁用例自己断言。"""
         leak = ROOT / "out" / "plan_leak.txt"

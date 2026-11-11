@@ -2584,7 +2584,8 @@ def test_contract_claimed_dedup_by_role(tmp_path) -> None:
 
 
 def test_contract_recover_clears_peer_wait_only_for_crashed_trace(tmp_path) -> None:
-    """行为族：recover 只处理「崩溃残留」（有执行痕迹+租约过期）。
+    """
+    HB-P1行为族：recover 只处理「崩溃残留」（有执行痕迹+租约过期）。
     崩溃残留：转 READY 且清 peer_wait（防 resolve_task_peer_wait 在 READY 卡上
     再次触发重复升级/死锁）；合法等待（无执行痕迹）：不得触碰
     （phase 与 peer_wait 均保留，等待由 peer/heartbeat 链推进）。"""

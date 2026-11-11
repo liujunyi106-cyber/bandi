@@ -134,11 +134,12 @@ def check_role(role: Role, resource: Resource, ctx: PermissionContext) -> Permis
 
 
 def register_builtin_role(engine: PolicyEngine, name: str) -> bool:
-    """/主线接线：按名把内置角色策略注册进引擎（选择性 add）。
+    """/Day124 主线接线：按名把内置角色策略注册进引擎（选择性 add）。
 
     未知角色（如默认 "user"）返回 False 且不注册任何策略——保持权限管道
     （PermissionMiddleware 的 pp.check）单链现状；admin_allow_all 等强语义仅在
-    显式声明该角色时生效。"""
+    显式声明该角色时生效。
+    """
     role = get_builtin_role(name)
     if role is None:
         return False

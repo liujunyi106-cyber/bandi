@@ -160,6 +160,7 @@ def build_tool_registry(
     from bandi.tools.git_ops import GitCommitTool, GitDiffTool, GitStatusTool
     from bandi.tools.glob_tool import GlobTool
     from bandi.tools.grep_tool import GrepTool
+    from bandi.tools.group_goal import GroupGoalTool
     from bandi.tools.integration.configure_settings import ConfigureSettingsTool
     from bandi.tools.integration.speech_to_text import SpeechToTextTool
     from bandi.tools.list_dir import ListDirTool
@@ -305,6 +306,7 @@ def build_tool_registry(
         RouteWorkTool(),
         CloseHumanReviewTool(),
         SpawnThreadTaskTool(),
+        GroupGoalTool(),
         ManagerBoardReadTool(),
         ModifyWorkItemTool(),
         DeleteWorkItemTool(),
@@ -682,6 +684,7 @@ def _build_auto_review_llm(provider: Any | None, bus: Any, session_id: str | Non
             messages,
             label="auto_review",
             session_id=session_id or "default",
+            agent_id="auto_review",
             bus=bus,
         )
         return str(getattr(resp, "content", "") or "")
@@ -703,6 +706,7 @@ def _build_tool_summary_llm(provider: Any | None, bus: Any) -> Any:
             [{"role": "user", "content": prompt}],
             label="tool_summary",
             session_id=session_id or "default",
+            agent_id="tool_summary",
             bus=bus,
         )
         return str(getattr(resp, "content", "") or "")
@@ -1015,21 +1019,38 @@ def build_agent_context(
     )
     mcp_names = {str(name) for name in (extra_surface_tools or []) if str(name)}
     tools_config = getattr(bandi_config, "tools", None)
+    mcp_lazy = bool(getattr(tools_config, "mcp_lazy_exposure", True))
     selected = select_relevant_schemas(
         all_schemas,
         user_input,
         mcp_tool_names=mcp_names,
-        mcp_lazy=bool(getattr(tools_config, "mcp_lazy_exposure", True)),
+        mcp_lazy=mcp_lazy,
         mcp_max_tools=int(getattr(tools_config, "mcp_max_exposed_tools", 5) or 0),
     )
-    if mcp_names:
+    # 懒暴露已按上限挑选；显式 eager 模式才补齐全量 MCP
+    if mcp_names and not mcp_lazy:
         selected_names = {schema_name(schema) for schema in selected}
         selected.extend(
             schema
             for schema in all_schemas
             if schema_name(schema) in mcp_names and schema_name(schema) not in selected_names
         )
+    elif mcp_names:
+        # 显式 extra_surface_tools 只补到 mcp_max_tools 上限，绝不整族注入
+        selected_names = {schema_name(schema) for schema in selected}
+        mcp_selected = sum(1 for name in selected_names if name in mcp_names)
+        budget = max(0, int(getattr(tools_config, "mcp_max_exposed_tools", 5) or 0) - mcp_selected)
+        for schema in all_schemas:
+            if budget <= 0:
+                break
+            name = schema_name(schema)
+            if name in mcp_names and name not in selected_names:
+                selected.append(schema)
+                selected_names.add(name)
+                budget -= 1
     ctx.active_tools = selected
+    # 工具搜索动态扩面的授权边界：只允许当前角色/模式/绑定已放行的工具
+    ctx.meta["allowed_tool_names"] = sorted({str(name) for name in allowed_tools if str(name)})
     ctx.meta["policy_engine"] = policy_engine
     # 运行时角色进 meta：成本按角色归属（LLM_RESPONSE 事件透出）+ 可观测
     ctx.meta["agent_role"] = agent_role
@@ -1258,11 +1279,12 @@ async def run_agent(
     模型路由，键名对齐 LLMConfig 字段，如 default_model/api_key/base_url）。
     user_id + account_store 传入时启用「用户 → 权限档」解析（方案 A 续）；
     缺省不触发绑定查询，行为与改造前一致。
-    stream_handler 传入时透传过程帧。
+    stream_handler 传入时透传过程帧（公司链路 = 员工执行过程广播；Day137b-1 插队批）。
     user_interaction 传入时装配员工交互通道（多问卡/权限卡真挂起，员工链路由
     seat_executor 经 interaction_provider 构建）。
     approval_capture 传入时回填本轮审批锚点（tool_call_id/tool_name，供调度精确恢复）。
-    session_timeout_sec 传入时覆盖回合墙钟上限；未传按 `agent.turn_timeout_sec`（0=不限）。"""
+    session_timeout_sec 传入时覆盖回合墙钟上限；未传按 `agent.turn_timeout_sec`（0=不限）。
+    """
     from bandi.core.agent_runner import AgentTurnResult, run_agent_turn
 
     effective_config = bandi_config or BandiConfig.load()

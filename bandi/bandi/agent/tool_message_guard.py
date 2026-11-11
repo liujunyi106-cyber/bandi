@@ -1,11 +1,13 @@
 """OpenAI 兼容 API（DeepSeek/OpenAI/…）拒绝两种历史形态：
 
 * ``role: tool`` 消息没有前置 assistant(tool_calls) 配对——渐进压缩、朴素裁剪
- 损坏会话都可能在中途留下此类孤儿；
+  损坏会话都可能在中途留下此类孤儿；
 * assistant(tool_calls) 声明的 id 缺少后续 tool 结果——用户中途停止即产生。
 
 两者都会让下一次请求 HTTP 400。本模块在每次 LLM 调用前对请求面做防御性清理
-。"""
+（LeAgent query.py drop_orphan_tool_messages/inject_missing_tool_result_stubs 同构
+适配 Message 对象形态）。
+"""
 
 from __future__ import annotations
 

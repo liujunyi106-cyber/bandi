@@ -23,7 +23,7 @@ def llm_error_with_status(message: str, cause: BaseException) -> LLMError:
     # 功能：构造**保留上游 HTTP 状态码**的 LLMError
     # 恢复面判定（agent/recovery_manager）按 status_code >= 400 归 FATAL；跨层包装
     # 若只带消息字符串，4xx/5xx 会长得像普通可重试错误 ⇒ 整个回合被反复重试
-    # 。
+    # （真机实证：agnes 对未知模型回 503，被包成纯文本后重试 10 次 → ESCALATED + 空回复）。
     error = LLMError(message)
     status = upstream_status(cause)
     if status is not None:

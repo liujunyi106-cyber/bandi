@@ -1,10 +1,11 @@
 """
- search_unified 统一出口：切词多候选聚合 + 维度过滤 + episodic note_recall
- ——memory_source 与 prefetch 的唯一数据源
- MemoryContextSource 委托门面（不再自查库——monkeypatch 断言同源）
- fail-safe：底层存储异常 → 空结果降级不炸主链
+  search_unified 统一出口：切词多候选聚合 + 维度过滤 + episodic note_recall
+     ——memory_source 与 prefetch 的唯一数据源
+  MemoryContextSource 委托门面（不再自查库——monkeypatch 断言同源）
+  fail-safe：底层存储异常 → 空结果降级不炸主链（LeAgent recall 先例）
 
-破坏者断言：同内容不得在同请求内双段出现；异常不得向上传播。"""
+破坏者断言：同内容不得在同请求内双段出现；异常不得向上传播。
+"""
 
 from typing import Any
 
@@ -315,7 +316,7 @@ async def test_rework_writes_lesson_to_global() -> None:
     assert globals_written, f"rework 必须写 global lesson（实际 {hierarchy.saved}）"
     blob = "\n".join(globals_written)
     assert "验证失败原因X" in blob, "lesson 必须含失败原因"
-    assert "蓝鲸" not in blob, "摘要化：lesson 不得含任务描述（跨项目信息面）"
+    assert "蓝鲸" not in blob, "AUD3-11 摘要化：lesson 不得含任务描述（跨项目信息面）"
 
 
 @pytest.mark.asyncio

@@ -1,5 +1,5 @@
 /**
- * 功能：会话流式接线。
+ * 功能：会话流式接线（@base docs/前端设计规划.md §8；方案 A 两条常驻连接）。
  * 挂在壳层（AppShell）：sessionSocket 只连一次；下行帧按 stream 槽归并进 chat store
  * （keyed 增量：content_delta 累积 / 工具事件挂过程节点 / done·error 定稿）。
  * 职责边界：本 hook 只做「数据归并」；通知中心在 use-host-events（避免双推）。

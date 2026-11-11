@@ -163,7 +163,7 @@ export function ProjectSpaceCard() {
     <>
       {/* 2026-09-29 对齐：上传按钮（⊕）为卡片内首个 `size-8` 圆圈，其左缘落在
           composer 的 px-4(16px) + 卡片 px-2(8px) = 24px；本槽（composer-below）无水平
- 内边距 ⇒ 补 9px 让 icon 左缘与圆圈左缘同一条竖线。 */}
+          内边距 ⇒ 补 9px 让 icon 左缘与圆圈左缘同一条竖线（真机实测 pl-2 时差 1px）。 */}
       <div className="flex items-center pl-[9px] pb-1.5" data-testid="project-space-card">
         <Popover open={menuOpen} onOpenChange={setMenuOpen}>
           <PopoverTrigger asChild>

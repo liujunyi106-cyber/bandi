@@ -1,16 +1,17 @@
-"""契约：本体式写入审批分流 + 草稿结构化展示
+"""契约：本体式写入审批分流 + 草稿结构化展示（2026-10-14 用户拍板批）
 
 覆盖：
 - 结构化写入工具（ontology_define/ontology_assert/ontology_retract/memory_assert）
- 审批走权限申请卡片：卡片 prompt 中文、detail 说明白「调用什么工具、提取什么内容」
+  审批走权限申请卡片：卡片 prompt 中文、detail 说明白「调用什么工具、提取什么内容」
 - 权限卡三态（仅本次允许 / 本会话始终允许 / 拒绝）对上述工具不变
 - memory_assert 纳入 ask 名单（pipeline 与 config 双单源一致）
 - 批准后写本体：零草稿（memory pending 队列零新增）+ 零长期记忆
 - 批准后 memory_assert 直写长期记忆：不进草稿
 - 草稿结构化：摘要 kind 前缀中文化（[事实] 而非 [fact]）；暂存记录携带
- draft 元数据（草稿类型 + 写入目标），供前端多标签分行展示
+  draft 元数据（草稿类型 + 写入目标），供前端多标签分行展示
 
-破坏者断言：缺失参数说明不得渲染成空 detail；未入 ask 名单的工具不产生卡片说明。"""
+破坏者断言：缺失参数说明不得渲染成空 detail；未入 ask 名单的工具不产生卡片说明。
+"""
 
 import json
 from typing import Any
@@ -123,7 +124,7 @@ def test_memory_assert_in_ask_tools_single_source() -> None:
 def test_plan_mode_still_gates_ask_listed_memory_assert() -> None:
     """契约（破坏者）：plan 模式不得静默放行 ask 名单成员——
 
-    memory_assert 在 plan 白名单，但它同时在
+    memory_assert 在 plan 白名单（计划要记依赖关系，既有拍板），但它同时在
     ask 名单：plan 下必须仍返回 ask_user=True（弹权限卡），不得借 plan 跳过
     询问层直写长期记忆。"""
     from bandi.core.message import ToolCall
@@ -221,7 +222,7 @@ async def test_ontology_assert_approved_writes_only_ontology(
         agent_id="sess-onto",
     )
 
-    # 审批授权单例隔离——进程单例读 ~/.bandi/approvals.json（持久授权会
+    # 审批授权单例隔离——进程单例读 ~/.bandi/approvals.json（真机持久授权会
     # 命中 wildcard grant 直接放行，破坏「未批准先暂停」前提）；禁用
     # reset_approval_store（会清真实用户授权数据）。
     from bandi.tools import approval as approval_mod

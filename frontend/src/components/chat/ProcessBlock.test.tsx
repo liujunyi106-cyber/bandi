@@ -46,6 +46,16 @@ describe("ProcessBlock", () => {
     expect(screen.queryByTestId("process-bucket-toggle-web")).not.toBeInTheDocument();
   });
 
+  it("已定稿：残留 running 节点也按完成态收口，不再转圈", () => {
+    const nodes: ProcessNode[] = [
+      toolNode("t1", "web_search", { input: { query: "竞品" }, status: "running", durationMs: 0 }),
+    ];
+    render(<ProcessBlock nodes={nodes} settled />);
+
+    expect(screen.getByTestId("process-block")).toHaveTextContent("已完成");
+    expect(screen.getByTestId("process-block")).not.toHaveTextContent("正在执行");
+  });
+
   it("已完成：总行「已完成」；展开分类 → 展开明细（搜索词；行尾不再常驻耗时）", () => {
     const nodes: ProcessNode[] = [
       toolNode("t1", "web_search", { input: { query: "竞品价格" }, durationMs: 800 }),
@@ -57,7 +67,7 @@ describe("ProcessBlock", () => {
     fireEvent.click(screen.getByTestId("process-bucket-web"));
     const item = screen.getByTestId("process-item");
     expect(item).toHaveTextContent('query="竞品价格"');
-    // 2026-10-12 明细行右侧不再常驻耗时（12ms/800ms）——
+    // 2026-10-12 用户拍板：明细行右侧不再常驻耗时（12ms/800ms）——
     // 该位置本应承载展开/收起，而工具行的展开入口是点击行打开右侧详情。
     expect(item).not.toHaveTextContent("800ms");
     // 耗时仍由总行汇总呈现

@@ -164,10 +164,11 @@ def _query_tokens(query: str) -> list[str]:
 def _description_boost(meta: dict[str, Any], query: str) -> float:
     """功能：一句话索引命中加成——description 是「相关性判断」专用索引。
 
-    参考实现 `findRelevantMemories` 的做法（`description` 字段的原文注释：
+    移植 cc-haha `findRelevantMemories` 的做法（`description` 字段的原文注释：
     "used to decide relevance in future conversations"）：先用索引判断这条记忆
     与当前问题相不相关，再决定要不要读全文。索引命中即给相关性加权，索引缺失
-    或不命中保持 1.0（不惩罚老数据）。"""
+    或不命中保持 1.0（不惩罚老数据）。
+    """
     desc = str(meta.get("description") or "").strip()
     if not desc or not query:
         return 1.0
@@ -623,7 +624,8 @@ class MemoryManager:
         history_conclusion/task_state 之一时按 routing.route_bias 对分类乘倍率
         （确定性；None/未知 hint 零行为）。
 
-        fail-safe：底层存储异常降级空列表，绝不炸主链。"""
+        fail-safe：底层存储异常降级空列表（LeAgent recall 先例），绝不炸主链。
+        """
         q = (query or "").strip()
         if not q:
             return []

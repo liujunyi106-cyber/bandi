@@ -45,11 +45,13 @@ def test_company_auto_approve_reviews_is_configurable(monkeypatch: pytest.Monkey
     app_module = sys.modules["bandi.api.app"]
 
     assert CompanyConfig().auto_approve_reviews is False
+    assert CompanyConfig().default_reviewer_role == "reviewer"
     cfg = BandiConfig.model_validate({"company": {"auto_approve_reviews": True}})
     assert cfg.company.auto_approve_reviews is True
     monkeypatch.setattr(BandiConfig, "load", lambda: cfg)
     dispatcher_cfg = app_module._dispatcher_config()
     assert dispatcher_cfg.auto_approve_reviews is True
+    assert dispatcher_cfg.default_reviewer_role == "reviewer"
 
 
 def test_tools_temp_dir_reaches_executor(tmp_path: Path) -> None:

@@ -350,6 +350,14 @@ BUILTIN_MODELS: dict[str, ModelSpec] = {
         max_output_tokens=131072,
         pricing=ModelPricing(round(0.3 * USD_TO_CNY, 4), round(1.2 * USD_TO_CNY, 4), "CNY"),
     ),
+    # agnes hub 聚合模型（OpenAI 兼容端点 apihub.agnes-ai.com/v1；
+    # 上下文窗口约 500K）。
+    "agnes-2.5-flash": ModelSpec(
+        name="agnes-2.5-flash",
+        provider="agnes",
+        context_window=500000,
+        max_output_tokens=65536,
+    ),
     # 多模态（文本/图像/音频/视频输入）旗舰与轻量档。
     "mimo-v2.6-pro": ModelSpec(
         name="mimo-v2.6-pro",

@@ -41,7 +41,7 @@ _STRUCTURED_SUMMARY = (
     "## 进度\n### Done\n- [x] 契约测试编写\n"
     "### In Progress\n- [ ] 实现改造\n"
     "### Blocked\n- (none)\n\n"
-    "## 关键决策\n- **采用5节模板**: 对齐 pi/opencode \n\n"
+    "## 关键决策\n- **采用5节模板**: 对齐 pi/opencode 参考源\n\n"
     "## 下一步\n1. 改造 memory/compaction.py\n\n"
     "## 关键上下文\n- 目标模块 bandi/bandi/memory/compaction.py:54 存在单句 prompt\n"
 )

@@ -139,7 +139,7 @@ class RetryPolicy:  # 功能：指数退避重试策略（最大重试/基础延
             except httpx.HTTPStatusError as e:
                 # 4xx 多为请求本身有问题（401/403/404），重试无意义；但 429 限流与
                 # 408 请求超时是「等一会就好」，把它们一并判死会让一次正常请求因
-                # 瞬时限流失败——L1 实测 verifier judge 撞 429 后 fail-closed，
+                # 瞬时限流失败——L1 真机实测 verifier judge 撞 429 后 fail-closed，
                 # 把一条本来正确的记忆召回结果判成 ESCALATED。
                 status = e.response.status_code
                 if 400 <= status < 500 and status not in _RETRYABLE_STATUS:

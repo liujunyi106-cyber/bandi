@@ -187,9 +187,10 @@ def _extract_entities(text: str) -> list[str]:
 
     只认有明确字面边界的实体：引号内内容 / 路径文件名 / 连字符 / 驼峰。
     中文自由文本的实体识别不在此列——六家参考框架无一例用正则抽散文实体：
-    参考实现 走 LLM tool-call 显式给三元组、参考实现 与 参考实现 让 LLM 直接写
+    dsh-ontology 走 LLM tool-call 显式给三元组、cc-haha 与 openopc 让 LLM 直接写
     结构化正文、datafoundry 只对表列等结构化输入做语义映射。正则抽中文散文实测
-    把「两者都要部署到」当实体、真实体「Alpha」反而抓不到。"""
+    把「两者都要部署到」当实体、真实体「Alpha」反而抓不到。
+    """
     spans = sorted(_iter_entity_spans(text), key=lambda pair: pair[0])
     entities: list[str] = []
     for _, value in spans:

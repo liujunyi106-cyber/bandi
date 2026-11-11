@@ -1,6 +1,6 @@
 """契约族：store 时间戳口径一致性。
 
-生产口径：
+生产口径（2026-10-31 拍板，替代原「业务时间戳 = naive 本地」）：
 存储层统一 UTC 带偏移串；历史本地 naive 值由
 `utils/timefmt.migrate_naive_timestamps` 在 store 初始化时一次性归一（幂等）；
 接口层 `utils/timefmt.iso_local` 统一输出本地时区偏移；租约时效同为 UTC。
@@ -8,7 +8,8 @@
 1. WorkItemStore.save_org_roles / save_org_employees——组织定义时间戳列
 2. WorkItemStore.claim_for_execution——work item 租约时间戳（UTC 口径闭环）
 3. WorkItemStore.save_memory_snapshot——层级记忆快照时间戳列
-4. SessionStore.create_session——会话时间戳列"""
+4. SessionStore.create_session——会话时间戳列
+"""
 
 from __future__ import annotations
 

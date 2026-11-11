@@ -44,7 +44,7 @@ export function PendingSendBar({
               aria-label={t("chat.pendingSend.label")}
               title={t("chat.pendingSend.label")}
             >
-              <Clock3 className="size-4" aria-hidden="true" />
+              <Clock3 className="size-4" strokeWidth={1.8} aria-hidden="true" />
             </span>
             <span
               data-testid="pending-send-text"

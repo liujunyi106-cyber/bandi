@@ -1,5 +1,5 @@
 /**
- * 功能：员工单聊视图。
+ * 功能：员工单聊视图（@base docs/前端设计规划.md §6 / ——Day137 完整增强）。
  * 对话容器 = 与目标员工的讨论线程（participants=[user, target]）：
  * 历史/实时经线程通道（GET threads + thread_message 帧），发送经 /ws/company target_role
  * （触发员工执行，产出经 回写路由流入同一线程）。
@@ -14,11 +14,12 @@ import { Composer } from "@/components/chat/Composer";
 import { EmptyEmployeeState } from "@/components/chat/EmptyEmployeeState";
 import { EmployeeIdentityHeader } from "@/components/chat/EmployeeIdentityHeader";
 import { InteractionCard } from "@/components/chat/InteractionCard";
+import { CompactionCardMessage } from "@/components/chat/MessageItem";
 import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
 import { ProcessBlock } from "@/components/chat/ProcessBlock";
 import { ReplySources } from "@/components/chat/ReplySources";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { EmployeeAvatar } from "@/components/team/EmployeeAvatar";
+
 import { APPROVAL_FRAME_PREFIX, useCompanyApprovals } from "@/hooks/use-company-approvals";
 import { useEmployees } from "@/hooks/use-employees";
 import { toast } from "sonner";
@@ -29,12 +30,15 @@ import { handleMentionClick } from "@/lib/panel-link";
 import { normalizeProjectScope } from "@/lib/progress-key";
 import { cn } from "@/lib/utils";
 import { companyApi, findDirectThread, type ThreadMessageRecord } from "@/services/company";
+import { sessionsApi } from "@/services/sessions";
 import { socket } from "@/services/ws";
 import {
+  entriesToMessages,
   nodesFromEvents,
   settleRunningNodes,
   useChatStore,
   type ChatAttachment,
+  type CompactionCard,
   type ProcessNode,
 } from "@/stores/chat-store";
 import { useUiStore } from "@/stores/ui-store";
@@ -57,10 +61,7 @@ function settleHistoryProcess(events: unknown[]): ProcessNode[] {
 }
 
 /** 功能：线程详情与加载期间已到达的实时消息按 message_id 合并，避免快照覆盖丢消息。 */
-function mergeDmHistory(
-  history: ThreadMessageRecord[],
-  current: DmMessage[],
-): DmMessage[] {
+function mergeDmHistory(history: ThreadMessageRecord[], current: DmMessage[]): DmMessage[] {
   const byId = new Map<string, DmMessage>();
   for (const message of history) {
     const events = Array.isArray(message.process_events) ? message.process_events : [];
@@ -73,7 +74,9 @@ function mergeDmHistory(
     const key = message.message_id || `${message.created_at}:${message.sender}:${message.content}`;
     byId.set(key, message);
   }
-  return [...byId.values()].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
+  return [...byId.values()].sort((a, b) =>
+    String(a.created_at).localeCompare(String(b.created_at)),
+  );
 }
 
 function errorMessage(error: unknown): string {
@@ -81,7 +84,21 @@ function errorMessage(error: unknown): string {
 }
 
 /** 单聊消息（服务端线程消息 + 本地过程固化——回复到达时把过程槽附加到该消息）。 */
-type DmMessage = ThreadMessageRecord & { process?: ProcessNode[]; durationMs?: number };
+type DmMessage = ThreadMessageRecord & {
+  process?: ProcessNode[];
+  durationMs?: number;
+  compaction?: CompactionCard;
+};
+
+/** 功能：合并会话压缩卡到单聊线程时间线（按 message_id 去重，刷新后仍可见）。 */
+function mergeCompactionCards(messages: DmMessage[], cards: DmMessage[]): DmMessage[] {
+  if (cards.length === 0) return messages;
+  const byId = new Map(messages.map((message) => [message.message_id, message]));
+  for (const card of cards) byId.set(card.message_id, card);
+  return [...byId.values()].sort((a, b) =>
+    String(a.created_at).localeCompare(String(b.created_at)),
+  );
+}
 
 interface DmChatViewProps {
   targetRole: string;
@@ -97,14 +114,10 @@ export function DmChatView({ targetRole, employeeId = "", projectId = "" }: DmCh
   useCompanyApprovals();
   const interactions = useChatStore((state) => state.interactions);
   const targetEmployee = useMemo(() => {
-    const byId = employeeId
-      ? employees.find((item) => item.employee_id === employeeId)
-      : undefined;
+    const byId = employeeId ? employees.find((item) => item.employee_id === employeeId) : undefined;
     return (
       byId ??
-      employees.find(
-        (item) => item.role_id === targetRole || item.employee_id === targetRole,
-      )
+      employees.find((item) => item.role_id === targetRole || item.employee_id === targetRole)
     );
   }, [employees, employeeId, targetRole]);
   const resolvedEmployeeId = employeeId || targetEmployee?.employee_id || "";
@@ -194,14 +207,13 @@ export function DmChatView({ targetRole, employeeId = "", projectId = "" }: DmCh
     return () => useUiStore.getState().clearHeaderTools();
   }, [toolItems]);
 
-  // 插队批：员工执行过程实时块（thread_progress 帧归并——不依赖 work-items 轮询）
+  // Day137b-1 插队批：员工执行过程实时块（thread_progress 帧归并——不依赖 work-items 轮询）
   // 只认**本单聊线程**的槽（线程未建立时匹配空线程键）；不跨线程兜底——
   // 否则群聊/其他会话的执行过程会串进单聊视图（「回复完了还在执行」的串台源）。
   const progressNodes = useChatStore((state) => {
     const key = `${normalizeProjectScope(projectId)}::${threadId ?? ""}::${targetRole}`;
     return state.employeeProgress[key] ?? EMPTY_PROGRESS;
   });
-
 
   const refreshTasks = useCallback(() => {
     if (!targetRole) return;
@@ -251,6 +263,39 @@ export function DmChatView({ targetRole, employeeId = "", projectId = "" }: DmCh
     return () => window.clearTimeout(timer);
   }, [awaitingReply]);
 
+  const refreshCompactionCards = useCallback(async (sessionId: string) => {
+    if (!sessionId) return;
+    try {
+      const detail = await sessionsApi.detail(sessionId);
+      const cards = entriesToMessages(sessionId, detail.messages)
+        .filter((message) => message.compaction)
+        .map<DmMessage>((message) => ({
+          message_id: `compact:${message.id}`,
+          sender: "system",
+          content: "",
+          mentions: [],
+          created_at: message.createdAt ?? new Date().toISOString(),
+          compaction: message.compaction,
+        }));
+      setMessages((previous) => mergeCompactionCards(previous, cards));
+    } catch {
+      // 压缩卡是附属展示，读取失败不阻断单聊主链
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshCompactionCards(threadSessionId);
+  }, [threadSessionId, refreshCompactionCards]);
+
+  /** 功能：单聊会话 id（既有线程缺 session 时用稳定派生 id，发送时由后端建会话）。 */
+  const deriveDmSessionId = useCallback(
+    (tid: string | null) =>
+      tid
+        ? `dm-${tid}`
+        : `dm-${typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}`}`,
+    [],
+  );
+
   useEffect(() => {
     if (!targetRole) return;
     let cancelled = false;
@@ -271,6 +316,7 @@ export function DmChatView({ targetRole, employeeId = "", projectId = "" }: DmCh
         if (!found || cancelled) return;
         setThreadId(found.thread_id);
         if (found.session_id) setThreadSessionId(found.session_id);
+        else setThreadSessionId(deriveDmSessionId(found.thread_id));
         const detail = await companyApi.thread(found.thread_id, projectId);
         if (cancelled) return;
         // 历史消息带回写时持久化的过程快照——刷新后过程块可回看；
@@ -281,7 +327,7 @@ export function DmChatView({ targetRole, employeeId = "", projectId = "" }: DmCh
     return () => {
       cancelled = true;
     };
-  }, [targetRole, projectId]);
+  }, [deriveDmSessionId, targetRole, projectId]);
 
   useEffect(() => {
     if (
@@ -323,7 +369,7 @@ export function DmChatView({ targetRole, employeeId = "", projectId = "" }: DmCh
       // 首条消息前线程 id 尚未落地：用服务端帧里的线程 id 补位，
       // 否则实时过程槽（按键含 thread）对不上本视图的槽键。
       if (!current && incoming) setThreadId(incoming);
-      // 员工执行过程随回复固化——**先消费槽再 setState**（updater 必须纯函数：
+      // Day137b-1：员工执行过程随回复固化——**先消费槽再 setState**（updater 必须纯函数：
       // 在 updater 内消费会因 React 重放 updater 导致第二次取到空槽、过程块丢失）
       // 槽键含 thread（当时用于过滤的同一 thread_id ⇒ 过程与回复精确配对）
       const processNodes = useChatStore
@@ -426,56 +472,87 @@ export function DmChatView({ targetRole, employeeId = "", projectId = "" }: DmCh
     // 项目上下文透传——线程归入项目空间（per-project 工厂）；
     // 引用已通过任务时带 target_work_item_id → 后端受控回转
     // 轮三-5：对话附件（upload_id）→ 服务端文本注记拼入建卡内容（员工执行时可见）
-    socket.send({
-      content: value,
-      sender_role: "user",
-      target_role: targetRole,
-      ...(resolvedEmployeeId ? { employee_id: resolvedEmployeeId } : {}),
-      // 单聊模式切换（play/execute）随消息透传——后端建 PLAN/EXECUTE 卡驱动员工
-      mode: useUiStore.getState().chatMode,
-      ...(projectId ? { project_id: projectId } : {}),
-      ...(reworkPick ? { target_work_item_id: reworkPick.id } : {}),
-      ...(attachments?.length
-        ? {
-            attachments: attachments.map((item) => ({
-              upload_id: item.upload_id,
-              name: item.name,
-            })),
-          }
-        : {}),
-    });
-    // 引用一次性消费（下一条消息不携带修正语义）
-    setReworkPick(null);
-    lastSentAtRef.current = new Date().toISOString();
-    lastSentAtMsRef.current = Date.now();
-    setAwaitingReply(true);
+    const deliver = (sessionId: string) => {
+      socket.send({
+        content: value,
+        sender_role: "user",
+        target_role: targetRole,
+        ...(resolvedEmployeeId ? { employee_id: resolvedEmployeeId } : {}),
+        // 单聊模式切换（play/execute）随消息透传——后端建 PLAN/EXECUTE 卡驱动员工
+        mode: useUiStore.getState().chatMode,
+        ...(projectId ? { project_id: projectId } : {}),
+        ...(threadId ? { thread_id: threadId } : {}),
+        session_id: sessionId,
+        ...(reworkPick ? { target_work_item_id: reworkPick.id } : {}),
+        ...(attachments?.length
+          ? {
+              attachments: attachments.map((item) => ({
+                upload_id: item.upload_id,
+                name: item.name,
+              })),
+            }
+          : {}),
+      });
+      // 引用一次性消费（下一条消息不携带修正语义）
+      setReworkPick(null);
+      lastSentAtRef.current = new Date().toISOString();
+      lastSentAtMsRef.current = Date.now();
+      setAwaitingReply(true);
+    };
+    if (threadSessionId) {
+      deliver(threadSessionId);
+      return;
+    }
+    // 单聊线程可能只有 thread 记录、没有会话历史——发送时携带派生会话 id，
+    // 后端建会话并把线程补绑到该 id；后续 /compact 与员工回复回写才有承载对象。
+    const sessionId = deriveDmSessionId(threadId);
+    setThreadSessionId(sessionId);
+    deliver(sessionId);
   };
 
   // 中断失效修复——原来 onStop={noop} + busy={false}
   // 单聊里停止按钮根本不出现。busy 从过程槽派生（实时），中断走 abort 端点。
   // 180s 只是长任务兜底；只要线程里仍有 running 工作项就必须维持执行态
-  const dmRunning =
-    progressNodes.length > 0 || awaitingReply || (activeCount ?? 0) > 0;
+  const dmRunning = progressNodes.length > 0 || awaitingReply || (activeCount ?? 0) > 0;
   const employeeBusy = dmRunning;
   const stopEmployee = () => {
     void companyApi
       .workItems(targetRole)
       .then(({ items }) => {
         // 只中断本线程的卡——群聊/其他会话的卡不得被单聊的停止按钮命中
-        const running = items.find(
+        const running = items.filter(
           (item) =>
             ACTIVE_EXECUTION_PHASES.has(item.phase) && (!threadId || item.thread_id === threadId),
         );
-        if (!running) {
+        if (!running.length) {
+          // 卡可能已进入 gate/终态，或没有 active execution；停止仍要立即清本地执行态
+          useChatStore.getState().settleStaleEmployeeProgress("stopped");
+          setAwaitingReply(false);
+          setActiveCount(0);
           toast.info(t("chat.dm.noRunningTask"));
           return;
         }
-        void companyApi
-          .abortWorkItem(running.id)
-          .then(() => toast.success(t("chat.dm.interrupted")))
-          .catch(() => toast.error(t("chat.dm.interruptFailed")));
+        void Promise.allSettled(
+          running.map((item) => companyApi.abortWorkItem(item.id)),
+        ).then((results) => {
+          const interrupted = results.filter(
+            (result) => result.status === "fulfilled" && result.value.interrupted,
+          ).length;
+          // 404 NO_ACTIVE_EXECUTION 不代表前端还该转圈：本地统一收尾
+          useChatStore.getState().settleStaleEmployeeProgress("stopped");
+          setAwaitingReply(false);
+          setActiveCount(0);
+          if (interrupted > 0) toast.success(t("chat.dm.interrupted"));
+          else toast.info(t("chat.dm.noRunningTask"));
+          refreshTasks();
+        });
       })
-      .catch(() => toast.error(t("chat.dm.interruptFailed")));
+      .catch(() => {
+        useChatStore.getState().settleStaleEmployeeProgress("stopped");
+        setAwaitingReply(false);
+        setActiveCount(0);
+        toast.error(t("chat.dm.interruptFailed"));
+      });
   };
 
   if (!targetRole) {
@@ -497,34 +574,23 @@ export function DmChatView({ targetRole, employeeId = "", projectId = "" }: DmCh
       data-testid="dm-chat-view"
       onClick={(event) => handleMentionClick(event, employees)}
     >
-      <div className="border-chat-hairline flex items-center gap-2 border-b px-4 py-2">
-        <EmployeeAvatar
-          name={displayName}
-          metadata={targetEmployee?.metadata}
-          className="size-6 rounded-full text-[10px]"
-        />
-        <span className="text-chat-ink text-sm font-medium">{displayName}</span>
-        <span className="text-chat-muted text-xs">· {t("chat.dm.hint")}</span>
-        {/* 2026-09-23 MEM-SCOPE-4 前端入口：选择已通过任务 → 对话修正其执行细节 */}
-        <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              data-testid="dm-rework-picker"
-              className="text-chat-muted hover:text-foreground ml-auto flex size-6 shrink-0 items-center justify-center rounded-md"
-              title={t("chat.dm.reworkPick")}
-            >
-              <ListChecks className="size-3.5" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-64 p-1">
-            <p className="text-chat-muted px-2 py-1 text-[11px]">{t("chat.dm.reworkPick")}</p>
-            {reworkCards.length === 0 ? (
-              <p className="text-chat-muted px-2 py-2 text-center text-xs">
-                {t("chat.dm.reworkEmpty")}
-              </p>
-            ) : (
-              reworkCards.map((card) => (
+      {reworkCards.length > 0 ? (
+        <div className="flex items-center justify-end px-4 py-1">
+          {/* 选择已通过任务 → 对话修正其执行细节 */}
+          <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                data-testid="dm-rework-picker"
+                className="text-chat-muted hover:text-foreground flex size-6 shrink-0 items-center justify-center rounded-md"
+                title={t("chat.dm.reworkPick")}
+              >
+                <ListChecks className="size-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-64 p-1">
+              <p className="text-chat-muted px-2 py-1 text-[11px]">{t("chat.dm.reworkPick")}</p>
+              {reworkCards.map((card) => (
                 <button
                   key={card.id}
                   type="button"
@@ -537,24 +603,11 @@ export function DmChatView({ targetRole, employeeId = "", projectId = "" }: DmCh
                 >
                   <span className="min-w-0 flex-1 truncate">{card.title}</span>
                 </button>
-              ))
-            )}
-          </PopoverContent>
-        </Popover>
-        {activeCount !== null ? (
-          <span
-            data-testid="dm-task-badge"
-            className={cn(
-              "rounded-full px-2 py-0.5 text-[11px]",
-              activeCount > 0 ? "bg-primary/10 text-primary" : "bg-chat-rail text-chat-muted",
-            )}
-          >
-            {activeCount > 0
-              ? t("chat.dm.busy").replace("{n}", String(activeCount))
-              : t("chat.dm.idle")}
-          </span>
-        ) : null}
-      </div>
+              ))}
+            </PopoverContent>
+          </Popover>
+        </div>
+      ) : null}
 
       <div className="relative min-h-0 flex-1">
         <div
@@ -576,8 +629,7 @@ export function DmChatView({ targetRole, employeeId = "", projectId = "" }: DmCh
                   isUser &&
                   hasAttachments &&
                   (cleanedContent.trim() === "" ||
-                    (cleanedContent.trim().startsWith("[附件 ") &&
-                      !cleanedContent.includes("\n")));
+                    (cleanedContent.trim().startsWith("[附件 ") && !cleanedContent.includes("\n")));
                 const displayContent = attachmentOnly ? "" : cleanedContent;
                 // 与群聊同口径：本轮耗时 = 上一条用户消息 → 本条回复落卡的墙钟差
                 let turnDurationMs: number | undefined = message.durationMs;
@@ -593,6 +645,14 @@ export function DmChatView({ targetRole, employeeId = "", projectId = "" }: DmCh
                       break;
                     }
                   }
+                }
+                if (message.compaction) {
+                  return (
+                    <CompactionCardMessage
+                      key={`${message.message_id}:${index}`}
+                      card={message.compaction}
+                    />
+                  );
                 }
                 if (message.sender === "system") {
                   return (
@@ -615,7 +675,7 @@ export function DmChatView({ targetRole, employeeId = "", projectId = "" }: DmCh
                     data-chat-anchor-key={message.message_id}
                     className={cn("flex w-full flex-col", isUser ? "items-end" : "items-start")}
                   >
-                    {/* 2026-09-23 用户消息不带「我」标签；员工行 = 头像 + 姓名 + 时间戳 */}
+                    {/* 2026-09-23 用户拍板：用户消息不带「我」标签；员工行 = 头像 + 姓名 + 时间戳 */}
                     {!isUser ? (
                       <EmployeeIdentityHeader
                         name={resolveEmployeeName(employees, message.sender)}
@@ -628,10 +688,7 @@ export function DmChatView({ targetRole, employeeId = "", projectId = "" }: DmCh
                     ) : null}
                     {/* 内容包裹层：pl-5 与姓名对齐（子元素 w-full 自动收窄，右缘不超出消息列） */}
                     <div
-                      className={cn(
-                        "flex w-full flex-col",
-                        isUser ? "items-end" : "items-start",
-                      )}
+                      className={cn("flex w-full flex-col", isUser ? "items-end" : "items-start")}
                     >
                       {!isUser && message.process?.length ? (
                         <ProcessBlock nodes={message.process} totalMsOverride={turnDurationMs} />
@@ -672,7 +729,7 @@ export function DmChatView({ targetRole, employeeId = "", projectId = "" }: DmCh
                 );
               })
             )}
-            {/* 2026-09-23 正在执行显示在员工头像下方、与头像左缘对齐；
+            {/* 2026-09-23 用户拍板：正在执行显示在员工头像下方、与头像左缘对齐；
               插队批：thread_progress 帧到达即展示实时过程块（有过程帧优先于静态提示） */}
             {progressNodes.length > 0 || awaitingReply ? (
               <div className="flex w-full flex-col items-start" data-testid="dm-running">
@@ -748,9 +805,9 @@ export function DmChatView({ targetRole, employeeId = "", projectId = "" }: DmCh
           </div>
         </div>
       ) : null}
-      {/* 2026-09-23 对话框与其它会话统一（公共 Composer）；单聊不显示模式控件。
+      {/* 2026-09-23 用户拍板：对话框与其它会话统一（公共 Composer）；单聊不显示模式控件。
           2026-09-24：busy 从过程槽派生 ⇒ 中断按钮出现；onStop 走 E-6 abort（原 noop 失效）。
- 2026-09-30 开 enhanced 拿到控制条（模型/思考模式）+ ⊕ 的上传与@引用文件；
+          2026-09-30 用户拍板：开 enhanced 拿到控制条（模型/思考模式）+ ⊕ 的上传与@引用文件；
           2026-10-02：单聊不消费「选择员工」（@团队成员仅项目群聊会话提供）——allowTeamPicker=false。 */}
       <Composer
         busy={employeeBusy}
@@ -766,6 +823,9 @@ export function DmChatView({ targetRole, employeeId = "", projectId = "" }: DmCh
         // 控制条显示该员工实际使用的模型并锁定切换——全局模型切换对它无效
         employeeModel={employeeOwnModel}
         placeholder={t("chat.dm.placeholder")}
+        onCompacted={(sessionId) => {
+          void refreshCompactionCards(sessionId);
+        }}
         onSend={send}
         onSteer={send}
         onStop={stopEmployee}

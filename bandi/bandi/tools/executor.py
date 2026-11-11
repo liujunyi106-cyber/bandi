@@ -131,10 +131,11 @@ _NETWORK_TOOL_HINTS: tuple[str, ...] = (
 
 
 def _with_network_next_step(result: ToolResult) -> ToolResult:
-    """功能：网络/检索类失败追加转向指引。
+    """功能：网络/检索类失败追加转向指引（对齐 LeAgent 的 next_step 语义）。
 
     模型在"网络不可用"时若无明确转向指令，会反复换工具诊断网络直到耗尽轮次。
-    失败结果直接带上下一步路径（知识库/记忆/现有产物、缺失标「待取证」）。"""
+    失败结果直接带上下一步路径（知识库/记忆/现有产物、缺失标「待取证」）。
+    """
     if result.success:
         return result
     text = f"{result.tool_name} {result.error or ''}".lower()
@@ -923,7 +924,7 @@ class ToolExecutor:  # 功能：工具执行引擎（并发/串行分区执行 +
         if not needs:
             return None
 
-        # 员工工作区免审批：员工会话（role-session）内
+        # 员工工作区免审批（用户拍板 2026-10-16）：员工会话（role-session）内
         # 文件写入/bash 且目标全落在本 run 工作区内、无敏感/危险特征 → 自动放行。
         # 该判定先于 UI/headless 分叉：cache_approved 让 pipeline 的 UI 询问
         # （_check_ui）直接缓存命中放行——有交互通道时不再弹权限卡；工作区外/
@@ -1762,6 +1763,10 @@ class ToolExecutor:  # 功能：工具执行引擎（并发/串行分区执行 +
                 extra["session_id"] = (self._session_meta or {}).get(
                     "session_id", ""
                 ) or self._agent_id
+                extra.setdefault(
+                    "group_conversation_id",
+                    (self._session_meta or {}).get("group_conversation_id", ""),
+                )
                 extra.setdefault(
                     "project_root",
                     self._project_root or (self._session_meta or {}).get("project_root", ""),

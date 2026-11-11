@@ -17,7 +17,7 @@ class EventType(Enum):  # 功能：系统事件类型枚举（状态变更/转�
     TOOL_COMPLETED = auto()
     TOOL_ERROR = auto()
     TOOL_PROGRESS = auto()  # LA-19：流式工具中间进度（工具时间线 UI 数据源）
-    SKILL_INJECTED = auto()  # 技能注入（前端过程块「Skill 使用组」数据源）
+    SKILL_INJECTED = auto()  # Day137：技能注入（前端过程块「Skill 使用组」数据源）
     ERROR_OCCURRED = auto()
     DEGRADATION = auto()
     SAFETY_GUARD_TRIGGERED = auto()

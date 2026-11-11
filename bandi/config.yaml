@@ -20,6 +20,8 @@ company:
   max_items_per_tick: 64
   # 质量门：false=有评审人时留待人工/经理裁决；true=无裁决时自动通过
   auto_approve_reviews: false
+  # 顶层卡默认评审角色；角色存在且有在职员工才启用，否则自动通过
+  default_reviewer_role: reviewer
 
 execution_isolation:
   mode: local_hardened
@@ -43,6 +45,11 @@ tools:
     persist_to_work_item: true
     emit_runtime_events: true
   feature_flags:
+    # CC-24 feature 闂ㄦ帶锛氭湭鍒楀嚭鐨勭粍榛樿寮€鏀撅紙闆惰縼绉伙級銆?
+    # 鈿狅笍 鐢熸晥璺緞锛氭湰浠撳簱 config.yaml 鏄ā鏉?绀轰緥鈥斺€擮nticaConfig.load() 鍙
+    # ~/.bandi/config.yaml锛? $BANDI_ENV 鐜閰嶇疆锛夈€傝鐪熸鍏抽棴鏌愮粍锛岃鎶婃湰娈?
+    # 澶嶅埗鍒?~/.bandi/config.yaml 鍚庡啀鏀癸紙鏀规湰鏂囦欢涓嶇敓鏁堬級銆?
+    # 鍏抽棴鏁寸粍绀轰緥锛堟斁 ~/.bandi/config.yaml锛夛細
     #   workflow: false
     tool_groups:
       workflow: true
@@ -64,6 +71,8 @@ prefetch:
   focused_memory: true
 
 models_dev:
+  # 鏂规 C锛氬惎鍔ㄦ椂鎸?TTL 鎷夊彇 models.dev 妯″瀷鍏冩暟鎹紝鏂綉鍥為€€缂撳瓨/纭紪鐮併€?
+  # 鐢熸晥璺緞锛氭湰浠撳簱 config.yaml 鏄ā鏉库€斺€斿鍒舵湰娈靛埌 ~/.bandi/config.yaml 鎵嶇敓鏁堛€?
   enabled: true
   url: "https://models.dev/api.json"
   cache_ttl_hours: 24.0
@@ -77,6 +86,8 @@ verification:
 
 
 permissions:
+  # CT-06锛氬垎灞傛潈闄愯鍒欙紙user/project/local/BANDI_CONFIG 鍥涘眰閫愬眰鍙犲姞 + 鏉ユ簮鏍囨敞锛夆€斺€?
+  # 瀛楃涓茬畝鍐欓粯璁ゆ斁琛岋紙濡?'bash:git:*'锛夛紝鎴?{"pattern": "...", "action": "deny|ask"}
   rules: []
   deny_tools: []
   ask_tools: ["bash", "write", "ontology_define", "ontology_assert", "python_exec", "browser"]
@@ -87,6 +98,9 @@ permissions:
   # true = fail-closed 抛错拒绝执行（防 DB 故障把受限用户按高权限档放行）
   strict_role_binding: false
 
+# CT-07锛歨ooks 浜嬩欢閰嶇疆锛? 浜嬩欢 PreToolUse/PostToolUse/PostToolUseFailure/
+# UserPromptSubmit/SessionStart/SessionEnd/PreCompact/PostCompact锛涘洓鍔ㄤ綔
+# command/prompt/agent/http锛涢」鐩眰 hooks 闇€ BANDI_TRUST_PROJECT_HOOKS=1 淇′换锛?
 # 安全：command 默认按 exec 拆分执行（分号/重定向是字面参数，无 shell 展开）；
 # 确需 shell 语义时显式加 shell: true（注入面自担）。
 # hooks:

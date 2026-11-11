@@ -1,5 +1,5 @@
 /**
- * 功能：全局错误兜底。
+ * 功能：全局错误兜底（@base docs/前端设计规划.md §2「React ErrorBoundary 全局错误兜底」）。
  * 面板级崩溃不拖垮整壳——fallback 可用 render prop 注入（业务侧用 useT 做多语言文案）。
  */
 import { Component, type ErrorInfo, type ReactNode } from "react";

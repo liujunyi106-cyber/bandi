@@ -494,7 +494,8 @@ async def local_origin_guard(request: Request, call_next):
     口径：Origin 只接受本机回环；`Sec-Fetch-Site: cross-site` 一律拒绝；
     未配置 API key 时**所有方法**的 Host 必须是回环（DNS rebinding 兜底）。
     `Origin: null`（file:// 页面 / 沙箱 iframe）默认拒绝——页面必须由 FastAPI 同源托管；
-    P5-6 若改用自定义协议，需在此登记允许来源。"""
+    P5-6 若改用自定义协议，需在此登记允许来源。
+    """
     if request.url.path in ("/health", "/ready"):
         return await call_next(request)
     if request.method in _WRITE_METHODS:
@@ -621,7 +622,7 @@ async def issue_auth_token(body: _AuthTokenRequest) -> dict[str, Any]:
     return {"token": token, "expires_at": expires_at}
 
 
-_db_path: Path | None = None  # 惰性：首次使用时解析
+_db_path: Path | None = None  # 惰性：首次使用时解析（防收集期 import 固化真实 home——FM-62 扩展）
 
 
 def _resolve_db_path() -> Path:
@@ -645,7 +646,7 @@ _company_lock = (
 
 
 def _get_account_store() -> Any:
-    """AccountStore 单例 + 惰性 ensure_local_user（单机默认账号）。"""
+    """Day133：AccountStore 单例 + 惰性 ensure_local_user（单机默认账号）。"""
     global _account_store
     if _account_store is None:
         from bandi.core.account import AccountStore
@@ -657,10 +658,11 @@ def _get_account_store() -> Any:
 
 
 def _get_interaction_store() -> Any:
-    """InteractionStore 单例（单进程事件循环内线程安全，无需锁）。
+    """Day132c：InteractionStore 单例（单进程事件循环内线程安全，无需锁）。
 
-    持久化后端落 `_resolve_db_path.parent / interactions.db`（测试 patch
-    `_db_path` 后自动进 tmp 隔离）；建库失败降级纯内存（不阻断主流程）。"""
+    持久化后端落 `_resolve_db_path().parent / interactions.db`（测试 patch
+    `_db_path` 后自动进 tmp 隔离）；建库失败降级纯内存（不阻断主流程）。
+    """
     global _interaction_store
     if _interaction_store is None:
         from bandi.core.user_interaction import InteractionStore
@@ -683,7 +685,7 @@ def _get_interaction_store() -> Any:
 
 
 def _interaction_frame(item: Any) -> dict[str, Any]:
-    """InteractionStore pending → WS/SSE interaction 帧载荷。"""
+    """InteractionStore pending → WS/SSE interaction 帧载荷（Day137b-1：含剩余倒计时秒）。"""
     frame = {
         "interaction_id": item.interaction_id,
         "session_id": item.session_id,
@@ -770,8 +772,9 @@ def _probe_storage_writable() -> bool:
 def _probe_db_readable() -> bool:
     """.5 readiness：会话库可读探测（库不存在=首次运行，不算故障）。
 
-    路径口径与 BANDI_HOME 对齐（sidecar 场景：壳与后端约定同一
-    BANDI_HOME；此前硬编码 Path.home 在自定义 HOME 时探测错位置）。"""
+    路径口径与 BANDI_HOME 对齐（ADR-42 sidecar 场景：壳与后端约定同一
+    BANDI_HOME；此前硬编码 Path.home() 在自定义 HOME 时探测错位置）。
+    """
     db_path = (
         Path(os.environ.get("BANDI_HOME", os.path.expanduser("~/.bandi"))) / "data" / "bandi.db"
     )
@@ -1000,7 +1003,7 @@ _DEFAULT_SESSION_TIMEOUT_SEC = int(os.environ.get("BANDI_SESSION_TIMEOUT_SEC", "
 
 
 def _session_timeout_sec_from(body: dict[str, Any]) -> int:
-    # 功能：端点面解析 session_timeout_sec——未传/非法回落启用态默认；
+    # 功能：端点面解析 session_timeout_sec（AR-04）——未传/非法回落启用态默认；
     # 显式 0 保留「关闭」语义（测试与 CLI 可显式关）
     if "session_timeout_sec" not in body:
         return _DEFAULT_SESSION_TIMEOUT_SEC
@@ -1298,7 +1301,7 @@ async def session_abort(session_id: str) -> dict[str, Any]:
     except Exception:  # noqa: BLE001 - 中止主语义优先，清理失败不得阻断
         pass
     # 注：abort 是异步语义（信号+拒绝挂起交互），不在此同步等待轮次收尾——
-    # 2026-10-15 settle 等待块在 WS 路径上悬挂（20s 超时未生效，原因待查，
+    # 2026-10-15 真机：settle 等待块在 WS 路径上悬挂（20s 超时未生效，原因待查，
     # 登记级残余）；重试竞态由前端 abort-first + 300ms 间隔 + 异实例租约接管兜住。
     return {
         "aborted": True,
@@ -1991,7 +1994,7 @@ def _session_project_id(session: dict[str, Any]) -> str:
 
 
 def _session_origin(session: dict[str, Any]) -> str:
-    """功能：会话 metadata 中的 origin。"""
+    """功能：会话 metadata 中的 origin（Day137 秘书会话标记；损坏/缺失返回空串）。"""
     raw = session.get("metadata")
     if not isinstance(raw, str) or not raw:
         return ""
@@ -2150,7 +2153,7 @@ async def get_session(session_id: str, at: str | None = None) -> dict[str, Any]:
 
 @app.patch("/api/sessions/{session_id}")
 async def rename_session(session_id: str, body: dict[str, str]) -> dict[str, Any]:
-    """会话重命名（title；会话侧栏右键菜单消费）。"""
+    """Day136：会话重命名（title；会话侧栏右键菜单消费）。"""
     title = str((body or {}).get("title") or "").strip()
     if not title:
         raise HTTPException(status_code=HTTP_BAD_REQUEST, detail="title is required")
@@ -2210,6 +2213,7 @@ async def delete_session(session_id: str) -> dict[str, bool]:
             round_service = getattr(_get_company_dispatcher(), "group_rounds", None)
             if round_service is not None:
                 round_service.delete_session_rounds(session_id)
+                round_service.delete_session_goal(session_id)
         except Exception as exc:  # noqa: BLE001 — 回合记录清理失败不阻断会话删除
             logger.warning("group round cleanup failed (session=%s): %s", session_id, exc)
     await _run_session_end_hooks(session_id)
@@ -2282,7 +2286,7 @@ async def _run_session_end_hooks(session_id: str) -> None:
 
 @app.post("/api/sessions/{session_id}/fork")
 async def fork_session(session_id: str, body: dict[str, str]) -> dict[str, Any]:
-    """会话 Fork：复制恢复点前缀到独立新会话并记录溯源。"""
+    """Day127 会话 Fork：复制恢复点前缀到独立新会话并记录溯源。"""
     from bandi.session.manager import SessionManager
 
     entry_id = (body.get("entry_id") or "").strip()
@@ -2302,7 +2306,7 @@ async def fork_session(session_id: str, body: dict[str, str]) -> dict[str, Any]:
 
 @app.post("/api/sessions/{session_id}/revert/stage")
 async def revert_stage(session_id: str, body: dict[str, Any]) -> dict[str, Any]:
-    """Stage：暂存恢复点（软标记，不删数据）。
+    """Day127 Stage：暂存恢复点（软标记，不删数据）。
     -3：entry_id 允许空串 = 清空全部（编辑首条消息的「从此处重开」）。"""
     from bandi.session.manager import SessionManager
 
@@ -2328,7 +2332,7 @@ async def revert_stage(session_id: str, body: dict[str, Any]) -> dict[str, Any]:
 
 @app.post("/api/sessions/{session_id}/revert/commit")
 async def revert_commit(session_id: str) -> dict[str, Any]:
-    """Commit：截断到暂存恢复点并归档，返回可撤销操作 id。"""
+    """Day127 Commit：截断到暂存恢复点并归档，返回可撤销操作 id。"""
     from bandi.session.manager import SessionManager
 
     store = _get_store()
@@ -2372,7 +2376,7 @@ async def revert_undo(session_id: str) -> dict[str, Any]:
 
 @app.post("/api/sessions/{session_id}/revert/clear")
 async def revert_clear(session_id: str) -> dict[str, Any]:
-    """Clear：撤销暂存恢复点，数据全量保留（幂等）。"""
+    """Day127 Clear：撤销暂存恢复点，数据全量保留（幂等）。"""
     from bandi.session.manager import SessionManager
 
     store = _get_store()
@@ -3127,7 +3131,7 @@ async def company_pending_approvals() -> dict[str, Any]:
 
 
 def _require_interaction(interaction_id: str, session_id: str) -> Any:
-    """取 pending 交互并校验归属会话（跨会话决策 404）。"""
+    """Day132c：取 pending 交互并校验归属会话（跨会话决策 404）。"""
     from bandi.core.user_interaction import _INTERACTION_STATUS_PENDING
 
     store = _get_interaction_store()
@@ -3150,9 +3154,10 @@ def _require_interaction(interaction_id: str, session_id: str) -> Any:
 async def session_pending_interactions(session_id: str) -> dict[str, Any]:
     """P3（2026-10-15）：挂起交互重放——页面加载/刷新后拉取 pending 决策卡。
 
-     交互帧只在挂起瞬间经 WS/SSE 推送一次；客户端此后刷新/重连将永远看不到卡
-    。本端点让前端在
-     会话加载时补拉 InteractionStore 里的 pending 帧（含剩余倒计时）。"""
+    交互帧只在挂起瞬间经 WS/SSE 推送一次；客户端此后刷新/重连将永远看不到卡
+    （真机实证：权限卡发出后刷新页面 → 卡丢失 → 轮次僵尸）。本端点让前端在
+    会话加载时补拉 InteractionStore 里的 pending 帧（含剩余倒计时）。
+    """
     istore = _get_interaction_store()
     frames: list[dict[str, Any]] = []
     for item in istore.list_pending(session_id=session_id, include_orphans=False):
@@ -3165,11 +3170,12 @@ async def session_pending_interactions(session_id: str) -> dict[str, Any]:
 
 @app.post("/api/sessions/{session_id}/confirm")
 async def session_confirm(session_id: str, body: dict[str, Any]) -> dict[str, Any]:
-    """用户确认/拒绝一次挂起的授权/确认交互（真挂起恢复）。
+    """Day132c：用户确认/拒绝一次挂起的授权/确认交互（真挂起恢复）。
 
     body: {"interaction_id": "...", "decision": true|false, "feedback": "可选拒绝理由"}
     decision=true → 唤醒挂起方为允许；false → 拒绝（带 feedback 时经 dict 决策值
-    回灌理由，CorrectedError 等价物）。未知/跨会话 → 404。"""
+    回灌理由，CorrectedError 等价物）。未知/跨会话 → 404。
+    """
     interaction_id = str(body.get("interaction_id") or "").strip()
     if not interaction_id:
         raise HTTPException(status_code=HTTP_BAD_REQUEST, detail="interaction_id is required")
@@ -3274,9 +3280,10 @@ async def session_confirm(session_id: str, body: dict[str, Any]) -> dict[str, An
 
 @app.post("/api/sessions/{session_id}/clarify")
 async def session_clarify(session_id: str, body: dict[str, Any]) -> dict[str, Any]:
-    """用户答复一次挂起的提问（request_user_input / ask_input 真挂起恢复）。
+    """Day132c：用户答复一次挂起的提问（request_user_input / ask_input 真挂起恢复）。
 
-    body: {"interaction_id": "...", "answer": "文本答复"}"""
+    body: {"interaction_id": "...", "answer": "文本答复"}
+    """
     interaction_id = str(body.get("interaction_id") or "").strip()
     answer = str(body.get("answer") or "").strip()
     if not interaction_id:
@@ -3387,7 +3394,7 @@ async def session_regenerate(session_id: str, body: dict[str, Any]) -> dict[str,
 
 @app.post("/api/sessions/{session_id}/compact")
 async def compact_session_endpoint(session_id: str) -> dict[str, Any]:
-    """强制压缩会话（单块全量摘要 → fork 新会话；原会话保留）。"""
+    """功能：强制压缩会话（当前会话内替换为结构化摘要检查点）。"""
     from bandi.agent.factory import build_provider
     from bandi.core.session_compact import compact_session
 
@@ -3409,6 +3416,13 @@ async def compact_session_endpoint(session_id: str) -> dict[str, Any]:
     }
 
 
+def _flush_cost_store(store: Any) -> None:
+    """功能：读取台账前等待异步写队列落库，避免刚发生的调用在统计中瞬时缺失。"""
+    flush = getattr(store, "flush", None)
+    if callable(flush):
+        flush()
+
+
 @app.get("/api/cost/sessions/{session_id}")
 async def cost_session_history(session_id: str, limit: int = 100) -> dict[str, Any]:
     """DoR-4：LLM 台账落库查询——重启后仍可查历史（实时内存值见 cost-detail）。"""
@@ -3416,6 +3430,7 @@ async def cost_session_history(session_id: str, limit: int = 100) -> dict[str, A
     from bandi.observability.cost_store import get_shared_cost_store
 
     store = get_shared_cost_store(default_cost_db_path())
+    _flush_cost_store(store)
     return {
         "session_id": session_id,
         "session_cost": store.session_cost(session_id),
@@ -3447,6 +3462,7 @@ async def usage_stats(
     days = {"7d": 7, "30d": 30}.get(str(range_).strip().lower(), 0)
     try:
         store = get_shared_cost_store(default_cost_db_path())
+        _flush_cost_store(store)
         agg = store.aggregate_usage(days=days)
     except Exception as exc:  # noqa: BLE001 — 观测面失败不得 500 前端
         logger.warning("usage stats unavailable: %s", exc)
@@ -3502,7 +3518,7 @@ async def session_cost_detail(session_id: str) -> dict[str, Any]:
 
     # 团队会话（群聊）：员工执行的 token 记在各自 role-session 名下——按发起会话
     # 直查恒 0。据会话的 project 元数据聚合「员工会话家族」，让群聊概览如实显示
-    # 含全员执行成本的用量。
+    # 含全员执行成本的用量（真机实证：群聊概览 Token 恒 0）。
     family_prefix = ""
     try:
         session_record = _get_store().get_session(session_id) or {}
@@ -3543,9 +3559,9 @@ def _persisted_session_usage(session_id: str, *, family_prefix: str = "") -> dic
         from bandi.core.config import default_cost_db_path
         from bandi.observability.cost_store import get_shared_cost_store
 
-        return get_shared_cost_store(default_cost_db_path()).session_usage_detail(
-            session_id, family_prefix=family_prefix
-        )
+        store = get_shared_cost_store(default_cost_db_path())
+        _flush_cost_store(store)
+        return store.session_usage_detail(session_id, family_prefix=family_prefix)
     except Exception as exc:  # noqa: BLE001 — 观测面不可用不得让面板 500
         logger.warning("persisted session usage unavailable: %s", exc)
         return None
@@ -3582,7 +3598,7 @@ async def explain_session(session_id: str, at: str | None = None) -> dict[str, A
 
 @app.get("/api/account/users")
 async def account_users_list(tenant_id: str | None = None) -> dict[str, Any]:
-    """账号列表（含 local 默认账号）。.6：tenant_id 过滤（缺省全量）。"""
+    """Day133：账号列表（含 local 默认账号）。.6：tenant_id 过滤（缺省全量）。"""
 
     store = _get_account_store()
     scoped = str(tenant_id).strip() if tenant_id else None
@@ -3601,7 +3617,7 @@ async def account_users_list(tenant_id: str | None = None) -> dict[str, Any]:
 
 @app.post("/api/account/users")
 async def account_users_create(body: dict[str, Any]) -> dict[str, Any]:
-    """创建账号（user_id/display_name 必填；tenant_id/roles 可选，默认 default/member）。"""
+    """Day133：创建账号（user_id/display_name 必填；tenant_id/roles 可选，默认 default/member）。"""
     user_id = str(body.get("user_id") or "").strip()
     display_name = str(body.get("display_name") or "").strip()
     if not user_id or not display_name:
@@ -3626,7 +3642,7 @@ async def account_users_create(body: dict[str, Any]) -> dict[str, Any]:
 
 @app.get("/api/account/users/{user_id}")
 async def account_users_get(user_id: str) -> dict[str, Any]:
-    """账号详情（含角色）。"""
+    """Day133：账号详情（含角色）。"""
     store = _get_account_store()
     user = store.get_user(user_id)
     if user is None:
@@ -3918,7 +3934,7 @@ def _parse_enabled_flag(body: dict[str, Any], default: bool) -> bool:
 
 @app.post("/api/scheduler/tasks")
 async def scheduler_task_create(body: dict[str, Any]) -> dict[str, Any]:
-    """创建定时任务（name/cron/prompt 必填，enabled 可选）。"""
+    """Day134：创建定时任务（name/cron/prompt 必填，enabled 可选）。"""
     from bandi.scheduler.cron import InvalidCronExpressionError
     from bandi.scheduler.store import ScheduledTask
 
@@ -3969,14 +3985,14 @@ async def scheduler_task_create(body: dict[str, Any]) -> dict[str, Any]:
 
 @app.get("/api/scheduler/tasks")
 async def scheduler_task_list() -> dict[str, Any]:
-    """定时任务列表。"""
+    """Day134：定时任务列表。"""
     store = _get_task_store()
     return {"tasks": [_task_to_dict(t) for t in store.list()]}
 
 
 @app.get("/api/scheduler/tasks/{task_id}")
 async def scheduler_task_get(task_id: str) -> dict[str, Any]:
-    """单任务详情。"""
+    """Day134：单任务详情。"""
     store = _get_task_store()
     task = store.get(task_id)
     if task is None:
@@ -3986,7 +4002,7 @@ async def scheduler_task_get(task_id: str) -> dict[str, Any]:
 
 @app.patch("/api/scheduler/tasks/{task_id}")
 async def scheduler_task_update(task_id: str, body: dict[str, Any]) -> dict[str, Any]:
-    """部分更新（name/cron/prompt/enabled）。cron 变更必须重排程。"""
+    """Day134：部分更新（name/cron/prompt/enabled）。cron 变更必须重排程。"""
     from bandi.scheduler.cron import InvalidCronExpressionError
     from bandi.scheduler.store import ScheduledTask
 
@@ -4068,7 +4084,7 @@ async def scheduler_task_update(task_id: str, body: dict[str, Any]) -> dict[str,
 
 @app.delete("/api/scheduler/tasks/{task_id}")
 async def scheduler_task_delete(task_id: str) -> dict[str, Any]:
-    """删除定时任务；会话化任务同时删除其运行会话。"""
+    """Day134：删除定时任务；会话化任务同时删除其运行会话。"""
     store = _get_task_store()
     task = store.get(task_id)
     if task is None:
@@ -4086,7 +4102,7 @@ async def scheduler_task_delete(task_id: str) -> dict[str, Any]:
 
 @app.post("/api/scheduler/tasks/{task_id}/trigger")
 async def scheduler_task_trigger(task_id: str) -> dict[str, Any]:
-    """手动立即触发一次（调 runner；不推进自动排程的 next_run_at）。"""
+    """Day134：手动立即触发一次（调 runner；不推进自动排程的 next_run_at）。"""
     from bandi.scheduler.store import TaskStatus
 
     store = _get_task_store()
@@ -4111,21 +4127,21 @@ async def scheduler_task_trigger(task_id: str) -> dict[str, Any]:
 
 @app.post("/api/scheduler/start")
 async def scheduler_start() -> dict[str, Any]:
-    """启动后台调度循环（到期自动触发）。幂等。"""
+    """Day134：启动后台调度循环（到期自动触发）。幂等。"""
     await _get_task_scheduler().start()
     return {"running": True}
 
 
 @app.post("/api/scheduler/stop")
 async def scheduler_stop() -> dict[str, Any]:
-    """停止后台调度循环。幂等。"""
+    """Day134：停止后台调度循环。幂等。"""
     await _get_task_scheduler().stop()
     return {"running": False}
 
 
 @app.get("/api/scheduler/status")
 async def scheduler_status() -> dict[str, Any]:
-    """后台循环运行状态。"""
+    """Day134：后台循环运行状态。"""
     sched = _get_task_scheduler()
     return {"running": sched.running, "tasks": len(sched.store.list())}
 
@@ -4257,6 +4273,7 @@ def _dispatcher_config() -> Any:
         tick_budget_sec=company.tick_budget_sec,
         max_items_per_tick=company.max_items_per_tick,
         auto_approve_reviews=company.auto_approve_reviews,
+        default_reviewer_role=company.default_reviewer_role,
     )
 
 
@@ -4340,18 +4357,32 @@ def _get_company_dispatcher() -> CompanyDispatcher:
             thread_manager.hydrate()
             thread_manager.bind_on_message(_broadcast_thread_message)
             from bandi.api.company_chat import _round_mention_resolver
+            from bandi.company.group_goal import GroupGoalService
+            from bandi.company.group_goal_registry import set_group_goal_service
+            from bandi.company.group_goal_store import GroupGoalStore
             from bandi.company.group_round import GroupRoundService
             from bandi.company.group_round_store import GroupRoundStore
 
             def _broadcast_group_round(snapshot: dict[str, Any]) -> None:
                 _broadcast_thread_progress({"type": "group_round", "data": snapshot})
 
+            def _broadcast_group_goal(snapshot: dict[str, Any]) -> None:
+                _broadcast_thread_progress({"type": "group_goal", "data": snapshot})
+
+            round_store = GroupRoundStore(store.db_path)
+            goal_service = GroupGoalService(
+                GroupGoalStore(store.db_path),
+                org,
+                round_store=round_store,
+                broadcast=_broadcast_group_goal,
+            )
             round_service = GroupRoundService(
-                GroupRoundStore(store.db_path),
+                round_store,
                 store,
                 org,
                 mention_resolver=_round_mention_resolver(org),
                 broadcast=_broadcast_group_round,
+                goal_service=goal_service,
             )
 
             progress_seen_at: dict[str, float] = {}
@@ -4409,6 +4440,8 @@ def _get_company_dispatcher() -> CompanyDispatcher:
                 thread_manager=thread_manager,
             )
             _company_dispatcher.group_rounds = round_service
+            _company_dispatcher.group_goals = goal_service
+            set_group_goal_service(goal_service)
             # 首次装立即恢复为 READY 的挂起项，避免重启后永不启用（幂等）
             # 保护内容：是否 phase 中，不阻塞开球装配——损坏仅告警
             try:
@@ -4496,7 +4529,7 @@ _custom_runtime_runner: Any | None = None
 
 
 def _get_custom_runtime_runner() -> Any:
-    """CustomRuntimeRunner 生产接线——自定义 org 会话入口
+    """Day125-CustomRuntimeRunner 生产接线——自定义 org 会话入口
     Recruiter/Secretary 链/org_work_item_planner 经此可达（此前生产零实例化）。"""
     global _custom_runtime_runner
     with _company_lock:
@@ -4629,7 +4662,9 @@ async def company_external_preflight(
     prepare_surfaces: bool = True,
 ) -> dict[str, Any]:
     """外部执行引擎预检——codex/claude_code/cursor/opencode 四 CLI 的
-    可用性/版本/隔离 home/写权限合约探测。"""
+    可用性/版本/隔离 home/写权限合约探测（真外聘设计 §8 前台登记数据源；
+    Day141 组织面板「执行引擎」下拉依赖此端点）。
+    """
     from bandi.company.preflight import run_external_agent_preflight
 
     try:
@@ -5470,7 +5505,7 @@ class _WSStreamHandler:
         )
 
     async def on_interaction_frame(self, payload: dict[str, Any]) -> None:
-        """推送交互卡片帧（真挂起时前端据此渲染确认/提问卡片）。"""
+        """Day132c：推送交互卡片帧（真挂起时前端据此渲染确认/提问卡片）。"""
         await self._send({"type": "interaction", "data": payload})
 
     async def on_done(
@@ -5493,7 +5528,7 @@ class _WSStreamHandler:
 
 
 def _ws_provider_config(payload: dict[str, Any]) -> dict[str, Any] | None:
-    """功能：WS chat 会话级模型覆盖。"""
+    """功能：WS chat 会话级模型覆盖（model/thinking_mode → provider_config；Day137b-2）。"""
     overrides: dict[str, Any] = {}
     model = str(payload.get("model") or "").strip()
     if model:
@@ -5545,7 +5580,7 @@ async def _handle_ws_chat(websocket: WebSocket, payload: dict[str, Any]) -> None
                 session_id, "session_id is reserved"
             )
             return
-    # P2：WS 路径此前从不注册 abort controller → 停止永远
+    # P2（2026-10-15 真机实证）：WS 路径此前从不注册 abort controller → 停止永远
     # 404 NO_ACTIVE_ABORT_CONTROLLER。与 SSE 路径（app.py:994）同口径补注册。
     from bandi.core.abort_controller import AbortController
 
@@ -6028,7 +6063,7 @@ def _progress_event_type(frame: dict[str, Any]) -> str:
 
 
 def _broadcast_thread_progress(frame: dict[str, Any]) -> None:
-    """插队批：员工执行过程帧（EmployeeProgressHandler 完整帧）→ /ws/company 广播。
+    """Day137b-1 插队批：员工执行过程帧（EmployeeProgressHandler 完整帧）→ /ws/company 广播。
 
     帧结构 = {"type": "thread_progress", "data": {project_id, thread_id, role_id, event}}
     （外层与归属由 EmployeeProgressHandler 构造——本函数不得二次包装）；
@@ -6037,15 +6072,16 @@ def _broadcast_thread_progress(frame: dict[str, Any]) -> None:
 
     **回放缓冲策略**：
     - **非终态**（thinking/tool/content 等高频中间态）**不进**缓冲——一次执行数百帧
-    与 `thread_message`/任务卡共用 200 条有界窗口会把未 ack 的**业务帧**挤出去；
-    中间态本身断线不可追溯（无补发价值）。
+      与 `thread_message`/任务卡共用 200 条有界窗口会把未 ack 的**业务帧**挤出去；
+      中间态本身断线不可追溯（无补发价值）。
     - **终态**（`done`/`error`）**进**缓冲——每次执行仅 1 帧，占用可忽略；而它决定前端
-    「这次执行结束了吗」：断线期间结束的那次执行若不补发终态，客户端只能停在「执行中」
-    （前端 `` 的断线结算是近似兜底，终态补发才能精确收敛）。
+      「这次执行结束了吗」：断线期间结束的那次执行若不补发终态，客户端只能停在「执行中」
+      （前端 `` 的断线结算是近似兜底，终态补发才能精确收敛）。
 
     **按项目定向**（只作用于过程帧；业务帧恒广播）：
     - 未订阅的连接（`_company_ws_scopes` 无记录）→ **fail-open 全发**（兼容旧包）；
-    - 已订阅 → 只发 scope ∈ 订阅集合的连接。"""
+    - 已订阅 → 只发 scope ∈ 订阅集合的连接。
+    """
 
     async def _push() -> None:
         # 终态帧入回放缓冲（拿到带 seq 的新帧）；非终态原帧直发
@@ -6504,6 +6540,7 @@ async def _content_route_targets(
             [{"role": "user", "content": prompt}],
             label="group_router",
             session_id="group-router",
+            agent_id="group_router",
         )
         raw = resp.content if hasattr(resp, "content") else str(resp)
         match = _re.search(r"\{.*\}", raw or "", _re.DOTALL)
@@ -6705,6 +6742,27 @@ async def company_ws_route(websocket: WebSocket) -> None:
                 extra_targets: list[str] = []
                 if not target_role and not target_work_item_id and not extract_mentions(content):
                     default_role = _pick_top_role(member_roles)
+                # 员工单聊：把用户消息落进会话历史，并确保会话存在——
+                # 私聊窗口只有线程记录时，/compact 没有可压缩的会话；员工回复
+                # 回写也依赖该会话承载上下文。
+                if target_role and session_id:
+                    from bandi.core.message import Message as SessionMessage
+                    from bandi.core.message import MessageRole as SessionRole
+
+                    session_store = _get_store()
+                    if session_store.get_session(session_id) is None:
+                        session_store.create_session(
+                            session_id=session_id,
+                            title=content[:40],
+                            project_id=project_id or None,
+                            origin="employee_dm",
+                            target_role=target_role,
+                            employee_id=requested_employee_id or None,
+                        )
+                    session_store.append_message(
+                        session_id,
+                        SessionMessage(role=SessionRole.USER, content=content),
+                    )
                 created = handle_chat_message(
                     content=content,
                     sender_role=sender,
@@ -6740,9 +6798,12 @@ async def company_ws_route(websocket: WebSocket) -> None:
                     ]
                     if bound:
                         active_thread_id = bound[0]
-                # 群聊窗口绑定：会话 metadata 记线程 id（删除会话时级联删线程）
+                # 群聊/单聊窗口绑定：会话 metadata 记线程 id（删除会话时级联删线程）；
+                # 单聊线程同时补 session_id，刷新后 DmChatView 能找到压缩会话。
                 if session_id and active_thread_id:
                     _bind_session_thread(session_id, active_thread_id)
+                    if target_role and threads is not None:
+                        threads.bind_session(active_thread_id, session_id)
                 if created:
                     # 建卡即唤醒调度器（去掉最多 30s 空等）
                     dispatcher.signal_dispatcher_wake()
@@ -6821,12 +6882,13 @@ async def company_ws_route(websocket: WebSocket) -> None:
 
 
 def _org_api_dispatcher() -> CompanyDispatcher:
-    """返回装配了 TalentMarket 的 dispatcher（懒挂属性）。
+    """FE-01：返回装配了 TalentMarket 的 dispatcher（懒挂属性）。
 
     读面对齐 org.json——组织本体可能被 CLI / 另一后端 / 桌面壳写入（团队实例化
     即典型路径），而 dispatcher 的 org_engine 是启动时的内存快照；写前合并只在**写**
     路径生效，故读面长期陈旧，「团队已组建」校验会把盘上明明存在的团队判成未组建/
-    不存在。这里在每次取用前按文件指纹增量对齐（未变时仅一次 stat）。"""
+    不存在。这里在每次取用前按文件指纹增量对齐（未变时仅一次 stat）。
+    """
     dispatcher = _get_company_dispatcher()
     from bandi.company.org_persistence import refresh_org_from_disk
 
@@ -7618,7 +7680,7 @@ async def company_project_add_team(project_id: str, body: ProjectAddTeamBody) ->
 
 @app.get("/api/company/projects/{project_id}/files")
 async def list_project_files_endpoint(project_id: str, query: str = "") -> dict[str, Any]:
-    """项目文件列表（@文件引用数据源；root_dir 未设置 → 空列表）。"""
+    """Day137b-2：项目文件列表（@文件引用数据源；root_dir 未设置 → 空列表）。"""
     from bandi.company.projects import ProjectError, list_project_files
 
     try:
@@ -7712,6 +7774,7 @@ async def project_usage(project_id: str, role: str = "", thread_id: str = "") ->
 
     try:
         store = get_shared_cost_store(default_cost_db_path())
+        _flush_cost_store(store)
         by_session = (store.aggregate_usage(days=0) or {}).get("by_session") or {}
     except Exception as exc:  # noqa: BLE001 — 观测面不可用不得 500（零值空态）
         logger.warning("project usage unavailable: %s", exc)
@@ -8036,7 +8099,7 @@ def _validate_upload_project(project_id: str) -> str:
 
 
 def _resolve_ws_attachments(raw: Any, project_id: str) -> list[dict[str, Any]]:
-    """功能：WS chat 附件解析。"""
+    """功能：WS chat 附件解析（无效引用剔除；文本类提取内容——Day137b-2）。"""
     if not isinstance(raw, list):
         return []
     import mimetypes
@@ -8171,6 +8234,7 @@ def _work_item_to_dict(item: Any) -> dict[str, Any]:
         "assignee_role": item.assignee_role,
         "parent_id": item.parent_id,
         "project_id": str(metadata.get("project_id") or ""),
+        "origin_session_id": str(metadata.get("origin_session_id") or ""),
         "thread_id": str(metadata.get("thread_id") or ""),
         "source": str(metadata.get("source") or ""),
         # 意图标记（四态）：query=咨询问答（右栏/任务卡过滤）/ confirm=确认执行 / adjust=调整
@@ -8374,7 +8438,7 @@ def _detach_role_references(org_engine: Any, role_id: str) -> None:
 
 @app.post("/api/company/employees")
 async def company_employees_create(body: dict[str, Any]) -> dict[str, Any]:
-    """注册数字员工（employee_id/name/role_id 必填，role 须存在）。"""
+    """FE-01：注册数字员工（employee_id/name/role_id 必填，role 须存在）。"""
     from bandi.company.org_engine import OrgEmployee
     from bandi.company.org_persistence import save_org
 
@@ -8416,7 +8480,7 @@ async def company_employees_create(body: dict[str, Any]) -> dict[str, Any]:
 
 @app.get("/api/company/employees/{employee_id}")
 async def company_employee_get(employee_id: str) -> dict[str, Any]:
-    """数字员工详情。"""
+    """FE-01：数字员工详情。"""
     dispatcher = _org_api_dispatcher()
     emp = dispatcher.org_engine.get_employee(employee_id)
     if emp is None:
@@ -8648,7 +8712,7 @@ async def _startup_reconcile_company_operations() -> None:
 
 @app.put("/api/company/employees/{employee_id}")
 async def company_employee_update(employee_id: str, body: dict[str, Any]) -> dict[str, Any]:
-    """更新数字员工字段（name/role_id/description/status/llm_config 等可选）。"""
+    """FE-01：更新数字员工字段（name/role_id/description/status/llm_config 等可选）。"""
     from bandi.company.org_persistence import save_org
 
     dispatcher = _org_api_dispatcher()
@@ -8764,12 +8828,13 @@ async def company_work_items_list(
     role: str = "",
     hide_chat: bool = True,
 ) -> dict[str, Any]:
-    """WorkItem 查询（phase/column/role 组合过滤交集 + 列计数）。
+    """FE-01：WorkItem 查询（phase/column/role 组合过滤交集 + 列计数）。
 
     phase/column/role 可同时传，结果为其交集；非法 phase/column 返回 400。
     hide_chat=True（默认）隐藏对话承载卡（chat_kind=query/adjust 或
     source=chat_mention/chat_dm），返回 hidden_chat_count；过滤必须在这里做，
-    否则 column_counts 会与前端本地过滤后的卡片数不一致（两套口径）。"""
+    否则 column_counts 会与前端本地过滤后的卡片数不一致（两套口径）。
+    """
     from bandi.company.phase import Phase, kanban_column
     from bandi.company.work_item import (
         is_chat_only_work_item,
@@ -8820,6 +8885,25 @@ def _group_round_service() -> tuple[Any, Any]:
     return dispatcher, service
 
 
+def _group_goal_service() -> Any:
+    """功能：取群聊目标服务；未装配 fail-closed。"""
+    service = getattr(_get_company_dispatcher(), "group_goals", None)
+    if service is None:
+        raise HTTPException(status_code=503, detail="GROUP_GOAL_UNAVAILABLE")
+    return service
+
+
+@app.get("/api/company/goals")
+async def company_goal_get(session_id: str = "") -> dict[str, Any]:
+    """功能：查询会话当前群聊目标摘要。"""
+    sid = str(session_id or "").strip()
+    if not sid:
+        raise HTTPException(status_code=HTTP_BAD_REQUEST, detail="session_id is required")
+    service = _group_goal_service()
+    goal = service.get(sid)
+    return {"goal": service.snapshot(goal) if goal is not None else None}
+
+
 @app.get("/api/company/rounds")
 async def company_round_get(session_id: str = "", project_id: str = "") -> dict[str, Any]:
     """功能：查询会话当前运行/暂停中的群聊回合快照。"""
@@ -8868,10 +8952,11 @@ async def company_round_cancel(round_id: str) -> dict[str, Any]:
 
 
 def _threads_for_project(project_id: str) -> Any | None:
-    """功能：线程管理器解析——company 走 dispatcher 单例；项目走 per-project 工厂。
+    """功能（Day136）：线程管理器解析——company 走 dispatcher 单例；项目走 per-project 工厂。
 
     项目线程由 WS 路由的 `_get_project_threads` 空间化；REST 查询必须带
-    `project_id` 才能看到项目线程（缺省 company 空间）。"""
+    `project_id` 才能看到项目线程（缺省 company 空间）。
+    """
     pid = str(project_id or "").strip() or "company"
     if pid == "company":
         return getattr(_org_api_dispatcher(), "threads", None)
@@ -8880,9 +8965,10 @@ def _threads_for_project(project_id: str) -> Any | None:
 
 @app.get("/api/company/threads")
 async def company_threads_list(project_id: str = "") -> dict[str, Any]:
-    """讨论线程列表（thread_id/parent_task_id/participants/created_at/message_count）。
+    """Day134n：讨论线程列表（thread_id/parent_task_id/participants/created_at/message_count）。
 
-    per-project 路由（project_id 缺省 company）。"""
+    Day136：per-project 路由（project_id 缺省 company）。
+    """
     threads = _threads_for_project(project_id)
     if threads is None:
         return {"threads": []}
@@ -8904,9 +8990,10 @@ async def company_threads_list(project_id: str = "") -> dict[str, Any]:
 
 @app.get("/api/company/threads/{thread_id}")
 async def company_threads_detail(thread_id: str, project_id: str = "") -> dict[str, Any]:
-    """线程详情（thread_id/parent_task_id/participants/created_at/messages）。
+    """Day134n：线程详情（thread_id/parent_task_id/participants/created_at/messages）。
 
-    per-project 路由（project_id 缺省 company）。"""
+    Day136：per-project 路由（project_id 缺省 company）。
+    """
     threads = _threads_for_project(project_id)
     if threads is None:
         raise HTTPException(status_code=404, detail=f"thread {thread_id!r} not found")
@@ -8959,7 +9046,7 @@ async def company_threads_delete(thread_id: str, project_id: str = "") -> dict[s
 
 @app.get("/api/company/talent/templates/{template_name}")
 async def company_talent_template(template_name: str) -> dict[str, Any]:
-    """人才模板详情。"""
+    """FE-01：人才模板详情。"""
     dispatcher = _org_api_dispatcher()
     template = dispatcher.talent.get_template(template_name)
     if template is None:
@@ -8969,7 +9056,7 @@ async def company_talent_template(template_name: str) -> dict[str, Any]:
 
 @app.post("/api/company/talent/hire")
 async def company_talent_hire(body: dict[str, Any]) -> dict[str, Any]:
-    """按人才模板 hire 数字员工（template_name 必填，employee_id/role_id 可选）。"""
+    """FE-01：按人才模板 hire 数字员工（template_name 必填，employee_id/role_id 可选）。"""
     from bandi.company.org_engine import OrgEmployee
     from bandi.company.org_persistence import save_org
 
@@ -9028,14 +9115,14 @@ async def company_talent_hire(body: dict[str, Any]) -> dict[str, Any]:
 
 @app.get("/api/company/roles")
 async def company_roles_list() -> dict[str, Any]:
-    """角色列表。"""
+    """FE-01：角色列表。"""
     dispatcher = _org_api_dispatcher()
     return {"roles": [_org_role_to_dict(r) for r in dispatcher.org_engine.list_roles()]}
 
 
 @app.post("/api/company/roles")
 async def company_roles_create(body: dict[str, Any]) -> dict[str, Any]:
-    """注册角色（id/name 必填；reports_to/can_spawn/tool_tags/team_id/
+    """FE-01：注册角色（id/name 必填；reports_to/can_spawn/tool_tags/team_id/
     is_final_decider 可选——团队组建与横连组织架构数据源）。"""
     from bandi.company.org_persistence import save_org
 
@@ -9155,7 +9242,7 @@ async def company_org_teams() -> dict[str, Any]:
 
 @app.get("/api/company/org-chart")
 async def company_org_chart() -> dict[str, Any]:
-    """组织架构（角色层级 + 直属子级 + 在职员工数）。"""
+    """FE-01：组织架构（角色层级 + 直属子级 + 在职员工数）。"""
     dispatcher = _org_api_dispatcher()
     roles = dispatcher.org_engine.list_roles()
     employees = dispatcher.org_engine.list_employees()
@@ -9175,7 +9262,7 @@ async def company_org_chart() -> dict[str, Any]:
 
 @app.get("/api/company/work-items/{item_id}")
 async def company_work_item_get(item_id: str) -> dict[str, Any]:
-    """WorkItem 详情。"""
+    """FE-01：WorkItem 详情。"""
     dispatcher = _org_api_dispatcher()
     item = dispatcher.store.get(item_id)
     if item is None:
@@ -9229,14 +9316,14 @@ async def company_work_item_retry(item_id: str) -> dict[str, Any]:
 
 @app.get("/api/company/talent/catalog")
 async def company_talent_catalog() -> dict[str, Any]:
-    """人才市场分类目录。"""
+    """FE-01：人才市场分类目录。"""
     dispatcher = _org_api_dispatcher()
     return {"catalog": dispatcher.talent.list_category_catalog()}
 
 
 @app.get("/api/company/talent/templates")
 async def company_talent_templates(categories: str = "") -> dict[str, Any]:
-    """人才市场模板清单（?categories=a,b 过滤可选）。"""
+    """FE-01：人才市场模板清单（?categories=a,b 过滤可选）。"""
     dispatcher = _org_api_dispatcher()
     cats = [c.strip() for c in categories.split(",") if c.strip()]
     if cats:
@@ -9261,7 +9348,7 @@ def _talent_template_dict(t: Any) -> dict[str, Any]:
 
 @app.get("/api/company/inbox")
 async def company_inbox(role_id: str, project_id: str = "") -> list[dict[str, Any]]:
-    """群聊/私信收件箱读取（communication.read_inbox）；起支持按项目读取。"""
+    """FE-01：群聊/私信收件箱读取（communication.read_inbox）；起支持按项目读取。"""
     if project_id:
         from bandi.company.projects import ProjectError, ProjectLoadError
 
@@ -9704,7 +9791,7 @@ from bandi.api.knowledge_nodes_api import router as _knowledge_nodes_router  # n
 app.include_router(_knowledge_nodes_router)
 
 
-# ==================== 前端 SPA 静态托管====================
+# ==================== 前端 SPA 静态托管（ADR-35 / ADR-42）====================
 # 功能：生产/桌面端由同一个 FastAPI 进程托管前端构建产物（frontend/dist），
 # 使 electron 壳只需 spawn 一个 sidecar 就能同时提供 SPA + API + WS。
 # 约束：必须在所有 API/WS 路由注册之后挂载（FastAPI 按注册顺序匹配）；

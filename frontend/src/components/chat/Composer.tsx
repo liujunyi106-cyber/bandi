@@ -1,10 +1,10 @@
 /**
- * 功能：Composer。
+ * 功能：Composer（@base docs/前端设计规划.md §8 交互规范）。
  * 布局：附件 chips（输入上方）→ 输入栏（可增高至 240px）→ 功能栏
  * （⊕ 聚合菜单 / 模式圆圈 / 模型·思考控制条 / 发送·停止）。
  * textarea：Enter 发送、Shift+Enter 换行（IME 保护）；/ 触发斜杠面板、@ 触发引用菜单（键盘导航）。
  * 增强（enhanced=true——ChatView 主会话）：附件上传（⊕/拖拽；立即上传三态 chips）+
- * @ 引用（对话附件/项目文件/员工）+ 斜杠命令 + 模型/思考会话级覆盖。
+ * @ 引用（对话附件/项目文件/员工）+ 斜杠命令 + 模型/思考会话级覆盖（Day137b-2）。
  * 模式切换：圆圈内「计划/执行」——点击或 Shift+Tab 切换；showMode=false（派单视图）隐藏。
  * 终止：busy 时发送键原位变停止态——点击两次确认（3s），Esc 直接停止。
  */
@@ -23,25 +23,19 @@ import { ComposerSkillsPanel, type SkillOption } from "@/components/chat/Compose
 import { Button } from "@/components/ui/button";
 import { useEmployees } from "@/hooks/use-employees";
 import { useT } from "@/i18n";
-import {
-  formatSize,
-  pastedFileName,
-  readyAttachments,
-  uploadAttachments,
-} from "@/lib/attachments";
+import { formatSize, pastedFileName, readyAttachments, uploadAttachments } from "@/lib/attachments";
 import { splitMentions } from "@/lib/markdown";
 import { mergeConfiguredProfiles } from "@/lib/model-options";
 import { filteredSlashCommands, type SlashCommand } from "@/lib/slash-commands";
 import { cn } from "@/lib/utils";
 import { api } from "@/services/api";
 import { companyApi, type EmployeeSummary } from "@/services/company";
-import { sessionsApi } from "@/services/sessions";
+import { sessionsApi, type SessionCompactResult } from "@/services/sessions";
 import { settingsApi, type ModelOption, type ProfileSummary } from "@/services/settings";
 import { entriesToMessages, useChatStore, type ChatAttachment } from "@/stores/chat-store";
 import { useUiStore } from "@/stores/ui-store";
 
 const COMPOSER_MAX_HEIGHT_PX = 240;
-const STOP_DOUBLE_TAP_WINDOW_MS = 1500;
 const MENTION_FILE_LIMIT = 50;
 
 /** 功能：检测触发符（@ 或 /）——触发符在行首或前一个字符为空白，query 不含空白。 */
@@ -64,7 +58,7 @@ interface ComposerProps {
   showMode?: boolean;
   /** 输入占位文案（缺省用会话链路的默认文案）。 */
   placeholder?: string;
-  /** 增强模式。 */
+  /** 增强模式（⊕/@/斜杠/控制条/附件；ChatView 主会话——Day137b-2）。 */
   enhanced?: boolean;
   /** 附件模式（仅 ⊕ 上传/拖拽/chips——单聊/群聊派单链路； 轮三-5 新增）。 */
   attachmentsEnabled?: boolean;
@@ -94,6 +88,8 @@ interface ComposerProps {
   /** 功能：编辑待发送条目时回填输入框（token 变化触发一次）。 */
   prefill?: { token: number; text: string; attachments: ChatAttachment[] } | null;
   onPrefillConsumed?: () => void;
+  /** 功能：手动压缩完成回调（单聊视图据此把压缩卡并入线程时间线）。 */
+  onCompacted?: (sessionId: string, result: SessionCompactResult) => void;
   onSend: (text: string, attachments?: ChatAttachment[]) => void;
   /** 功能：执行中发送入队（文本需手动立即发送，附件回合结束自动发送）。 */
   onQueue?: (text: string, attachments?: ChatAttachment[]) => void;
@@ -129,6 +125,7 @@ export function Composer({
   executing,
   prefill = null,
   onPrefillConsumed,
+  onCompacted,
   onSend,
   onQueue,
   onSteer,
@@ -175,8 +172,6 @@ export function Composer({
     [employees],
   );
   const composerTokens = useMemo(() => splitMentions(text, mentionNames), [text, mentionNames]);
-  const [stopArmed, setStopArmed] = useState(false);
-  const stopArmedRef = useRef(false);
   const [plusOpen, setPlusOpen] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [mentionOpen, setMentionOpen] = useState(false);
@@ -208,7 +203,6 @@ export function Composer({
 
   const composingRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const stopTimerRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const dragDepthRef = useRef(0);
@@ -288,17 +282,7 @@ export function Composer({
     resetHeight();
   };
 
-  // 轮次结束 → 清停止待触发态（含群聊任务执行期间）
-  useEffect(() => {
-    if (!showStop) {
-      setStopArmed(false);
-      stopArmedRef.current = false;
-      if (stopTimerRef.current !== null) {
-        window.clearTimeout(stopTimerRef.current);
-        stopTimerRef.current = null;
-      }
-    }
-  }, [showStop]);
+  // 停止动作由父层按 assistant/DM/group 统一执行，Composer 只负责触发。
 
   // ⊕ 菜单外部点击关闭
   useEffect(() => {
@@ -557,7 +541,7 @@ export function Composer({
         activateMode("execute");
         break;
       case "stop":
-        if (busy) onStop();
+        if (showStop) onStop();
         break;
       case "model":
         setOpenModelSignal((value) => value + 1);
@@ -627,7 +611,8 @@ export function Composer({
     };
   }, [skillPickerOpen]);
 
-  const runCompact = async () => {    const sid = useChatStore.getState().activeSessionId;
+  const runCompact = async () => {
+    const sid = sessionId || useChatStore.getState().activeSessionId;
     if (!sid) {
       toast.info(t("chat.composer.noSession"));
       return;
@@ -636,9 +621,8 @@ export function Composer({
       const result = await sessionsApi.compact(sid);
       if (result.compacted) {
         const detail = await sessionsApi.detail(sid);
-        useChatStore
-          .getState()
-          .loadMessages(sid, entriesToMessages(sid, detail.messages));
+        useChatStore.getState().loadMessages(sid, entriesToMessages(sid, detail.messages));
+        onCompacted?.(sid, result);
         toast.success(
           t("chat.composer.compactDone")
             .replace("{before}", String(result.before))
@@ -653,7 +637,7 @@ export function Composer({
   };
 
   const showUsage = async () => {
-    const sid = useChatStore.getState().activeSessionId;
+    const sid = sessionId || useChatStore.getState().activeSessionId;
     if (!sid) {
       toast.info(t("chat.composer.noSession"));
       return;
@@ -675,29 +659,10 @@ export function Composer({
 
   // ── 停止 ──────────────────────────────────────────────────────────────────
 
-  // 取消「变红 + tooltip 再点一次」的二次确认交互，改为**双触发**
-  // ——连点两次停止按钮、或连按两次 Esc 才真正停止。理由：原实现的唯一提示是 title
-  // tooltip（点第一下视觉上等于没反应，用户会误判为「停止坏了」）。
-  // 防误点语义保留在「双触发」里，但不再有确认态文案与破坏性配色。
-  // 用 ref 承载判定（state 只驱动描边视觉），避免 useEffect/handler 闭包读到过期值。
-  const armStop = useCallback(() => {
-    if (stopArmedRef.current) {
-      stopArmedRef.current = false;
-      setStopArmed(false);
-      if (stopTimerRef.current !== null) {
-        window.clearTimeout(stopTimerRef.current);
-        stopTimerRef.current = null;
-      }
-      onStop();
-      return;
-    }
-    stopArmedRef.current = true;
-    setStopArmed(true);
-    stopTimerRef.current = window.setTimeout(() => {
-      stopArmedRef.current = false;
-      setStopArmed(false);
-      stopTimerRef.current = null;
-    }, STOP_DOUBLE_TAP_WINDOW_MS);
+  // 单次触发：Esc/停止按钮立即交给父层执行。父层负责按 assistant/DM/group
+  // 分别做本地收尾与服务端 abort/cancel，避免第一击只 arm 造成“没反应”。
+  const requestStop = useCallback(() => {
+    onStop();
   }, [onStop]);
 
   // ── 键盘 ──────────────────────────────────────────────────────────────────
@@ -712,14 +677,14 @@ export function Composer({
       // 仅弹层「可见」时让位（无匹配时列表为空、弹层不渲染——此时 Esc 应直达停止）
       if ((mentionOpen && mentionItems.length) || (slashOpen && slashCommands.length) || plusOpen)
         return;
-      // Esc 与停止按钮同属「双触发」，单次 Esc 不停
-      armStop();
+      // 单次 Esc 直接停止
+      requestStop();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
     showStop,
-    armStop,
+    requestStop,
     mentionOpen,
     mentionItems.length,
     slashOpen,
@@ -857,14 +822,12 @@ export function Composer({
               toggleMode();
               return;
             }
-            // 中文输入法联想态（isComposing）不再豁免——双按窗口已防误触
-            // （IME 占用 Esc 会致「连续 ESC 停不下来」）
+            // 中文输入法联想态（isComposing）不再豁免——单次 Esc 直接停止
             if (event.key === "Escape" && showStop) {
               if (mentionOpen || slashOpen || plusOpen) return;
               event.preventDefault();
               event.stopPropagation();
-              // 与停止按钮同一套双触发（单次 Esc 不停）
-              armStop();
+              requestStop();
             }
           }}
         >
@@ -1081,16 +1044,11 @@ export function Composer({
                 <Button
                   size="icon"
                   data-testid="composer-stop"
-                  className={cn(
-                    // 去掉二次确认的破坏性红态；双触发待命只用一圈
-                    // 轻描边示意「已收到，再来一次」，避免首击看起来像按钮坏了
-                    "bg-chat-ink hover:bg-chat-ink/90 shrink-0 rounded-full text-white",
-                    stopArmed && "ring-2 ring-chat-ink/40 ring-offset-2 ring-offset-chat-bg",
-                  )}
+                  className="bg-chat-ink hover:bg-chat-ink/90 shrink-0 rounded-full text-white"
                   title={t("chat.composer.stop")}
-                  onClick={armStop}
+                  onClick={requestStop}
                 >
-                  {/* 2026-09-24 中断 icon 用方形（lucide Square 自带 rx=2 小圆角）实心 */}
+                  {/* 2026-09-24 用户拍板：中断 icon 用方形（lucide Square 自带 rx=2 小圆角）实心 */}
                   <Square className="size-3.5 fill-current" />
                 </Button>
               ) : (
@@ -1102,7 +1060,7 @@ export function Composer({
                   title={t("chat.composer.send")}
                   onClick={submit}
                 >
-                  {/* 2026-09-22 纸飞机右移 1px 视觉居中（原 -2px 过左） */}
+                  {/* 2026-09-22 用户拍板：纸飞机右移 1px 视觉居中（原 -2px 过左） */}
                   <Send className="size-3.5 -translate-x-[1px] translate-y-[1px] fill-current" />
                 </Button>
               )}

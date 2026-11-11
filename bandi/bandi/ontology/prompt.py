@@ -1,18 +1,19 @@
-"""本体系统提示词注入段。
+"""本体系统提示词注入段（复刻 dsh-ontology `src/prompt.ts`，57 行）。
 
 模型需要知道「图存在、里面已经用了什么词汇」而不必先花一次工具调用去查——
 故把词表常驻进系统提示词。
 
 刻意只放词汇不放实例：TBox 小、慢变、便宜；实例数据大、快变，属于
 `ontology_query` 的职责。空图给不同的段落——一份解释图是干什么的引导语，
-因为列出「什么都没有」教不会模型任何东西。"""
+因为列出「什么都没有」教不会模型任何东西。
+"""
 
 from __future__ import annotations
 
 from bandi.ontology.engine import render_tbox, stats_of
 from bandi.ontology.types import GraphView
 
-# 词表摘要的词数上限
+# 词表摘要的词数上限（计划 §4.2-6）
 MAX_TBOX_TERMS = 60
 
 _EMPTY_GUIDANCE = (

@@ -1,7 +1,8 @@
-"""功能：工具面 Top-N 裁剪契约。
+"""功能：工具面 Top-N 裁剪契约（对齐 LeAgent `_select_relevant_tools`）。
 
 钉行为：小工具面零变化；核心工具永在；中文意图词能命中英文工具；
-超量裁剪且输出稳定（字节序不抖动——前缀缓存的前提）。"""
+超量裁剪且输出稳定（字节序不抖动——前缀缓存的前提）。
+"""
 
 from __future__ import annotations
 
@@ -73,7 +74,7 @@ class TestKeywordScoring:
         assert "web_search" in names
 
     def test_score_prefers_name_over_description(self) -> None:
-        # 参考实现 权重：名命中 3.0 > 描述命中 1.5
+        # LeAgent 权重：名命中 3.0 > 描述命中 1.5
         terms = query_terms("search")
         assert score_schema("web_search", "无关描述", terms) > score_schema(
             "foo", "search inside description", terms

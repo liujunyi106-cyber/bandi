@@ -1,6 +1,6 @@
-# 功能：ToolSearchTool 契约——search 检索面=MCP 工具、评分排序、select 直选、disabled 不泄
-# 契约钉「行为结果/最终产物」：检索面只含 MCP 工具（严格照搬）、total_deferred_tools=MCP 计数
-# disabled 工具 fail-closed 不泄漏、评分权重名称>描述>参数、select 直选透传。
+# 功能：ToolSearchTool 契约——search() 默认检索内部 + MCP 工具、评分排序、select 直选、disabled 不泄
+# 契约钉「行为结果/最终产物」：默认检索面覆盖内部工具与 MCP、scope=mcp 保持外部专用、
+# disabled 工具 fail-closed 不泄漏、评分权重名称>描述>参数、select 直选透传、命中后按授权扩面。
 from __future__ import annotations
 
 from typing import Any
@@ -62,31 +62,48 @@ def _make_registry() -> ToolRegistry:
     return r
 
 
-class TestSearchScopeMcpOnly:
-    def test_search_only_returns_mcp_tools(self) -> None:
-        """检索面只含 MCP 工具：内置 read 不作为候选，也不会出现在结果。"""
+class TestSearchScope:
+    def test_web_search_is_core_when_pruning(self) -> None:
+        """联网入口不被裁剪：超量工具面仍保留 web_search。"""
+        from bandi.tools.selection import select_relevant_schemas
+
+        def _schema(name: str) -> dict[str, Any]:
+            return {"type": "function", "function": {"name": name, "description": ""}}
+
+        schemas = [_schema("web_search"), _schema("tool_search")]
+        schemas.extend(_schema(f"noise_{i}") for i in range(60))
+        picked = select_relevant_schemas(schemas, "分析竞品")
+        assert "web_search" in {s["function"]["name"] for s in picked}
+
+    def test_search_returns_internal_tool_by_exact_name(self) -> None:
+        """默认检索面覆盖内部工具：select/关键词可直接命中 read。"""
         r = _make_registry()
-        result = r.search("read")
+        assert r.search("read")["matches"] == ["read"]
+
+    def test_search_scope_mcp_only(self) -> None:
+        """显式 scope=mcp 时保持外部工具专用检索。"""
+        r = _make_registry()
+        result = r.search("read", scope="mcp")
         assert result["matches"] == ["filesystem_read_file"]
         assert result["total_deferred_tools"] == 3
 
-    def test_total_deferred_counts_only_mcp(self) -> None:
-        """total_deferred_tools = 检索面（MCP）计数，与内置工具数无关。"""
+    def test_total_counts_internal_and_mcp(self) -> None:
+        """默认检索面统计内部 + MCP；total_deferred = 本轮候选总数。"""
         r = _make_registry()
-        assert r.search("nothing").get("total_deferred_tools") == 3
+        result = r.search("nothing")
+        assert result["total_mcp_tools"] == 3
+        assert result["total_internal_tools"] == 1
+        assert result["total_deferred_tools"] == 4
+        assert result["total_tools"] == 4
 
-        r_no_inner = ToolRegistry()
-        r_no_inner.register_instance(_McpReadTool())
-        assert r_no_inner.search("x").get("total_deferred_tools") == 1
-
-    def test_category_filter_mcp_list(self) -> None:
-        """category filter 仅返回该类别的 MCP 工具（不炸、不透传内置）。"""
+    def test_category_filter_all_scope(self) -> None:
+        """category 过滤在默认全量面生效；MCP-only 仍可用 scope=mcp。"""
         r = _make_registry()
         result = r.search("select:fs_write", category=ToolCategory.INTEGRATION.value)
         assert result["matches"] == ["fs_write"]
         result_other = r.search("select:fs_write", category=ToolCategory.UTIL.value)
         assert result_other["matches"] == []
-        assert result_other["total_deferred_tools"] == 3
+        assert result_other["total_deferred_tools"] == 4
 
     def test_capability_filter_tags_list(self) -> None:
         """capability filter 基于 capability_tags 过滤（标签非空工具不炸、正确返回）。"""
@@ -138,9 +155,11 @@ class TestSearchSelect:
         assert set(result["matches"]) == {"filesystem_read_file", "fs_write"}
 
     def test_select_unknown_name_returns_empty(self) -> None:
+        """默认全量面：不存在的名字不返回；已知内部工具仍可按名选中。"""
         r = _make_registry()
         result = r.search("select:nonexistent,read")
-        assert result["matches"] == []
+        assert result["matches"] == ["read"]
+        assert r.search("select:nonexistent,read", scope="mcp")["matches"] == []
 
 
 class TestSearchFailClosed:
@@ -150,7 +169,7 @@ class TestSearchFailClosed:
         r._tools["fs_list"].enabled = False
         result = r.search("list")
         assert "fs_list" not in result["matches"]
-        assert result["total_deferred_tools"] == 2
+        assert result["total_deferred_tools"] == 3
 
     def test_feature_gate_off_group_hidden_from_search(self) -> None:
         """联动：feature gate 关闭整组的 MCP 工具不进检索面（fail-closed）。"""
@@ -197,7 +216,31 @@ class TestToolSearchToolWiring:
     def test_execute_default_max_results(self) -> None:
         result = self._run("read")
         assert isinstance(result, dict)
-        assert result["matches"] == ["filesystem_read_file"]
+        assert result["matches"] == ["read"]
+
+
+class TestDynamicExpansion:
+    def test_search_result_injects_only_authorized_schemas(self) -> None:
+        """tool_search 命中后下一轮只注入当前角色已授权的 schema。"""
+        import json
+        from types import SimpleNamespace
+
+        from bandi.agent.states import _expand_tools_from_search
+
+        r = _make_registry()
+        ctx = SimpleNamespace(
+            tool_executor=SimpleNamespace(_registry=r),
+            meta={"allowed_tool_names": ["read"]},
+            active_tools=[],
+        )
+        result = SimpleNamespace(
+            tool_name="tool_search",
+            success=True,
+            output=json.dumps({"matches": ["read", "fs_write"]}),
+        )
+        _expand_tools_from_search(ctx, [result])
+        names = {schema["function"]["name"] for schema in ctx.active_tools}
+        assert names == {"read"}
 
 
 class TestFactoryWiring:
@@ -210,3 +253,11 @@ class TestFactoryWiring:
         assert tool is not None
         assert tool.is_read_only is True
         assert registry.search("select:tool_search")["query"] == "select:tool_search"
+
+    def test_factory_search_can_find_internal_web_search(self) -> None:
+        """生产注册表按关键词能检回内部 web_search，而非只有 MCP 工具。"""
+        from bandi.agent.factory import build_tool_registry
+
+        registry = build_tool_registry()
+        result = registry.search("web_search")
+        assert "web_search" in result["matches"]

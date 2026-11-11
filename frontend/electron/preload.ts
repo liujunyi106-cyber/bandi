@@ -1,7 +1,7 @@
 /**
- * 功能：Electron 预加载脚本。
+ * 功能：Electron 预加载脚本（contextBridge 预留，@base docs/ADR.md ADR-42）。
  * 安全基线：contextIsolation 开、nodeIntegration 关、sandbox 开——渲染进程只能拿到这里白名单暴露的能力。
- * 仅暴露只读运行信息；IPC 白名单通道随 桌面体验项落地。
+ * Day135 仅暴露只读运行信息；IPC 白名单通道随 P5-6 桌面体验项落地。
  */
 import { contextBridge } from "electron";
 

@@ -1,5 +1,5 @@
 /**
- * 功能：单条消息条目。
+ * 功能：单条消息条目（@base docs/前端设计规划.md §8：过程块 + 反馈按钮内嵌消息流）。
  * user 右对齐气泡 / assistant 左对齐（过程块在正文上方）/ system 居中小字；
  * 操作条：时间戳在左（相对日期），复制在最右；
  * user 仅保留「编辑 + 复制」（无点赞/差评/更多/重发），assistant 保留「👍/👎/⋯/复制」；
@@ -52,7 +52,7 @@ import { cn } from "@/lib/utils";
 import { usePanelStore } from "@/stores/panel-store";
 import type { ChatMessage, CitationRef, ProcessNode } from "@/stores/chat-store";
 
-function CompactionCardMessage({ card }: { card: NonNullable<ChatMessage["compaction"]> }) {
+export function CompactionCardMessage({ card }: { card: NonNullable<ChatMessage["compaction"]> }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const title = t("chat.compaction.card")
@@ -60,18 +60,21 @@ function CompactionCardMessage({ card }: { card: NonNullable<ChatMessage["compac
     .replace("{tokens}", card.beforeTokens.toLocaleString());
   return (
     <div className="flex w-full justify-start py-1" data-testid="compaction-card">
-      <div className="border-chat-hairline bg-chat-rail/60 w-full max-w-[min(720px,88%)] rounded-xl border px-3 py-2">
+      <div className="border-chat-hairline bg-card w-full rounded-[var(--radius-bubble)] rounded-tl-[4px] border px-3.5 py-2.5">
         <button
           type="button"
           data-testid="compaction-card-toggle"
           aria-expanded={open}
-          className="text-chat-ink flex w-full items-center gap-2 text-left text-xs"
+          className="text-chat-ink flex w-full min-w-0 items-center gap-2 text-left text-xs"
           onClick={() => setOpen((value) => !value)}
         >
           <Archive className="text-primary size-4 shrink-0" />
           <span className="min-w-0 flex-1">{title}</span>
           <ChevronRight
-            className={cn("text-chat-muted size-3.5 shrink-0 transition-transform", open && "rotate-90")}
+            className={cn(
+              "text-chat-muted size-3.5 shrink-0 transition-transform",
+              open && "rotate-90",
+            )}
           />
         </button>
         {open ? (
@@ -258,9 +261,7 @@ function MessageItemComponent({
   // （历史数据普遍无 workItemId 键，按段驱动避免误伤真任务卡）
   const memberTaskSection = useMemo(
     () =>
-      isEmployee
-        ? extractMemberTaskSection(displayContent)
-        : { body: displayContent, section: "" },
+      isEmployee ? extractMemberTaskSection(displayContent) : { body: displayContent, section: "" },
     [displayContent, isEmployee],
   );
 
@@ -309,10 +310,7 @@ function MessageItemComponent({
       >
         {!isUser && !hideIdentity ? (
           message.senderName ? (
-            <EmployeeIdentityHeader
-              name={assistantLabel}
-              metadata={senderEmployee?.metadata}
-            />
+            <EmployeeIdentityHeader name={assistantLabel} metadata={senderEmployee?.metadata} />
           ) : (
             <span className="text-chat-muted mb-1 flex items-center gap-1.5 text-sm leading-none">
               <AssistantAvatar className="size-6" />
@@ -331,6 +329,7 @@ function MessageItemComponent({
           {!isUser && message.process?.length ? (
             <ProcessBlock
               nodes={message.process}
+              settled={message.done === true || Boolean(message.error)}
               // 消息级总时长（上一条 user 消息 → 本条落卡：
               // 「已完成 · 时间」算卡片落后的总执行时长，而非过程节点累计）
               totalMsOverride={turnDurationMs}
@@ -365,7 +364,7 @@ function MessageItemComponent({
             >
               <Loader2 className="size-3 animate-spin" />
               {t("chat.composer.responding")}
-              {/* 2026-10-01：尝试调用阶段显示已等待秒数 */}
+              {/* 2026-10-01 §4.3：尝试调用阶段显示已等待秒数（opencode StreamingIndicator 同构） */}
               {elapsed > 0 ? (
                 <span data-testid="streaming-elapsed" className="tabular-nums">
                   {formatElapsed(elapsed)}
@@ -427,7 +426,7 @@ function MessageItemComponent({
                   : "bg-card border-chat-hairline rounded-tl-[4px] border",
               )}
             >
-              {/* 员工回复：成员任务卡——**数据卡优先**（完整
+              {/* 员工回复：成员任务卡（用户拍板 2026-10-16）——**数据卡优先**（完整
                   任务内容可展开，与右栏计划同源）；无数据卡时正文「## 成员任务」文本段
                   兜底渲染为卡；两者都没有则不渲染。卡片置于其余正文（含风险）之后。 */}
               {isEmployee && memberTaskItems?.length ? (
@@ -467,9 +466,9 @@ function MessageItemComponent({
                   ) : null}
                 </p>
               ) : null}
-              {/* 2026-09-26 移除回复末尾的流式光标（蓝竖条）——逐段出字本身即进度反馈，
+              {/* 2026-09-26 用户拍板：移除回复末尾的流式光标（蓝竖条）——逐段出字本身即进度反馈，
                   空内容期由上方「正在回复中…」状态行承担指示 */}
-              {/* 2026-10-12 引用文件落在「回复卡片内」最下方，标蓝可点开（裸路径） */}
+              {/* 2026-10-12 用户拍板：引用文件落在「回复卡片内」最下方，标蓝可点开（裸路径） */}
               {!isUser && replyArtifacts?.length ? (
                 <div
                   className="text-chat-muted mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 border-t border-chat-hairline pt-1.5 text-xs"
@@ -567,7 +566,7 @@ function MessageItemComponent({
         >
           {isUser ? (
             <>
-              {/* user：时间戳贴编辑按钮、不撑开；仅复制 + 编辑 */}
+              {/* user（2026-09-25 用户拍板）：时间戳贴编辑按钮、不撑开；仅复制 + 编辑 */}
               {message.createdAt ? (
                 <span
                   data-testid="message-time"
@@ -688,10 +687,9 @@ function MessageItemComponent({
  * 引用稳定（applyDelta 只为 pending 消息创建新对象）。
  */
 function messageItemPropsEqual(prev: MessageItemProps, next: MessageItemProps): boolean {
-  const keys = new Set<string>([
-    ...Object.keys(prev),
-    ...Object.keys(next),
-  ]) as Set<keyof MessageItemProps>;
+  const keys = new Set<string>([...Object.keys(prev), ...Object.keys(next)]) as Set<
+    keyof MessageItemProps
+  >;
   for (const key of keys) {
     if (typeof key === "string" && key.startsWith("on")) continue;
     if (key === "assistantIdentity") {

@@ -19,7 +19,7 @@ import pytest
 
 @pytest.fixture()
 def probe_home(tmp_path: Path, monkeypatch: Any) -> Path:
-    # 口径与实现一致：探测路径走 BANDI_HOME
+    # 口径与实现一致：探测路径走 BANDI_HOME（ADR-42 sidecar 场景，见 _probe_storage_writable）
     bandi_home = tmp_path / ".bandi"
     monkeypatch.setenv("BANDI_HOME", str(bandi_home))
     base = bandi_home / "data"

@@ -127,6 +127,72 @@ async def test_perception_analysis_event_emitted():
 
 
 @pytest.mark.asyncio
+async def test_tool_search_expands_next_turn_tool_schema():
+    """tool_search 命中的内部工具 schema 必须在下一轮真正注入工具面。"""
+    from bandi.tools.base import BaseTool, ToolCategory
+    from bandi.tools.registry import ToolRegistry
+
+    class _WebSearch(BaseTool):
+        name: str = "web_search"
+        description: str = "search the internet"
+        category: ToolCategory = ToolCategory.WEB
+
+        async def execute(self, params, context=None):  # type: ignore[no-untyped-def]
+            return "ok"
+
+    class _SearchExecutor(MockToolExecutor):
+        def __init__(self) -> None:
+            super().__init__()
+            self._registry = ToolRegistry()
+            self._registry.register_instance(_WebSearch())
+
+        async def execute(self, tool_calls: list[ToolCall]) -> list[ToolResult]:
+            return [
+                ToolResult(
+                    tool_call_id=tc.id,
+                    tool_name=tc.name,
+                    success=True,
+                    output='{"matches": ["web_search"]}',
+                )
+                for tc in tool_calls
+            ]
+
+    seen_tools: list[list[str]] = []
+    provider = MockProvider()
+    original_complete = provider.complete
+
+    async def complete(messages, tools=None, **kwargs):
+        seen_tools.append(
+            [str((item.get("function") or {}).get("name") or "") for item in (tools or [])]
+        )
+        return await original_complete(messages, tools=tools, **kwargs)
+
+    provider.complete = complete  # type: ignore[method-assign]
+    provider.add_response(
+        LLMResponse(
+            content="",
+            tool_calls=[ToolCall(id="c1", name="tool_search", arguments={"query": "web_search"})],
+        )
+    )
+    provider.add_response(LLMResponse(content="done"))
+    ctx = make_ctx(
+        messages=[Message(role=MessageRole.USER, content="联网搜索")],
+        provider=provider,
+    )
+    ctx.active_tools = [
+        {
+            "type": "function",
+            "function": {"name": "tool_search", "description": "search tools", "parameters": {}},
+        }
+    ]
+    ctx.meta["allowed_tool_names"] = {"tool_search", "web_search"}
+    ctx.tool_executor = _SearchExecutor()
+    reason = await AgentLoop().run(ctx)
+    assert reason == TerminalReason.COMPLETED
+    assert any("web_search" in names for names in seen_tools), "tool_search 命中后未扩面"
+
+
+@pytest.mark.asyncio
 async def test_normal_flow_with_tools():
     provider = MockProvider()
     provider.add_response(

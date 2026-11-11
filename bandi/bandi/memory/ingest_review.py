@@ -70,7 +70,7 @@ _LONG_TEXT_CHARS = 60
 _PLEASANTRY_MAX_CHARS = 12
 _MARKS = "，。！？!?；;、,.…~～ \t\r\n"
 
-# 功能：可从现状推导的内容——读代码、
+# 功能：可从现状推导的内容（cc-haha「What NOT to save」第2–5 类移植）——读代码、
 # `git log`/`git blame` 即可得出，不是经历事实。命中任一即不进经历层。
 _DERIVABLE_PATTERNS = re.compile(
     "|".join(
@@ -102,10 +102,10 @@ _TRIVIAL_PROBE_RE = re.compile(
     re.IGNORECASE,
 )
 
-# 功能：验收/测试指令——要求模型逐字回复、验证等，不是可复用事实。
+# 功能：验收/测试指令——要求模型逐字回复、真机验证等，不是可复用事实。
 _TEST_INSTRUCTION_RE = re.compile(
     r"(?:real[-\s]?machine\s+verification|reply\s+with\s+exactly|test\s+message"
-    r"|验证|验证消息|测试指令|请只回复\s*[\w_]+)",
+    r"|真机验证|验证消息|测试指令|请只回复\s*[\w_]+)",
     re.IGNORECASE,
 )
 
@@ -244,9 +244,10 @@ _CONCLUSION_SIGNALS = (
 def is_self_intro_reply(reply: str) -> bool:
     """功能：判断助手回复是否为自我介绍/能力清单——这类内容没有可记事实。
 
-    B一句「你好呀，你能帮我做什么？」的回复（241 字能力清单）被当成
+    BC-004：一句「你好呀，你能帮我做什么？」的回复（241 字能力清单）被当成
     task_state 写入长期记忆并被召回一次。判据看正文是否以自我指涉或能力
-    清单开头，且不含结论类信号。"""
+    清单开头，且不含结论类信号。
+    """
     body = (reply or "").strip()
     if not body:
         return False
@@ -302,11 +303,12 @@ def is_conversational_prose(text: str) -> str | None:
     """功能：判定候选是否只是助手的话术而非事实陈述，返回拒绝理由或 None。
 
     助手结论回落进长期记忆时（用户只给指令、事实由助手查出），必须挡住下面
-    几类「读起来像内容、实际不是事实」的输出。L1 实测 72 条曾把 19 条
+    几类「读起来像内容、实际不是事实」的输出。L1 真机实测 72 条曾把 19 条
     助手原话整段入库——拒绝话术、目录清单、执行计划、能力清单、故障说明。
 
     这些不是「价值低」，是**根本不是事实**：入库后会在后续召回里冒充用户的
-    偏好与历史事实。"""
+    偏好与历史事实。
+    """
     t = str(text or "").strip()
     if not t:
         return "empty"
@@ -358,7 +360,7 @@ def is_conversational_prose(text: str) -> str | None:
         if marker in t:
             return f"plan:{marker}"
 
-    # ⑤ 能力自我介绍——B已拦部分问法，这里兜住 markdown 分档式复述
+    # ⑤ 能力自我介绍——BC-004 已拦部分问法，这里兜住 markdown 分档式复述
     for marker in ("我能帮你做什么", "我能做的", "我可以帮你做", "目前我的能力"):
         if marker in t:
             return f"capability_listing:{marker}"
@@ -552,9 +554,9 @@ def review_ingest(
 def review_episodic_ingest(candidate: str) -> IngestVerdict:
     """功能：经历层入库判断——拒「不该存的内容」+ 空/寒暄，业务句才记录。
 
-    参考实现 `WHAT_NOT_TO_SAVE_SECTION`（）：
+    移植 cc-haha `WHAT_NOT_TO_SAVE_SECTION`（`src/memdir/memoryTypes.ts:183-195`）：
     那一版的负面清单是唯一**显式覆盖用户显式指令**的记忆门槛——用户说「保存这个」
-    也不能把可从代码/git 推导的内容写成记忆，只留真正反直觉的部分。本把同一
+    也不能把可从代码/git 推导的内容写成记忆，只留真正反直觉的部分。本移植把同一
     思路落到经历层，适配我们的四类噪音：
 
     1. 助手自我介绍/能力清单——可由提示词推导，不是经历事实
@@ -564,7 +566,8 @@ def review_episodic_ingest(candidate: str) -> IngestVerdict:
     5. 瞬时任务细节——当前对话上下文本身
 
     第 1 类同时堵住 recall_count 虚高：这类情节会被相似问句反复召回，把自己顶成
-    高价值候选（实测自我介绍 recall_count 达8），进而生成噪音晋升审批。"""
+    高价值候选（实测自我介绍 recall_count 达8），进而生成噪音晋升审批。
+    """
     text = str(candidate or "")
     body = text.strip()
     condensed = body.strip(_MARKS)

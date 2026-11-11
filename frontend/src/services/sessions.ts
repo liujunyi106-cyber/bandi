@@ -1,5 +1,5 @@
 /**
- * 功能：会话域 API。
+ * 功能：会话域 API（@base docs/API契约.md / 后端 api/app.py sessions 端点）。
  * 覆盖：列表（含 project_id 项目维度）/ 详情（消息条目）/ 重命名 / 删除 /
  * fork / revert 三级（stage·commit·clear）/ 分享 + 共享查看 / 转向（steer·inject）/
  * 中断（abort）/ 挂起交互应答（confirm·clarify）。
@@ -54,13 +54,26 @@ export interface SharedSession {
   messages: SessionEntry[];
 }
 
+/** 手动压缩结果（/compact 当前会话内替换）。 */
+export interface SessionCompactResult {
+  compacted: boolean;
+  new_session_id: string;
+  stage: string;
+  before: number;
+  after: number;
+  before_tokens: number;
+  after_tokens: number;
+  has_summary: boolean;
+  reason: string;
+}
+
 /** 挂起交互帧载荷（WS interaction 帧 data）。 */
 export interface InteractionFrame {
   interaction_id: string;
   session_id: string;
   kind: string;
   payload: Record<string, unknown>;
-  /** 剩余倒计时秒数。 */
+  /** 剩余倒计时秒数（Day137b-1；缺省 = 后端未提供，不显示倒计时）。 */
   expires_in?: number;
   /** 孤儿标记（重放端点标注：执行已结束、进程内无挂起方——答复无处唤醒）。 */
   orphaned?: boolean;
@@ -129,12 +142,7 @@ export const sessionsApi = {
   shared: (token: string) => api.get<SharedSession>(`/shared/${token}`),
   abort: (sessionId: string) => api.post<{ ok?: boolean }>(`/sessions/${sessionId}/abort`),
   /** P3：挂起交互重放——会话加载时补拉 pending 决策卡（刷新后卡不再丢失）。 */
-  appendSystemNote: (
-    sessionId: string,
-    content: string,
-    noteKind: string,
-    dedupeKey: string,
-  ) =>
+  appendSystemNote: (sessionId: string, content: string, noteKind: string, dedupeKey: string) =>
     api.post<{ created: boolean; entry_id: string }>(`/sessions/${sessionId}/system-notes`, {
       content,
       note_kind: noteKind,
@@ -146,19 +154,8 @@ export const sessionsApi = {
     api.post<{ queued: boolean }>(`/sessions/${sessionId}/steer`, { message }),
   inject: (sessionId: string, message: string) =>
     api.post<{ injected: boolean }>(`/sessions/${sessionId}/inject`, { message }),
-  /** 功能：强制压缩会话。 */
-  compact: (sessionId: string) =>
-    api.post<{
-      compacted: boolean;
-      new_session_id: string;
-      stage: string;
-      before: number;
-      after: number;
-      before_tokens: number;
-      after_tokens: number;
-      has_summary: boolean;
-      reason: string;
-    }>(`/sessions/${sessionId}/compact`),
+  /** 功能：强制压缩会话（当前会话内替换为摘要检查点）。 */
+  compact: (sessionId: string) => api.post<SessionCompactResult>(`/sessions/${sessionId}/compact`),
   confirm: (
     sessionId: string,
     interactionId: string,
@@ -312,9 +309,7 @@ export function isEmployeeDmSession(session: SessionSummary): boolean {
 }
 
 /** 功能：员工单聊按目标角色分组（Map 保序：首个会话出现序）。 */
-export function groupSessionsByEmployee(
-  sessions: SessionSummary[],
-): Map<string, SessionSummary[]> {
+export function groupSessionsByEmployee(sessions: SessionSummary[]): Map<string, SessionSummary[]> {
   const groups = new Map<string, SessionSummary[]>();
   for (const session of sessions) {
     if (!isEmployeeDmSession(session)) continue;

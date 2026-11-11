@@ -1,13 +1,14 @@
 """本体推理内核：标识语法、类闭包、TBox 约束校验、关系特征推论、图查询。
 
-复刻 参考实现 `src/ontology.ts`（749 行）。本模块全是 `GraphView` 的纯函数——
+复刻 dsh-ontology `src/ontology.ts`（749 行）。本模块全是 `GraphView` 的纯函数——
 无 IO、无存储——故决定「模型这条断言是否可接受」的每条规则都能脱离后端单测。
 
 关键语义：
 - 推论跑**不动点**（≤32 轮），故规则可复合（传递关系的逆关系本身也传递闭合）。
 - 派生态**永不落盘**——撤回前提时依赖它的结论自动消失，无需反向清理。
 - `domain`/`range` 为空是「尚未决定」，不是静默放行。
-- 字面量关系不得声明 symmetric/transitive/inverse：派生命题会把字面量放到主语位置。"""
+- 字面量关系不得声明 symmetric/transitive/inverse：派生命题会把字面量放到主语位置。
+"""
 
 from __future__ import annotations
 

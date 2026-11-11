@@ -1,4 +1,4 @@
-# 功能：OKF 概念框架（Bandi Knowledge Format）——参考实现 backend/app/knowledge/okf.py
+# 功能：OKF 概念框架（Bandi Knowledge Format）——StaffDeck backend/app/knowledge/okf.py
 # 概念检索评分（标题命中 > 正文命中，阈值 MIN_CONCEPT_SEARCH_SCORE）/ 概念卡 / OKF 引用。
 
 from __future__ import annotations
@@ -109,7 +109,7 @@ def build_okf_for_document(
     buckets: list[KnowledgeBucket],
 ) -> list[dict[str, Any]]:
     """功能：文档 → 概念集——1 个 Source Document 入口概念 + 每桶 1 个 Topic
-    概念。"""
+    概念（规则锚定桶结构，ADR-33 无 LLM 提取）。"""
     doc_slug = safe_path_segment(document.title or Path(document.filename).stem or document.id)
     doc_slug = f"{doc_slug}-{_id_short(document.id)}"
     entry_concept_id = f"sources/{doc_slug}"

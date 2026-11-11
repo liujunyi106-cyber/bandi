@@ -1,5 +1,5 @@
 /**
- * 功能：DmChatView 行为测试（员工名/头像 + 任务状态徽标 + 空员工引导 +
+ * 功能：DmChatView 行为测试（Day137：员工名/头像 + 任务状态徽标 + 空员工引导 +
  * 线程消息过滤（参与方/项目）与切换竞态守卫）。
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DmChatView } from "@/components/chat/DmChatView";
 import { companyApi } from "@/services/company";
+import { sessionsApi } from "@/services/sessions";
 import { socket } from "@/services/ws";
 import { useChatStore } from "@/stores/chat-store";
 
@@ -38,6 +39,7 @@ vi.mock("@/services/company", async (importOriginal) => {
       thread: vi.fn(),
       employeeTombstone: vi.fn(),
       appendThreadSystemNote: vi.fn(),
+      abortWorkItem: vi.fn(),
     },
   };
 });
@@ -49,11 +51,13 @@ vi.mock("@/services/sessions", async (importOriginal) => {
     sessionsApi: {
       ...actual.sessionsApi,
       companyApprovals: vi.fn().mockResolvedValue({ approvals: [] }),
+      detail: vi.fn(),
     },
   };
 });
 
 const mocked = vi.mocked(companyApi);
+const mockedSessions = vi.mocked(sessionsApi);
 const mockedSocket = vi.mocked(socket);
 
 /** 功能：构造 thread_message 帧（participants 为服务端线程参与方集合）。 */
@@ -91,9 +95,10 @@ describe("DmChatView", () => {
       created_at: "",
       messages: [],
     });
+    mockedSessions.detail.mockResolvedValue({ session: {}, messages: [] });
   });
 
-  it("显示员工名与任务状态徽标（执行中计数来自本单聊线程的 work-items）", async () => {
+  it("单聊加载压缩卡：从绑定会话条目回放，不混入普通消息", async () => {
     mocked.threads.mockResolvedValue({
       threads: [
         {
@@ -102,21 +107,32 @@ describe("DmChatView", () => {
           participants: ["user", "dev"],
           created_at: "",
           message_count: 0,
+          session_id: "sess-dm",
         },
       ],
     } as never);
-    mocked.workItems.mockResolvedValue({
-      items: [
+    mockedSessions.detail.mockResolvedValue({
+      session: {},
+      messages: [
         {
-          id: "w1",
-          title: "做详情页",
-          phase: "executing",
-          assignee_role: "dev",
-          column: "in_progress",
-          thread_id: "th-dev",
+          id: "entry-card",
+          entry_type: "message",
+          role: "system",
+          content: "",
+          turn_index: 0,
+          created_at: "2026-11-09T12:00:00",
+          metadata: JSON.stringify({
+            compaction_card: {
+              before_messages: 8,
+              after_messages: 3,
+              before_tokens: 2200,
+              after_tokens: 900,
+              stage: "manual",
+              summary: "保留关键决策",
+            },
+          }),
         },
       ],
-      column_counts: {},
     });
     render(
       <MemoryRouter>
@@ -124,22 +140,24 @@ describe("DmChatView", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("小美")).toBeInTheDocument();
-    await waitFor(() =>
-      expect(screen.getByTestId("dm-task-badge")).toHaveTextContent("执行中 · 1"),
-    );
+    expect(await screen.findByTestId("compaction-card")).toBeInTheDocument();
+    expect(screen.queryByText("保留关键决策")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("compaction-card-toggle"));
+    expect(screen.getByTestId("compaction-card-detail")).toHaveTextContent("保留关键决策");
   });
 
-  it("无进行中任务时徽标显示空闲", async () => {
+  it("不显示独立员工名/状态条（与普通会话、项目助理会话一致）", async () => {
     render(
       <MemoryRouter>
         <DmChatView targetRole="dev" />
       </MemoryRouter>,
     );
-    expect(await screen.findByTestId("dm-task-badge")).toHaveTextContent("空闲");
+    await screen.findByPlaceholderText("给这位员工发消息…");
+    expect(screen.queryByTestId("dm-task-badge")).not.toBeInTheDocument();
+    expect(screen.queryByText("发送即触发该员工执行并回复")).not.toBeInTheDocument();
   });
 
-  it("员工执行过程块：thread_progress 归并后实时展示", async () => {
+  it("员工执行过程块：thread_progress 归并后实时展示（不依赖任务轮询；Day137b-1 插队批）", async () => {
     useChatStore.setState({
       employeeProgress: {
         "company::::dev": [
@@ -161,9 +179,7 @@ describe("DmChatView", () => {
   it("执行中只显示过程块，不把流式文件正文刷进消息流", async () => {
     useChatStore.setState({
       employeeProgress: {
-        "company::::dev": [
-          { id: "ep:tool:1", kind: "tool", toolName: "read", status: "running" },
-        ],
+        "company::::dev": [{ id: "ep:tool:1", kind: "tool", toolName: "read", status: "running" }],
       },
       employeeProgressText: {
         "company::::dev": "C:\\a.md\nC:\\b.md\nC:\\c.md",
@@ -231,14 +247,11 @@ describe("DmChatView", () => {
         <DmChatView targetRole="dev" projectId="p1" />
       </MemoryRouter>,
     );
-    await screen.findByText("小美");
-
-    await waitFor(() => expect(screen.getByTestId("dm-task-badge")).toHaveTextContent("空闲"), {
-      timeout: 3000,
-    });
+    await screen.findByPlaceholderText("给这位员工发消息…");
+    expect(screen.queryByTestId("dm-task-badge")).not.toBeInTheDocument();
   });
 
-  it("员工回复到达后「执行中」徽标立即归零（卡终态滞后不得残留）", async () => {
+  it("员工回复到达后不残留「正在执行」（卡终态滞后不得残留）", async () => {
     mocked.threads.mockResolvedValue({
       threads: [
         {
@@ -268,16 +281,13 @@ describe("DmChatView", () => {
         <DmChatView targetRole="dev" projectId="p1" />
       </MemoryRouter>,
     );
-    await waitFor(() =>
-      expect(screen.getByTestId("dm-task-badge")).toHaveTextContent("执行中 · 1"),
-    );
+    await waitFor(() => expect(mocked.workItems).toHaveBeenCalled());
 
     wsHarness.handlers["thread_message"](
       threadFrame({ thread_id: "th-dev", sender: "dev", content: "已完成", message_id: "m-done" }),
     );
 
     expect(await screen.findByText("已完成")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByTestId("dm-task-badge")).toHaveTextContent("空闲"));
     expect(screen.queryByTestId("dm-running")).not.toBeInTheDocument();
   });
 
@@ -380,7 +390,7 @@ describe("DmChatView", () => {
         <DmChatView targetRole="dev" />
       </MemoryRouter>,
     );
-    await screen.findByText("小美");
+    await screen.findByPlaceholderText("给这位员工发消息…");
     expect(screen.getByTestId("composer")).toBeInTheDocument();
     expect(screen.getByTestId("composer-mode-toggle")).toBeInTheDocument();
   });
@@ -431,14 +441,17 @@ describe("DmChatView", () => {
     fireEvent.change(input, { target: { value: "帮我整理清单" } });
     fireEvent.click(screen.getByTitle("发送"));
 
-    expect(mockedSocket.send).toHaveBeenCalledWith({
-      content: "帮我整理清单",
-      sender_role: "user",
-      target_role: "dev",
-      employee_id: "e1",
-      mode: "execute",
-      project_id: "p1",
-    });
+    expect(mockedSocket.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: "帮我整理清单",
+        sender_role: "user",
+        target_role: "dev",
+        employee_id: "e1",
+        mode: "execute",
+        project_id: "p1",
+        session_id: expect.stringMatching(/^dm-/),
+      }),
+    );
   });
 
   it("同角色多员工：employeeId 锁定显示与发送", async () => {
@@ -453,7 +466,6 @@ describe("DmChatView", () => {
         <DmChatView targetRole="dev" employeeId="e2" projectId="p1" />
       </MemoryRouter>,
     );
-    expect(await screen.findByText("小刚")).toBeInTheDocument();
     const input = await screen.findByPlaceholderText("给这位员工发消息…");
     fireEvent.change(input, { target: { value: "找小刚" } });
     fireEvent.click(screen.getByTitle("发送"));
@@ -559,15 +571,18 @@ describe("DmChatView", () => {
     fireEvent.change(input, { target: { value: "价格带改成 89-129" } });
     fireEvent.click(screen.getByTitle("发送"));
 
-    expect(mockedSocket.send).toHaveBeenCalledWith({
-      content: "价格带改成 89-129",
-      sender_role: "user",
-      target_role: "dev",
-      employee_id: "e1",
-      mode: "execute",
-      project_id: "p1",
-      target_work_item_id: "w1",
-    });
+    expect(mockedSocket.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: "价格带改成 89-129",
+        sender_role: "user",
+        target_role: "dev",
+        employee_id: "e1",
+        mode: "execute",
+        project_id: "p1",
+        target_work_item_id: "w1",
+        session_id: expect.stringMatching(/^dm-/),
+      }),
+    );
     expect(screen.queryByTestId("dm-rework-chip")).not.toBeInTheDocument();
   });
 
@@ -581,14 +596,17 @@ describe("DmChatView", () => {
     fireEvent.change(input, { target: { value: "普通消息" } });
     fireEvent.click(screen.getByTitle("发送"));
 
-    expect(mockedSocket.send).toHaveBeenCalledWith({
-      content: "普通消息",
-      sender_role: "user",
-      target_role: "dev",
-      employee_id: "e1",
-      mode: "execute",
-      project_id: "p1",
-    });
+    expect(mockedSocket.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: "普通消息",
+        sender_role: "user",
+        target_role: "dev",
+        employee_id: "e1",
+        mode: "execute",
+        project_id: "p1",
+        session_id: expect.stringMatching(/^dm-/),
+      }),
+    );
   });
 
   it("切换 targetRole 后旧线程响应迟到不得覆盖新视图（竞态守卫）", async () => {
@@ -656,7 +674,7 @@ describe("DmChatView", () => {
  * 模型控件，锁定态无从显示（本仓库 「传了 ≠ 有入口」同一类）。
  * 下面钉的是「渲染出了控件」这个行为，而不是「某 prop 被传了」。
  */
-describe("DmChatView 单聊控制条与 ⊕ 菜单", () => {
+describe("DmChatView 单聊控制条与 ⊕ 菜单（2026-09-30 用户拍板）", () => {
   beforeEach(() => {
     mocked.employees.mockResolvedValue({
       employees: [
@@ -670,13 +688,13 @@ describe("DmChatView 单聊控制条与 ⊕ 菜单", () => {
     });
   });
 
-  it("渲染控制条并显示该员工实际使用的模型", async () => {
+  it("渲染控制条并显示该员工实际使用的模型（§18.15② 有 UI 入口）", async () => {
     render(
       <MemoryRouter>
         <DmChatView targetRole="dev" />
       </MemoryRouter>,
     );
-    await screen.findByText("小美");
+    await screen.findByPlaceholderText("给这位员工发消息…");
     const field = await screen.findByTestId("composer-model");
     expect(field).toHaveTextContent("deepseek-v4.1-flash");
   });
@@ -688,7 +706,7 @@ describe("DmChatView 单聊控制条与 ⊕ 菜单", () => {
         <DmChatView targetRole="dev" />
       </MemoryRouter>,
     );
-    await screen.findByText("小美");
+    await screen.findByPlaceholderText("给这位员工发消息…");
     await user.click(await screen.findByTestId("composer-plus"));
     expect(screen.getByTestId("composer-plus-attach")).toBeInTheDocument();
     expect(screen.getByTestId("composer-plus-quote")).toBeInTheDocument();
@@ -704,7 +722,7 @@ describe("DmChatView 单聊控制条与 ⊕ 菜单", () => {
         <DmChatView targetRole="dev" />
       </MemoryRouter>,
     );
-    await screen.findByText("小美");
+    await screen.findByPlaceholderText("给这位员工发消息…");
     await screen.findByTestId("composer-model");
     expect(screen.queryByText(/deepseek-v4\.1-flash/)).not.toBeInTheDocument();
   });
@@ -729,12 +747,12 @@ describe("DmChatView 单聊控制条与 ⊕ 菜单", () => {
         <DmChatView targetRole="dev" />
       </MemoryRouter>,
     );
-    await screen.findByText("小美");
+    await screen.findByPlaceholderText("给这位员工发消息…");
     expect(screen.getByTestId("dm-interaction-stack")).toBeInTheDocument();
     expect(screen.getByTestId("permission-allow-once")).toBeInTheDocument();
   });
 
-  it("needs_attention 卡虽在 in_progress 列但不再计入「执行中」", async () => {
+  it("needs_attention 卡虽在 in_progress 列但不显示执行中过程块", async () => {
     mocked.threads.mockResolvedValue({
       threads: [
         {
@@ -765,7 +783,53 @@ describe("DmChatView 单聊控制条与 ⊕ 菜单", () => {
         <DmChatView targetRole="dev" />
       </MemoryRouter>,
     );
-    expect(await screen.findByTestId("dm-task-badge")).toHaveTextContent("空闲");
+    expect(screen.queryByTestId("dm-running")).not.toBeInTheDocument();
+  });
+
+  it("停止：本线程多张运行卡全部 abort，404 也本地收尾", async () => {
+    mocked.threads.mockResolvedValue({
+      threads: [
+        {
+          thread_id: "th-stop",
+          parent_task_id: null,
+          participants: ["user", "dev"],
+          created_at: "",
+          message_count: 0,
+          session_id: "sess-stop",
+        },
+      ],
+    } as never);
+    mocked.workItems.mockResolvedValue({
+      items: [
+        { id: "w1", title: "任务1", phase: "running", assignee_role: "dev", thread_id: "th-stop" },
+        { id: "w2", title: "任务2", phase: "running", assignee_role: "dev", thread_id: "th-stop" },
+        { id: "w3", title: "别的线程", phase: "running", assignee_role: "dev", thread_id: "other" },
+      ],
+      column_counts: {},
+    } as never);
+    mocked.abortWorkItem.mockImplementation(async (workItemId: string) => ({
+      work_item_id: workItemId,
+      interrupted: true,
+    }));
+    useChatStore.setState({
+      employeeProgress: {
+        "p1::th-stop::dev": [
+          { id: "ep:tool:1", kind: "tool", toolName: "read", status: "running" },
+        ],
+      },
+      employeeProgressDone: {},
+    });
+    render(
+      <MemoryRouter>
+        <DmChatView targetRole="dev" projectId="p1" />
+      </MemoryRouter>,
+    );
+    const stop = await screen.findByTestId("composer-stop");
+    fireEvent.click(stop);
+    await waitFor(() => expect(mocked.abortWorkItem).toHaveBeenCalledTimes(2));
+    expect(mocked.abortWorkItem).toHaveBeenCalledWith("w1");
+    expect(mocked.abortWorkItem).toHaveBeenCalledWith("w2");
+    expect(mocked.abortWorkItem).not.toHaveBeenCalledWith("w3");
   });
 
   it("已删除员工：首次发送不发送消息，落持久化退役提示并锁定输入", async () => {
@@ -790,7 +854,7 @@ describe("DmChatView 单聊控制条与 ⊕ 菜单", () => {
         <DmChatView targetRole="dev" />
       </MemoryRouter>,
     );
-    await screen.findByText("小美");
+    await screen.findByPlaceholderText("给这位员工发消息…");
     await waitFor(() => expect(mocked.threads).toHaveBeenCalled());
 
     const textarea = screen.getByRole("textbox");
@@ -810,3 +874,4 @@ describe("DmChatView 单聊控制条与 ⊕ 菜单", () => {
     await waitFor(() => expect(screen.getByRole("textbox")).toBeDisabled());
   });
 });
+

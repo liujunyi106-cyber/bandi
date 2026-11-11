@@ -1,12 +1,13 @@
 """SM-compact = 传统 LLM 摘要压缩的前置替代：轮末自动沉淀的会话记忆
 保留窗口算法完成压缩——全程零 LLM 调用。
 
-与 参考实现 sessionMemoryCompact.ts 的映射：
+与 cc-haha sessionMemoryCompact.ts 的映射：
 * 数据源 getSessionMemoryContent → ``build_session_memory_summary``（scratchpad 快照）
 * calculateMessagesToKeepIndex → ``calculate_keep_index``（min 双下限/max 上限/
- boundary floor/tool 对不拆散一一对应）
+  boundary floor/tool 对不拆散一一对应）
 * trySessionMemoryCompaction 返回 null 回退 legacy compact → ``try_session_compact``
- 返回 None 回退 CompressionPipeline"""
+  返回 None 回退 CompressionPipeline
+"""
 
 from __future__ import annotations
 
@@ -220,7 +221,7 @@ def _has_text(m: Message) -> bool:
 
 
 def _boundary_floor(messages: list[Message]) -> int:
-    """最后一个 [压缩边界] 标记的下一条位置——向前扩展不得越过。"""
+    """最后一个 [压缩边界] 标记的下一条位置——向前扩展不得越过（cc-haha floor 不变量）。"""
     from bandi.memory.compression_pipeline import COMPACT_BOUNDARY_PREFIX
 
     floor = 0
@@ -234,7 +235,7 @@ def session_memory_boundary(
     store: ScratchpadStore, session_id: str, messages: list[Message]
 ) -> int | None:
     """功能：计算「已被会话记忆覆盖」的消息边界——最大已快照 turn 之后的第一条
-    消息位置；归属不明（turn_index 缺失）
+    消息位置（cc-haha lastSummarizedMessageId 对应物）；归属不明（turn_index 缺失）
     保守视为未覆盖。无任何快照返回 None。"""
     turns: set[int] = set()
     for key in store.all(session_id):

@@ -191,6 +191,7 @@ class SectionSummarizerTool(FsTool):
                 [{"role": "user", "content": prompt}],
                 label="pdf_summary",
                 session_id="pdf_summary",
+                agent_id="pdf_summary",
                 max_tokens=_SECTION_SUMMARY_MAX_TOKENS,
             )
             summary = (response.content or "").strip()
@@ -277,6 +278,7 @@ class PDFTranslateTool(FsTool):
                 [{"role": "user", "content": prompt}],
                 label="pdf_translate",
                 session_id="pdf_translate",
+                agent_id="pdf_translate",
                 max_tokens=_TRANSLATE_MAX_TOKENS,
             )
             translated = (response.content or "").strip()

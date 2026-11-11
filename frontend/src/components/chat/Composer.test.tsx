@@ -123,7 +123,7 @@ describe("Composer", () => {
     expect(screen.getByRole("textbox")).toHaveValue("改一下这句");
   });
 
-  it("停止键：busy 时发送键原位变停止（方形小圆角实心），点击两次确认停止", () => {
+  it("停止键：busy 时发送键原位变停止（方形小圆角实心），单击立即停止", () => {
     const onStop = vi.fn();
     render(<Composer busy onSend={vi.fn()} onSteer={vi.fn()} onStop={onStop} />);
 
@@ -137,33 +137,20 @@ describe("Composer", () => {
     // 外圆黑色（此前 primary 蓝底）——内部方块随文字色为白
     expect(stop.className).toContain("bg-chat-ink");
 
-    fireEvent.click(stop); // 第一次：待触发（双触发），不停止
-    expect(onStop).not.toHaveBeenCalled();
-    // 取消「再点一次停止」确认态——title 恒为普通「停止」
-    // 待触发只用一圈轻描边示意（原实现的破坏性红态 bg-destructive 已移除）
-    expect(screen.getByTestId("composer-stop").getAttribute("title")).toBe("停止");
-    expect(screen.getByTestId("composer-stop").className).not.toContain("bg-destructive");
-    expect(screen.getByTestId("composer-stop").className).toContain("ring-2");
-
-    fireEvent.click(screen.getByTestId("composer-stop")); // 第二次：停止
+    fireEvent.click(stop);
     expect(onStop).toHaveBeenCalledTimes(1);
   });
 
   it("Esc 直接停止（busy）", () => {
     const onStop = vi.fn();
     render(<Composer busy onSend={vi.fn()} onSteer={vi.fn()} onStop={onStop} />);
-    // Esc 与停止按钮同属双触发，单次 Esc 不停
-    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Escape" });
-    expect(onStop).not.toHaveBeenCalled();
     fireEvent.keyDown(screen.getByRole("textbox"), { key: "Escape" });
     expect(onStop).toHaveBeenCalledTimes(1);
   });
 
-  it("Esc 全局生效：焦点不在输入框（页面任意处）也停止", () => {
+  it("Esc 全局生效：焦点不在输入框（页面任意处）也停止（2026-09-24 真机反馈）", () => {
     const onStop = vi.fn();
     render(<Composer busy onSend={vi.fn()} onSteer={vi.fn()} onStop={onStop} />);
-    fireEvent.keyDown(document.body, { key: "Escape" });
-    expect(onStop).not.toHaveBeenCalled();
     fireEvent.keyDown(document.body, { key: "Escape" });
     expect(onStop).toHaveBeenCalledTimes(1);
   });
@@ -175,7 +162,7 @@ describe("Composer", () => {
     expect(onStop).not.toHaveBeenCalled();
   });
 
-  it("above 决策区：渲染在输入框上方且不改变输入框圆角", () => {
+  it("above 决策区：渲染在输入框上方且不改变输入框圆角（2026-09-25 用户拍板）", () => {
     render(
       <Composer
         busy={false}

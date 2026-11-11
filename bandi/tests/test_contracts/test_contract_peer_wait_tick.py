@@ -1,5 +1,5 @@
 """
-契约族：peer wait 解析接入 tick。
+契约族：peer wait 解析接入 tick（Day125-/ AR-13 死链激活）。
 
 背景：CommunicationManager.refresh_waiting_tasks / resolve_task_peer_wait
 （回复到达解除 / 超时升级 manager / 超时升级 meeting）生产零调用——
@@ -13,7 +13,8 @@ WAITING_FOR_PEER 卡永不流转（回复到了不解除、超时不升级）。
 - 回复已到达的等待卡：tick 后解除回 READY（可被重新 claim）且持久化；
 - 超时 on_timeout=manager：tick 后升级 DM 发出 + 卡回 READY；
 - 超时 on_timeout=meeting：tick 后建会议室 + 卡保持 WAITING_FOR_PEER
- 且 escalated_from 落库（metadata 变更持久化）。"""
+  且 escalated_from 落库（metadata 变更持久化）。
+"""
 
 from __future__ import annotations
 

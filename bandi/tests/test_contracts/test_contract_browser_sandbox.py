@@ -162,7 +162,7 @@ async def test_browser_runtime_escape_hatch(monkeypatch: pytest.MonkeyPatch) -> 
 @pytest.mark.asyncio
 async def test_browser_runtime_fallback_keeps_sandbox(monkeypatch: pytest.MonkeyPatch) -> None:
     """契约（生产回退路径，同族）：系统 chrome 缺失时回退 launch 与
-    BrowserPool 造点——回退路径同样不得含禁沙箱标志，且不得带 channel。"""
+    BrowserPool 同构造点——回退路径同样不得含禁沙箱标志，且不得带 channel。"""
     from bandi.tools.browser import BrowserRuntime
 
     _clear_flag(monkeypatch)

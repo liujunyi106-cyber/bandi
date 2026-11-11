@@ -112,6 +112,57 @@ class TestBuildAgentContext:
         ctx = build_agent_context(user_input="test", provider=provider)
         assert ctx.provider is provider
 
+    def test_lazy_mcp_extra_is_capped(self, monkeypatch) -> None:
+        """懒暴露下 extra_surface_tools 不得整族注入，最多补到 mcp_max_exposed_tools。"""
+        import bandi.agent.factory as factory_module
+        from bandi.tools.base import BaseTool, ToolCategory
+        from bandi.tools.registry import ToolRegistry
+        from bandi.tools.selection import schema_name
+
+        class _Plain(BaseTool):
+            name: str = "aaa_tool"
+            description: str = "普通工具"
+            category: ToolCategory = ToolCategory.DOC
+
+            async def execute(self, params, context=None):  # type: ignore[no-untyped-def]
+                return "ok"
+
+        class _McpOne(BaseTool):
+            name: str = "mcp_one"
+            description: str = "mcp one"
+            category: ToolCategory = ToolCategory.INTEGRATION
+
+            async def execute(self, params, context=None):  # type: ignore[no-untyped-def]
+                return "ok"
+
+        class _McpTwo(BaseTool):
+            name: str = "mcp_two"
+            description: str = "mcp two"
+            category: ToolCategory = ToolCategory.INTEGRATION
+
+            async def execute(self, params, context=None):  # type: ignore[no-untyped-def]
+                return "ok"
+
+        reg = ToolRegistry()
+        reg.register_instance(_Plain())
+        reg.register_instance(_McpOne())
+        reg.register_instance(_McpTwo())
+        monkeypatch.setattr(
+            factory_module,
+            "select_relevant_schemas",
+            lambda schemas, query, **kw: [s for s in schemas if schema_name(s) == "aaa_tool"],
+        )
+        cfg = BandiConfig()
+        cfg.tools.mcp_max_exposed_tools = 1
+        ctx = build_agent_context(
+            user_input="随便",
+            bandi_config=cfg,
+            tool_registry=reg,
+            extra_surface_tools=["mcp_one", "mcp_two"],
+        )
+        names = {schema_name(s) for s in ctx.active_tools}
+        assert len(names & {"mcp_one", "mcp_two"}) <= 1
+
     def test_extra_surface_tools_union_not_trimmed(self, monkeypatch) -> None:
         """显式要求的工具（MCP 开启）必须进入工具面，不受相关性裁剪影响。"""
         import bandi.agent.factory as factory_module

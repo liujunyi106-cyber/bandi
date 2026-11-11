@@ -62,7 +62,7 @@ vi.mock("@/services/company", async (importOriginal) => {
 
 const emptyTasks: TaskLedgerItem[] = [];
 
-describe("OverviewView · 用量刷新", () => {
+describe("OverviewView · 用量刷新（2026-09-28 真机修复）", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useChatStore.setState({
@@ -80,7 +80,7 @@ describe("OverviewView · 用量刷新", () => {
     });
   });
 
-  it("纯文本轮（任务台账不变）也重新拉取用量 —— 回归守卫", async () => {
+  it("纯文本轮（任务台账不变）也重新拉取用量 —— FM-99 回归守卫", async () => {
     // 复现：纯文本回复**不产生任务台账变化**，原实现以 tasks.length 为重拉信号
     // ⇒ 同一会话内新回复后用量卡恒显示进入会话那一刻的值（API 已有 ¥0.015、面板 ¥0.00）。
     costDetail

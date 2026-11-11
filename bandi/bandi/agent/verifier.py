@@ -71,6 +71,8 @@ class VerifierPacket:
     prior_rework_feedback: str = ""
     original_goal: str = ""
     user_messages: str = ""
+    session_id: str = ""
+    agent_id: str = ""
 
 
 @dataclass
@@ -137,7 +139,8 @@ class Verifier:
                     {"role": "user", "content": user_prompt},
                 ],
                 label="verifier",
-                session_id="verifier",
+                session_id=packet.session_id or "verifier",
+                agent_id=packet.agent_id,
                 budget_sec=COMPANY_JUDGE_BUDGET_SEC,
                 temperature=0.0,
             )

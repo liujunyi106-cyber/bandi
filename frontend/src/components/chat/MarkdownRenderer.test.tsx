@@ -33,12 +33,12 @@ describe("splitMermaidBlocks", () => {
     expect(splitMermaidBlocks("```MERMAID\nx\n```")[0]).toEqual({ type: "mermaid", code: "x" });
   });
 
-  it("语言行带图表类型（```mermaid flowchart LR）——类型并入代码", () => {
+  it("语言行带图表类型（```mermaid flowchart LR）——类型并入代码（B6 真机容错）", () => {
     const result = splitMermaidBlocks("```mermaid flowchart LR\nA-->B\n```");
     expect(result[0]).toEqual({ type: "mermaid", code: "flowchart LR\nA-->B" });
   });
 
-  it("裸围栏残渣段跳过", () => {
+  it("裸围栏残渣段跳过（真机灰条根因：```mermaid 前后残留 ``` 不渲染空 pre）", () => {
     const result = splitMermaidBlocks("```\n```mermaid\nA-->B\n```\n```");
     expect(result).toEqual([{ type: "mermaid", code: "A-->B" }]);
   });
@@ -72,7 +72,7 @@ describe("MarkdownRenderer", () => {
     const { container } = render(
       <MarkdownRenderer
         text={
-          '<svg><style>*{position:fixed;inset:0}</style></svg>' +
+          "<svg><style>*{position:fixed;inset:0}</style></svg>" +
           "<math><mtext><style>@import 'https://evil.example/a.css';</style></mtext></math>" +
           '<form action="https://evil.example/phish"><input type="submit" /></form>'
         }
@@ -96,6 +96,14 @@ describe("MarkdownRenderer", () => {
   it("代码块保留（渲染为 pre/code）", () => {
     const { container } = render(<MarkdownRenderer text={"```python\nprint(1)\n```"} />);
     expect(container.querySelector("pre code")?.textContent).toContain("print(1)");
+  });
+
+  it("空围栏不渲染为空 pre（回复中间两条白杠根因）", () => {
+    const { container } = render(
+      <MarkdownRenderer text={"```\n```\n一、核心用户旅程\n```\n```"} />,
+    );
+    expect(container.querySelectorAll("pre")).toHaveLength(0);
+    expect(container.textContent).toContain("一、核心用户旅程");
   });
 
   it("@提及高亮命中员工名（主色 span）", () => {

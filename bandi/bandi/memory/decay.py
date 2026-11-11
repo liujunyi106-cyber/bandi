@@ -4,10 +4,10 @@
 # floor 0.2）只压排序分、不改数据；本模块在维护周期**持久化**降低 importance，
 # 让长期不被使用的事实真正沉底。二者叠加是有意为之——沉底要慢于排序降权。
 #
-#
+# 参考源：
 #   - Hermes `plugins/memory/holographic/retrieval.py:52-71`：`score *=
-# 0.5^(age/half_life)`
-# - 参考实现：衰减 + floor 0.02 + 召回保护
+#     0.5^(age/half_life)`（同构公式；他们只做检索侧）
+#   - LeAgent `maintenance.py:144-172`：衰减 + floor 0.02 + 召回保护
 #     （他们缺显式条目豁免：EXPLICIT_REMEMBER 不落库，无从豁免）
 #   - Hermes `memory_tool_store.py:349`：拒绝把非空库批删空（事故 #103419）
 from __future__ import annotations
@@ -85,9 +85,10 @@ def is_explicit(item: MemoryItem) -> bool:
     """功能：显式条目判定——用户明说「记住/记下/别忘了」的内容永不删除。
 
     写入侧由 `ingest_review._EXPLICIT_REMEMBER_WORDS` 判定并落 `metadata.is_explicit`；
-    参考实现 的对应语义（`EXPLICIT_REMEMBER`）只作 FormationTarget 触发器、不落库，
+    LeAgent 的对应语义（`EXPLICIT_REMEMBER`）只作 FormationTarget 触发器、不落库，
     导致 decay/forget 对显式与普通条目一视同仁——本项目要求显式豁免删除，
-    故必须有可持久化的标记。"""
+    故必须有可持久化的标记。
+    """
     return bool((item.metadata or {}).get("is_explicit"))
 
 

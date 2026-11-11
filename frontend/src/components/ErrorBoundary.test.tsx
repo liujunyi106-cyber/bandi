@@ -1,5 +1,5 @@
 /**
- * 功能：ErrorBoundary 行为测试。
+ * 功能：ErrorBoundary 行为测试（@base Day135 §5 组件层测试补齐——原 @testing-library 空转）。
  * 覆盖：正常渲染 / 抛错兜底 + onError 上报 / reset 恢复。
  */
 import { fireEvent, render, screen } from "@testing-library/react";

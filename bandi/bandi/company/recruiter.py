@@ -452,6 +452,7 @@ class CompanyRecruiter:
             ],
             label="recruiter",
             session_id="recruiter",
+            agent_id="recruiter",
         )
         return response.content if hasattr(response, "content") else str(response)
 

@@ -1,4 +1,4 @@
-"""本体写入语义。
+"""本体写入语义（复刻 dsh-ontology `src/store.ts`，296 行）。
 
 三张表与纯推理核心之间的薄 IO 层：把表投影成 `GraphView`，应用经校验的写入，
 执行容量守卫。所有规则在 `engine.py`，本模块只决定什么该到达存储。
@@ -8,7 +8,8 @@
 - 实体 classes 取并集（两次独立观察应累积；收窄须显式 retract-then-assert）
 - 事实按复合键幂等覆盖（重复断言不是重复行）
 - `strict=False` 时违规记在 fact 上，让明知不一致的断言保持可审计
-- 撤回实体级联删事实；撤回词表项在仍被依赖时拒绝"""
+- 撤回实体级联删事实；撤回词表项在仍被依赖时拒绝
+"""
 
 from __future__ import annotations
 
@@ -33,7 +34,7 @@ from bandi.ontology.types import (
     relation_of,
 )
 
-# 容量守卫：事实 20000 / 实体 100000
+# 容量守卫（计划 §4.2-7）：事实 20000 / 实体 100000
 DEFAULT_MAX_FACTS = 20000
 DEFAULT_MAX_ENTITIES = 100000
 

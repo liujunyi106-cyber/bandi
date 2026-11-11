@@ -127,7 +127,7 @@ class ToolRegistry:
         "enter_plan_mode",
         "exit_plan_mode",
         "todo_write",
-        # 计划语义下的补充放行
+        # 计划语义下的补充放行（真机实测：全拦会让 plan 模式做不出计划）
         # 1) 读 PDF 正文——pdf_structure 只给结构，出方案前要看内容
         "pdf_reader",
         # 2) 记忆写入——「A 依赖 B」这类关系事实是规划的输入，
@@ -169,6 +169,7 @@ class ToolRegistry:
             "route_work",
             "close_human_review",
             "spawn_thread_task",
+            "group_goal",
             "manager_board_read",
             "modify_work_item",
             "delete_work_item",
@@ -377,12 +378,17 @@ class ToolRegistry:
         max_results: int = 5,
         category: str | None = None,
         capability: str | None = None,
+        *,
+        scope: str = "all",
     ) -> dict[str, Any]:
-        # 功能：运行时动态工具发现——仅检索 MCP（INTEGRATION）工具
+        # 功能：运行时工具发现——默认检索内部工具 + MCP 外部工具；scope=mcp 仅外部
         from bandi.tools.tool_search import _keyword_search
 
         enabled = self.list_tools()
-        tools = [t for t in enabled if t.category == ToolCategory.INTEGRATION]
+        integration = [t for t in enabled if t.category == ToolCategory.INTEGRATION]
+        tools = integration if scope == "mcp" else enabled
+        total_mcp = len(integration)
+        total_internal = len(enabled) - total_mcp
         total_deferred = len(tools)
         if category is not None:
             tools = [t for t in tools if t.category.value == category]
@@ -397,6 +403,8 @@ class ToolRegistry:
         return {
             "matches": matches,
             "query": query,
-            "total_mcp_tools": total_deferred,
+            "total_mcp_tools": total_mcp,
             "total_deferred_tools": total_deferred,
+            "total_internal_tools": total_internal,
+            "total_tools": len(enabled),
         }

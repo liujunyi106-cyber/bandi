@@ -24,7 +24,8 @@ class QueuedChatInput:
 class ChatTurnController:
     """消息队列控制器。Agent 忙时入队 → 当前任务完成 → 自动消费下一个。
 
-    参照 参考实现 `opc/cli/app.py` ChatTurnController L2728-2943。"""
+    参照 OpenOPC `opc/cli/app.py` ChatTurnController L2728-2943。
+    """
 
     def __init__(self) -> None:
         self._queue: deque[QueuedChatInput] = deque()

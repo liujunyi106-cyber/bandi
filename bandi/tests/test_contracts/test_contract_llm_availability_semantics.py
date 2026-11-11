@@ -1,18 +1,19 @@
-"""功能：LLM 可用性失败语义 + 旁路质量检查时间预算契约。
+"""功能：LLM 可用性失败语义 + 旁路质量检查时间预算契约（2026-10-09 真机暴露）。
 
-背景：
+背景（真机取证）：
 - **无可用候选**（模型名不在目录 / 无 base_url / 候选全失败）此前按 RECOVERABLE 处理
- ⇒ 重试整个回合直到阈值（10 次）⇒ `ESCALATED` + **空回复**，用户既拿不到原因也白等
- （实测 `run_agent_turn` 无链路径：provider calls=0，terminal=ESCALATED，reply=''）。
+  ⇒ 重试整个回合直到阈值（10 次）⇒ `ESCALATED` + **空回复**，用户既拿不到原因也白等
+  （实测 `run_agent_turn` 无链路径：provider calls=0，terminal=ESCALATED，reply=''）。
 - **旁路质量检查**（验证器/裁判/幻觉校验/门禁）最坏耗时 = 上游超时 × 重试轮数
- （agna 抖动实测 60s × 3 ≈ 180s），主回复早已流完却把回合拖到 3 分钟以上。
+  （agna 抖动实测 60s × 3 ≈ 180s），主回复早已流完却把回合拖到 3 分钟以上。
 
 钉行为不钉实现：
 1. `LLMUnavailableError` 是 `LLMError` 子类（既有 `except LLMError` 全兼容）
 2. 无可用候选 → `RecoveryManager` 判 FATAL → TERMINATE（立即 MODEL_ERROR，不重试）
 3. 目录解析失败抛的就是 `LLMUnavailableError`
 4. `accounted_complete(budget_sec=…)` 给调用设**总预算**（含 provider 内部重试），超时抛 TimeoutError
-5. 质量检查在预算内降级返回（不把回合拖住）"""
+5. 质量检查在预算内降级返回（不把回合拖住）
+"""
 
 from __future__ import annotations
 
@@ -118,8 +119,8 @@ class TestUpstreamStatusSurvivesWrapping:
 
     @pytest.mark.asyncio
     async def test_wrapped_upstream_5xx_is_retryable(self) -> None:
-        # 语义回调（，对齐共识：opencode `server_error` 可重试；
-        # 参考实现 只把配置类错误排除在默认重试集外，理由是「每次都会同样失败」）：
+        # 语义回调（用户拍板，对齐参考源共识：opencode `server_error` 可重试；
+        # deepseek-harness 只把配置类错误排除在默认重试集外，理由是「每次都会同样失败」）：
         # 上游 5xx 属**暂时故障** → 可重试；只有配置类（链上无状态 / 4xx 非 429）才终止。
         from bandi.agent.recovery_manager import RecoveryAction, RecoveryManager
         from bandi.core.exceptions import llm_error_with_status

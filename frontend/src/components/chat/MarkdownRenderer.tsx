@@ -48,19 +48,32 @@ function normalizeTables(text: string): string {
   return out.join("\n");
 }
 
+/** 功能：剥离空的 ``` 围栏（模型常在正文前后多吐一对空围栏，marked 会渲染成空 pre 灰条）。 */
+function stripEmptyCodeFences(text: string): string {
+  return text.replace(/```[^\n]*\r?\n[ \t]*\r?\n?```[ \t]*(?:\r?\n|$)/g, "");
+}
+
+function stripEmptyRenderedBlocks(html: string): string {
+  return html
+    .replace(/<pre><code[^>]*>\s*<\/code><\/pre>/g, "")
+    .replace(/<p>\s*<\/p>/g, "")
+    .replace(/<hr\s*\/?>/g, "");
+}
+
 function renderMarkdown(text: string): string {
-  // breaks:false —— 单换行转 <br> 会把 GFM 表格行拆成段落导致表格渲染失败
-  // （表格会显示为原始管道文本）
-  const html = marked.parse(normalizeTables(text), {
+  // breaks:false 保留 单个换行 转 <br> 会让 GFM 表格行被拆散导致表格渲染失败
+  // 段落内换行显示为原始换行的文本。
+  const html = marked.parse(stripEmptyCodeFences(normalizeTables(text)), {
     async: false,
     gfm: true,
     breaks: false,
   }) as string;
-  // FORBID_ATTR：内联 style 不做白名单放行（position/z-index 可伪造遮挡层）
-  return DOMPurify.sanitize(html, {
+  // FORBID_ATTR：禁用 style，防止表格列宽、position/z-index 伪布局节点等
+  const clean = DOMPurify.sanitize(html, {
     FORBID_ATTR: ["style"],
     FORBID_TAGS: ["style", "svg", "math", "foreignObject", "form"],
   });
+  return stripEmptyRenderedBlocks(clean);
 }
 
 // 图表渲染（mermaid/SVG）抽至 DiagramCard（卡片自带「…」菜单与代码↔图切换）

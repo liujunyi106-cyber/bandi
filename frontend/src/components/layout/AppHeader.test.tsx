@@ -13,6 +13,13 @@ import { useChatStore } from "@/stores/chat-store";
 import { useKnowledgeStore } from "@/stores/knowledge-store";
 import { usePanelStore } from "@/stores/panel-store";
 
+vi.mock("@/hooks/use-employees", () => ({
+  useEmployees: () => ({
+    employees: [{ role_id: "dev", employee_id: "e1", name: "小美" }],
+    loaded: true,
+  }),
+}));
+
 vi.mock("@/services/company", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/services/company")>();
   return {
@@ -123,13 +130,6 @@ describe("AppHeader 单聊标题（团队名口径）", () => {
     });
   });
 
-  it("DM 路由标题取项目所属团队名（不再沿用群聊会话标题），且隐藏会话重命名", async () => {
-    renderHeader(true, vi.fn(), "/chat?view=dm&target=dev&project=p1");
-    expect(await screen.findByText("AI 设计团队")).toBeInTheDocument();
-    expect(screen.queryByText("项目总群聊")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("header-session-rename")).not.toBeInTheDocument();
-  });
-
   it("非 DM 会话仍显示会话标题与重命名入口（回归）", () => {
     renderHeader(true, vi.fn(), "/?project=p1");
     expect(screen.getByText("项目总群聊")).toBeInTheDocument();
@@ -176,4 +176,10 @@ describe("AppHeader 知识图谱路由（图谱页顶栏化）", () => {
     renderHeader(true, vi.fn(), "/knowledge");
     expect(useKnowledgeStore.getState().query).toBe("");
   });
+});
+it("DM 路由标题取员工名（不显示项目总群聊），且隐藏会话重命名", async () => {
+  renderHeader(true, vi.fn(), "/chat?view=dm&target=dev&project=p1");
+  expect(await screen.findByText("小美")).toBeInTheDocument();
+  expect(screen.queryByText("项目总群聊")).not.toBeInTheDocument();
+  expect(screen.queryByTestId("header-session-rename")).not.toBeInTheDocument();
 });

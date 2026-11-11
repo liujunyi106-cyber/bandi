@@ -1,4 +1,4 @@
-# 功能：date_calculator — 日期计算
+# 功能：date_calculator — 日期计算（基准 LeAgent tools/util/date_calculator.py 移植）
 from __future__ import annotations
 
 from datetime import datetime, timedelta

@@ -1,12 +1,13 @@
 r"""契约：可访问路径必须来自本机真实探测，且覆盖非 `Desktop` 命名的桌面。
 
-缺陷来源：系统提示词从未告知模型可访问路径，模型自行臆造
-`C:/Users/Administrator/Desktop`，5 次调用全败后仍把臆测
+缺陷来源（真机 L1 G14-02）：系统提示词从未告知模型可访问路径，模型自行臆造
+`C:/Users/Administrator/Desktop`（真实用户为 10293），5 次调用全败后仍把臆测
 当成访问失败的事实报给用户，并谎称「从对话上下文看到 L1评测文件夹」。
 
 硬编码 `C:/Users/<用户名>/Desktop` 也过不了审：非英语 Windows 桌面不叫
 `Desktop`，OneDrive 重定向后桌面在 `OneDrive\Desktop`。故走注册表
-`User Shell Folders\Desktop` 权威值。"""
+`User Shell Folders\Desktop` 权威值。
+"""
 
 from __future__ import annotations
 

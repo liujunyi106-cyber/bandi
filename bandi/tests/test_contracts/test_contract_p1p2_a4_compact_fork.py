@@ -70,3 +70,28 @@ async def test_compact_replaces_in_place_and_keeps_project_metadata(tmp_path: Pa
         "当前会话必须写入压缩边界摘要"
     )
     store.close()
+
+
+@pytest.mark.asyncio
+async def test_manual_compact_short_history_still_produces_checkpoint(tmp_path: Path) -> None:
+    store = SessionStore(str(tmp_path / "manual-short.db"))
+    sid = store.create_session(title="短会话")
+    for index, text in enumerate(["你好", "在吗", "今天适合喝咖啡吗", "继续", "记住了", "谢谢"]):
+        store.append_message(
+            sid,
+            Message(
+                role=MessageRole.USER if index % 2 == 0 else MessageRole.ASSISTANT,
+                content=text,
+            ),
+        )
+
+    result = await compact_session(store, sid, _StubProvider())
+
+    assert result.success, f"手动压缩短会话必须产出检查点：{result.reason}"
+    assert result.new_session_id == sid
+    assert result.after_messages < result.before_messages, "手动压缩必须真实折叠消息"
+    full = store.get_full_branch(sid)
+    assert any("compaction_card" in str(entry.get("metadata") or "") for entry in full), (
+        "短会话手动压缩必须写入压缩卡"
+    )
+    store.close()

@@ -1,5 +1,5 @@
 /**
- * 功能：chat-store 行为测试。
+ * 功能：chat-store 行为测试（Day136 keyed 增量归并 / 多会话隔离 / 草稿采纳 / 通知）。
  * 钉行为不钉实现：断言渲染产物（消息内容与状态），不依赖 React 渲染。
  */
 import { beforeEach, describe, expect, it } from "vitest";
@@ -66,6 +66,57 @@ describe("pure reducers", () => {
     expect(messages[1]).toMatchObject({ role: "assistant", content: "回答", done: true });
     // entryId：后端条目才带（fork/revert 等 entry 级操作的可用性依据）
     expect(messages.map((message) => message.entryId)).toEqual(["e1", "e4"]);
+  });
+
+  it("entriesToMessages 隐藏中断续跑内部注记（metadata 标记与旧数据前缀）", () => {
+    const messages = entriesToMessages("s1", [
+      {
+        id: "e1",
+        entry_type: "message",
+        turn_index: 1,
+        role: "system",
+        content: "【中断】上一次执行被用户终止。",
+        metadata: JSON.stringify({ internal_note: true, note_kind: "interrupt_resume" }),
+      },
+      {
+        id: "e2",
+        entry_type: "message",
+        turn_index: 2,
+        role: "system",
+        content: "【中断】旧数据没有 metadata。",
+      },
+      {
+        id: "e3",
+        entry_type: "message",
+        turn_index: 3,
+        role: "system",
+        content: "团队已解散。",
+      },
+      { id: "e4", entry_type: "message", turn_index: 4, role: "user", content: "继续" },
+    ]);
+    expect(messages.map((message) => message.id)).toEqual(["e3", "e4"]);
+  });
+
+  it("entriesToMessages 重放 process 条目时结算残留 running 节点", () => {
+    const messages = entriesToMessages("s1", [
+      { id: "e1", entry_type: "message", turn_index: 1, role: "assistant", content: "回答" },
+      {
+        id: "e2",
+        entry_type: "process",
+        turn_index: 1,
+        role: "assistant",
+        content: "",
+        metadata: JSON.stringify({
+          process: [
+            { id: "p1", kind: "thought", text: "想", status: "running", startedAt: 1 },
+            { id: "p2", kind: "tool", toolName: "web_search", status: "running" },
+          ],
+        }),
+      },
+    ]);
+    const process = messages[0].process ?? [];
+    expect(process).toHaveLength(2);
+    expect(process.every((node) => node.status !== "running")).toBe(true);
   });
 
   it("员工回写条目携带发送者身份（senderRole/senderName 快照；刷新后仍显示员工）", () => {
@@ -498,7 +549,7 @@ describe("chat store keyed stream merge", () => {
   });
 });
 
-describe("过程消息数据源（记忆行 / 任务台账）", () => {
+describe("Day137b-1 过程消息数据源（记忆行 / 任务台账）", () => {
   beforeEach(resetStore);
 
   it("applyMemoryWritten 追加记忆写入行（相邻同类型去重防重复帧）", () => {
@@ -554,7 +605,7 @@ describe("过程消息数据源（记忆行 / 任务台账）", () => {
   });
 });
 
-describe("插队批（员工执行过程 thread_progress）", () => {
+describe("Day137b-1 插队批（员工执行过程 thread_progress）", () => {
   beforeEach(resetStore);
 
   it("applyProgressNode：thinking 累积 + 工具 start→progress→result 归并", () => {
@@ -585,7 +636,7 @@ describe("插队批（员工执行过程 thread_progress）", () => {
   });
 
   it("破坏者：done/error 终态必须收尾所有 running 节点（快照回放不得残留「正在执行」）", () => {
-    // 回复已落地/失败 + 页面刷新后，过程块仍显示「正在执行」——
+    // 真机：回复已落地/失败 + 页面刷新后，过程块仍显示「正在执行」——
     // 根因是 done/error 落入 default 不收尾，回放的 running 节点永久悬浮。
     let nodes: ProcessNode[] = [];
     nodes = applyProgressNode(nodes, { type: "thinking_delta", data: { text: "想" } });
@@ -887,7 +938,7 @@ describe("会话回收（removeSessionLocal）", () => {
   });
 });
 
-describe("abortLocalStream", () => {
+describe("abortLocalStream（2026-09-24 真机反馈：停止后残留兜底）", () => {
   beforeEach(resetStore);
 
   it("有内容的挂起消息 → 定稿 done + 槽释放（保留已产出部分）", () => {

@@ -1,9 +1,10 @@
 """契约：request_user_input 对 JSON 字符串 questions 载荷的宽容解析。
 
-- 背景：（APPR-7）中模型把 questions 数组序列化成字符串提交，
- schema（type: array）校验失败 → 提问卡永不出现（交互通道被堵）。
+- 背景：真机（APPR-7）中模型把 questions 数组序列化成字符串提交，
+  schema（type: array）校验失败 → 提问卡永不出现（交互通道被堵）。
 - 修复语义：schema 接受 array|string；execute 对字符串 json.loads 解析；
- 非法 JSON → 退化为空 questions（走既有错误提示路径，不崩）；array 直传不变。"""
+  非法 JSON → 退化为空 questions（走既有错误提示路径，不崩）；array 直传不变。
+"""
 
 from __future__ import annotations
 

@@ -27,7 +27,7 @@ MCP_PROTOCOL_VERSION = "2024-11-05"
 
 _MCP_RISK_LEVELS = ("low", "medium", "high", "critical")
 
-# 功能：MCP 子进程环境清洗——对齐 参考实现 scrubbedParentEnv / Hermes
+# 功能：MCP 子进程环境清洗——对齐 deepseek-harness scrubbedParentEnv / Hermes
 # _SAFE_ENV_KEYS 的做法。远端 MCP server 是第三方进程，凭据不应随环境整包外泄。
 _CHILD_ENV_ALLOWLIST = frozenset(
     {
@@ -79,7 +79,7 @@ def scrub_child_env(
 
     ``inherit_all=False``（默认）时只放行运行必需键 + 非凭据形状的普通变量；
     凭据形状键（``*KEY*`` / ``*TOKEN*`` / ``*SECRET*`` …）被丢弃。``extra`` 中的键是
-    调用方的**刻意授权**，即使形似凭据也透传。
+    调用方的**刻意授权**，即使形似凭据也透传（对齐 deepseek-harness「键名即授权」）。
     ``inherit_all=True`` 时完整继承父进程环境（兼容依赖完整环境的 server）。
     """
     if inherit_all:
@@ -453,7 +453,7 @@ def _normalize_mcp_metadata(tool_def: dict[str, Any]) -> dict[str, Any]:
     if isinstance(ext.get("destructive"), bool):
         destructive = ext["destructive"]
 
-    concurrency_safe = read_only  # 只读工具隐式并发安全
+    concurrency_safe = read_only  # 只读工具隐式并发安全（cc-haha 语义）
     if isinstance(ext.get("concurrency_safe"), bool):
         concurrency_safe = ext["concurrency_safe"]
 

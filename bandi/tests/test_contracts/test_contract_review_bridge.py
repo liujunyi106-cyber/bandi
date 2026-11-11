@@ -132,6 +132,50 @@ class TestBuildReviewCard:
         assert card.metadata["review_target_description"] == "调研无线耳机市场"
 
 
+class TestReviewVerdictApplication:
+    """评审卡输出 → 目标卡裁决的端到端机械应用。"""
+
+    def test_approve_verdict_closes_target_and_review_card(self) -> None:
+        import asyncio
+
+        from bandi.company.company_mode import CompanyDispatcher, DispatcherConfig
+        from bandi.company.org_engine import OrgEngine
+        from bandi.company.recruiter import Recruiter
+        from bandi.company.seat_executor import EngineSeatExecutor, SeatResult
+
+        store = WorkItemStore(":memory:")
+        target = _child(store, role="worker")
+        review_card = build_review_card(target, "lead", store)
+        assert review_card is not None
+        review_card.phase = Phase.RUNNING
+        store.save(review_card)
+        org = OrgEngine()
+        org.register_role("worker", "Worker")
+        org.register_role("lead", "Lead")
+        recruiter = Recruiter()
+        recruiter.register_seat("worker")
+        recruiter.register_seat("lead")
+        dispatcher = CompanyDispatcher(
+            store=store,
+            recruiter=recruiter,
+            org_engine=org,
+            seat_executor=EngineSeatExecutor(),
+            config=DispatcherConfig(max_concurrent=3),
+        )
+        dispatcher._apply_review_bridge(
+            review_card,
+            SeatResult(
+                success=True,
+                output='{"review_verdict":"approve","summary":"满足验收"}',
+            ),
+        )
+        target_after = store.get(target.id)
+        assert target_after.metadata["review_verdict"] == "approve"
+        asyncio.run(dispatcher.tick())
+        assert store.get(target.id).phase == Phase.APPROVED
+        assert store.get(review_card.id).phase == Phase.APPROVED
+
+
 class TestParseFailureHintRender:
     def _work_item(self, *, hint: bool) -> dict:
         metadata = {

@@ -26,7 +26,7 @@ async def compact_session(store: Any, session_id: str, provider: Any) -> Session
     reason 语义：session not found / too few messages / no reduction。
     """
     from bandi.core.message import Message, MessageRole, message_from_entry, message_to_snapshot
-    from bandi.memory.compaction import SUMMARY_MESSAGE_PREFIX
+    from bandi.memory.compaction import SUMMARY_MESSAGE_PREFIX, MemoryCompactor
     from bandi.memory.compression_pipeline import CompressionPipeline, ProgressiveCompressor
 
     if store.get_session(session_id) is None:
@@ -52,12 +52,30 @@ async def compact_session(store: Any, session_id: str, provider: Any) -> Session
             prompt_messages,
             label="session_compact",
             session_id=session_id,
+            agent_id="session_compact",
         )
 
     compressed, success, _, stats = await pipeline.compress(
         messages, total_tokens, total_tokens or 1, 0.5, _accounted_complete
     )
+    forced = False
     if not success or stats.stage == "none" or len(compressed) >= len(messages):
+        # 手动 /compact 必须产出检查点：短会话低于渐进压缩的“值得压缩”门槛时，
+        # 强制走一次全量结构化摘要，而不是返回 no reduction 让用户无感。
+        compactor = MemoryCompactor(target_token_budget=max(64, total_tokens // 2))
+        compressed, success, _ = await compactor.compact(
+            messages,
+            _accounted_complete,
+            target_token_budget=max(64, total_tokens // 2),
+            keep_tail=False,
+            force=True,
+        )
+        forced = True
+        if success:
+            stats.stage = "manual"
+    if not success or stats.stage == "none":
+        return SessionCompactResult(success=False, reason="no reduction")
+    if not forced and len(compressed) >= len(messages):
         return SessionCompactResult(success=False, reason="no reduction")
 
     summary_text = next(

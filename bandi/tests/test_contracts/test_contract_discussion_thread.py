@@ -180,7 +180,8 @@ def test_on_message_callback_fires_for_thread_events(tmp_path: Path) -> None:
     assert msg_evt["mentions"] == ["tech"]
     assert msg_evt["message_id"] == msg.message_id
     assert msg_evt.get("participants") == ["product", "tech"], (
-        "线程消息帧必须携带参与方——前端单聊视图按参与方集合精确过滤，防其他线程消息串入"
+        "线程消息帧必须携带参与方——前端单聊视图按参与方集合精确过滤，"
+        "防其他线程消息串入（Day137 修复）"
     )
 
 

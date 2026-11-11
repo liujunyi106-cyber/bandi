@@ -1,5 +1,5 @@
 /**
- * 功能：知识图谱画布。
+ * 功能：知识图谱画布（@base docs/前端设计规划.md §6「知识 · 图谱」+ §8 交互规范）。
  * 固定 viewBox + `<g translate/scale>`；光标锚定滚轮缩放、指针捕获拖拽平移、
  * 命中圆 + 键盘可达、类型图例。缩放平移只走滚轮与拖拽（无 +/- 按钮）。
  * 坐标由 `@/lib/graph-layout` 预计算 → 静态渲染，无 rAF 循环（天然满足 reduced-motion）。
@@ -167,7 +167,7 @@ export function GraphCanvas({
     };
   }, [snapshot]);
 
-  // finesse 强制：动效需有 reduced-motion 终态。此处直接在松手时一次性落定，不跑逐帧动画。
+  // finesse §7 强制：动效需有 reduced-motion 终态。此处直接在松手时一次性落定，不跑逐帧动画。
   useEffect(() => {
     // 老环境/精简 WebView 可能没有 matchMedia：退化为「不检测」，绝不让画布挂掉
     if (typeof window.matchMedia !== "function") return;

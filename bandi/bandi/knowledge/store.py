@@ -41,7 +41,7 @@ def _new_id(prefix: str) -> str:
 
 
 def _split_sections(text: str) -> list[tuple[str, str]]:
-    """功能：按 Markdown 标题切节——
+    """功能：按 Markdown 标题切节（StaffDeck _build_section_nodes 规则版同构）——
     返回 (标题, 节正文) 列表；标题前导内容作为无标题首节保留不丢。"""
     sections: list[tuple[str, str]] = []
     current_title = ""
@@ -73,7 +73,7 @@ def _hard_split(text: str, max_chars: int) -> list[str]:
 
 
 def _chunk_text(text: str, max_chars: int = _DEFAULT_MAX_CHUNK_CHARS) -> list[str]:
-    """功能：段块装箱分块——段块顺序拼接
+    """功能：段块装箱分块（StaffDeck _chunk_text 同构）——段块顺序拼接
     超长段块硬切；单块不超 max_chars（除非单段本身超长则独占硬切）。"""
     chunks: list[str] = []
     buffer = ""

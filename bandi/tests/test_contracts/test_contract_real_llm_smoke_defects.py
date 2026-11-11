@@ -16,7 +16,7 @@ class TestAssistantSinglePersist:
 
     def _store(self, entries: list[dict[str, Any]]) -> Any:
         return SimpleNamespace(
-            # 真实 store 的 get_branch 支持 full 关键字，替身同签名
+            # 真实 store 的 get_branch 支持 full 关键字（P0-1），替身同签名
             get_branch=lambda _sid, **_kw: list(entries),
             append_message=lambda _sid, _msg: None,
         )

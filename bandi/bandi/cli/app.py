@@ -285,7 +285,7 @@ def validate_serve_host(host: str) -> None:
         )
 
 
-# ==================== Sidecar 动态端口====================
+# ==================== Sidecar 动态端口（Day147 C-2 / ADR-42）====================
 # 功能：桌面壳（Electron）spawn 本进程为 sidecar 时用 `--port 0` 动态取端口，
 # 实际端口写回两处供壳读取：
 #   ① stdout 结构化行 `BANDI_SIDECAR_READY port=<N> pid=<P>`（最快通道）；
@@ -519,7 +519,7 @@ def session_fork(
     session_id: str = typer.Argument(help="会话 ID"),
     entry: str = typer.Option("", "--entry", "-e", help="恢复点 entry_id（后缀也可，自动全匹配）"),
 ) -> None:
-    """Fork：复制恢复点前缀到独立新会话并记录溯源。"""
+    """Day127 Fork：复制恢复点前缀到独立新会话并记录溯源。"""
     from bandi.session.manager import SessionManager
 
     store = _open_session_store()
@@ -562,7 +562,7 @@ def session_revert(
         help="操作: stage / commit / clear（默认 commit）",
     ),
 ) -> None:
-    """Revert 三阶段：stage 暂存恢复点 / commit 永久截断 / clear 撤销。"""
+    """Day127 Revert 三阶段：stage 暂存恢复点 / commit 永久截断 / clear 撤销。"""
     from bandi.session.manager import SessionManager
 
     store = _open_session_store()

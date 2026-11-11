@@ -81,6 +81,7 @@ async def complete_skill_text(
             messages,
             label=label,
             session_id=session_id or label,
+            agent_id=label,
             max_tokens=max_tokens,
         )
     except BudgetExhaustedError as exc:

@@ -1,5 +1,5 @@
 /**
- * 功能：Electron 主进程壳。
+ * 功能：Electron 主进程壳（@base docs/ADR.md ADR-42 / docs/前端设计规划.md §12）。
  * dev：加载 vite dev server（VITE_DEV_SERVER_URL），三进程并行（vite + uvicorn + 本窗口）。
  * 生产：spawn FastAPI sidecar → /ready → loadURL（SPA + API + WS 单端口）；失败降级 loadFile。
  * 桌面体验：托盘、窗口状态记忆、开机自启、通知权限。
@@ -163,7 +163,7 @@ function createWindow(): void {
     return;
   }
 
-  // 生产模式：spawn sidecar → /ready → loadURL（SPA+API+WS 单端口）。
+  // 生产模式（ADR-42）：spawn sidecar → /ready → loadURL（SPA+API+WS 单端口）。
   // sidecar 起不来/超时/崩溃耗尽 → 降级 loadFile（静态壳，不白屏）。
   void sidecar.start().then((handle) => {
     if (handle) {

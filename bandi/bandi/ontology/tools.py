@@ -1,15 +1,16 @@
-"""本体四工具：define / assert / query / retract。
+"""本体四工具：define / assert / query / retract（复刻 dsh-ontology `src/tools.ts`，727 行）。
 
 面向模型的四个工具，每个返回规范 JSON 值（便于程序化消费），人读解释只放在
-`render` 里。
+`render()` 里。
 
 关键机制：
 - **define 用反复遍解析**：同一次调用里的定义按「反复重试直到无进展」应用，故子类
- 可先于父类声明、关系可先于其逆；只有永远无法解析的才被拒。
+  可先于父类声明、关系可先于其逆；只有永远无法解析的才被拒。
 - **assert 先建实体后写事实**：一次调用可同时引入个体及其关系。
 - **query 一个工具六个模式**：让模型可见的工具面保持小，而图的每种访问方式
- （查找/遍历/连通性/模式检视）都可达。
-- **retract 撤回词表被依赖时拒绝**，并点名依赖者。"""
+  （查找/遍历/连通性/模式检视）都可达。
+- **retract 撤回词表被依赖时拒绝**，并点名依赖者。
+"""
 
 from __future__ import annotations
 
@@ -32,7 +33,7 @@ from bandi.ontology.engine import (
 from bandi.ontology.triple_store import OntologyStore
 from bandi.ontology.types import DerivedFact, Violation
 
-# 六模式
+# 六模式（对照表 §4.2-3）
 QUERY_MODES = ("schema", "stats", "entities", "facts", "neighbors", "path")
 # 邻域/路径的深度钳制区间与默认值
 MIN_DEPTH = 1
@@ -113,7 +114,7 @@ def _resolve_depth(requested: Any) -> int:
     )
 
 
-# 工具入参用驼峰，引擎与存储用 snake_case——在此归一。
+# 工具入参用驼峰（对齐参考源的 JSON 形态），引擎与存储用 snake_case——在此归一。
 _CAMEL_TO_SNAKE = {
     "subClassOf": "sub_class_of",
     "rangeKind": "range_kind",

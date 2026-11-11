@@ -1,6 +1,6 @@
 """契约：reasoning-only 空正文必须自动重试一次，不得直接判 MODEL_ERROR。
 
-L1：74 条里 5 条终态 MODEL_ERROR，错误文案是
+真机 L1：74 条里 5 条终态 MODEL_ERROR，错误文案是
 「模型仅返回思维链、正文为空（reasoning 343 字符；答案疑似被上游放进
 reasoning 通道——可直接重试，或在输入框切换思考档位后重发）」。
 
@@ -10,7 +10,8 @@ reasoning 通道——可直接重试，或在输入框切换思考档位后重�
 本契约钉三条：
 1. 命中即换模型重试一次；
 2. **只试一次**——连续两次说明 provider 侧系统性行为，再试只是烧钱；
-3. **绝不把 reasoning 提升为正文**（思维链不是答案，长度与语义都不可控）。"""
+3. **绝不把 reasoning 提升为正文**（思维链不是答案，长度与语义都不可控）。
+"""
 
 from __future__ import annotations
 
@@ -86,7 +87,7 @@ class TestRetryResolvesCandidate:
     """候选链已删除（不搞候选——配置什么模型用什么）。
 
     reasoning-only 重试 = **同模型保底重发一次**；registry 候选解析通道整删
-    （换模型重试曾依赖坏凭证候选，是"空输出"故障的主要放大器）。
+    （换模型重试曾依赖坏凭证候选（agnes/mimo），是"空输出"故障的主要放大器）。
     """
 
     @pytest.mark.asyncio
@@ -184,7 +185,7 @@ class TestRetryResolvesCandidate:
 class TestChainSkipsCurrentModel:
     """候选链已删除：链配置被忽略——重试=同模型重发。
 
-    历史教训：链 ["mimo-v2.6-pro", ...] 全是坏凭证候选，
+    历史教训：链 ["agnes-2.5-flash", ...] 全是坏凭证候选，
     换模型重试只会连败并掩盖主模型错因——候选通道整删后不存在"跳过当前"语义。
     """
 
@@ -277,8 +278,9 @@ class TestChainSkipsCurrentModel:
 class TestGateResetsAcrossTurns:
     """闸门是轮级：上一轮的重试标记不得让下一轮 reasoning-only 无重试可用。
 
-    实证（2026-10-15）：turn 2 重试后标记残留（ctx.meta 无清理点），
-    turn 3 的 reasoning-only 直接跳过重试落到 MODEL_ERROR（事件无 retry 记录）。"""
+    真机实证（2026-10-15）：turn 2 重试后标记残留（ctx.meta 无清理点），
+    turn 3 的 reasoning-only 直接跳过重试落到 MODEL_ERROR（事件无 retry 记录）。
+    """
 
     @pytest.mark.asyncio
     async def test_on_thinking_entry_clears_gate(self) -> None:

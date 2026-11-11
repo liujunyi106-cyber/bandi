@@ -476,6 +476,7 @@ class SessionStore:
                 "sender_name",
                 "process_events",
                 "note_kind",
+                "internal_note",
                 "dedupe_key",
                 "compaction_card",
                 # 功能：thinking 模式续轮需要（会话恢复后带工具调用消息仍可回传）
@@ -609,7 +610,8 @@ class SessionStore:
     def append_process_entry(
         self, session_id: str, turn_index: int, nodes: list[dict[str, Any]]
     ) -> str:
-        """-3c：轮末过程节点落一条。非 message 条目不进对话链
+        """-3c：轮末过程节点落一条（entry_type="process"；content 空，节点在
+        metadata.process——与前端 ProcessNode 同构）。非 message 条目不进对话链
         （_get_latest_leaf 只取 message），fork/恢复语义不受影响。"""
         entry_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
@@ -844,10 +846,10 @@ class SessionStore:
         return self.get_branch(session_id, full=True)
 
     def resolved_branch(self, session_id: str, at: str | None = None) -> list[dict]:
-        """无状态预览：返回会话分支按恢复点 at 截断（含自身）的视图。
+        """Day127 无状态预览：返回会话分支按恢复点 at 截断（含自身）的视图。
 
         起 at=None 返回**全量历史**（审计/时间旅行视图），活动切片走
-        get_branch。at 指向不存在的 entry 显式报错，不静默回退。
+        get_branch()。at 指向不存在的 entry 显式报错，不静默回退。
         边界 index 语义与 fork/truncate_branch 共用（DRY）。不写状态。"""
         entries = self.get_full_branch(session_id)
         if not at:
@@ -898,7 +900,7 @@ class SessionStore:
         return id_map
 
     def truncate_branch(self, session_id: str, entry_id: str) -> int:
-        """截断——删除恢复点 entry 之后的所有条目并归档，保留恢复点自身。"""
+        """Day127：截断——删除恢复点 entry 之后的所有条目并归档，保留恢复点自身。"""
         removed, _operation_id = self.truncate_branch_archived(session_id, entry_id)
         return removed
 

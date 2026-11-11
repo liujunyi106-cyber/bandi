@@ -280,7 +280,8 @@ class SkillBranching:
         card: SkillCard,
         change_summary: str,
     ) -> list[SkillBranchVersion]:
-        """功能：追加版本快照——同版本已存在则原样返回。"""
+        """功能：追加版本快照——同版本已存在则原样返回（幂等，对齐参考源
+        `_ensure_branch_version`：同一版本不重复落快照）。"""
         if any(item.version == version for item in branch.versions):
             return list(branch.versions)
         if len(branch.versions) >= MAX_BRANCH_SNAPSHOTS:

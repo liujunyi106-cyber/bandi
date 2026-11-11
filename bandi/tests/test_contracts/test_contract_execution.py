@@ -42,6 +42,28 @@ def _tool_calling_provider() -> MockProvider:
     return provider
 
 
+def test_verifier_side_cost_carries_agent_id(monkeypatch: Any) -> None:
+    """旁路 verifier 计费必须带当前 agent_id，不能落 (unassigned)。"""
+    from bandi.agent.verifier import Verifier, VerifierPacket
+
+    captured: dict[str, Any] = {}
+
+    async def _fake_complete(*_args: Any, **kwargs: Any) -> LLMResponse:
+        captured.update(kwargs)
+        return LLMResponse(content='{"action": "pass", "reason": "ok"}')
+
+    monkeypatch.setattr("bandi.llm.accounted.accounted_complete", _fake_complete)
+    packet = VerifierPacket(
+        task_description="t",
+        output="done",
+        session_id="s-1",
+        agent_id="dev@s-1",
+    )
+    asyncio.run(Verifier(provider=object()).evaluate(packet))  # type: ignore[arg-type]
+    assert captured.get("agent_id") == "dev@s-1"
+    assert captured.get("session_id") == "s-1"
+
+
 def test_contract_run_agent_records_cost(tmp_path: Any) -> None:
     """契约 1：run_agent（公司链路）LLM 调用后共享成本台账必须记录费用
     （防 run_agent 裸 EventBus 不订阅 cost_tracker 导致记账断裂）。"""

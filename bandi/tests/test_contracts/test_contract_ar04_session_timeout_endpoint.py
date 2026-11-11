@@ -29,7 +29,7 @@ def _fake_turn_result() -> Any:
 
 
 def test_chat_endpoint_forwards_session_timeout(home: Any) -> None:
-    """契约：/api/agent/chat 必须把 body.session_timeout_sec
+    """契约（AR-04 端点面）：/api/agent/chat 必须把 body.session_timeout_sec
     透传 run_agent_turn（此前仅内核透传、端点面缺失）。"""
     from fastapi.testclient import TestClient
 
@@ -48,9 +48,10 @@ def test_chat_endpoint_forwards_session_timeout(home: Any) -> None:
 
 
 def test_chat_endpoint_timeout_defaults_enabled(home: Any) -> None:
-    """契约：未传 session_timeout_sec 时透传正数默认（看门狗启用）。
+    """契约（AR-04 默认启用）：未传 session_timeout_sec 时透传正数默认（看门狗启用）。
 
-    缺省关闭曾导致回合卡在等待态时永不产出终帧、会话锁不释放；显式传 0 仍可关闭。"""
+    缺省关闭曾导致回合卡在等待态时永不产出终帧、会话锁不释放；显式传 0 仍可关闭。
+    """
     from fastapi.testclient import TestClient
 
     from bandi.api.app import _DEFAULT_SESSION_TIMEOUT_SEC, app
@@ -69,7 +70,7 @@ def test_chat_endpoint_timeout_defaults_enabled(home: Any) -> None:
 
 
 def test_stream_endpoint_forwards_session_timeout(home: Any) -> None:
-    """契约：/api/agent/stream 同样透传 session_timeout_sec。"""
+    """契约（AR-04 SSE）：/api/agent/stream 同样透传 session_timeout_sec。"""
     from fastapi.testclient import TestClient
 
     from bandi.api.app import app
@@ -88,7 +89,7 @@ def test_stream_endpoint_forwards_session_timeout(home: Any) -> None:
 
 
 def test_ws_endpoint_forwards_session_timeout(home: Any) -> None:
-    """契约：WS /api/agent/stream 同样透传 session_timeout_sec。"""
+    """契约（AR-04 WS）：WS /api/agent/stream 同样透传 session_timeout_sec。"""
     from fastapi.testclient import TestClient
 
     from bandi.api.app import app

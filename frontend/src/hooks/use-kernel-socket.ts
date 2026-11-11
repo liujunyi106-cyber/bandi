@@ -1,5 +1,5 @@
 /**
- * 功能：把共享 WS 单例接到单页壳生命周期。
+ * 功能：把共享 WS 单例接到单页壳生命周期（@base docs/前端设计规划.md §8）。
  * 整个 App 只在壳层连一次；状态镜像进 ui store 供顶栏指示。
  */
 import { useEffect } from "react";

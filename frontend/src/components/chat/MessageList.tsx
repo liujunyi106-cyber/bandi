@@ -1,5 +1,5 @@
 /**
- * 功能：消息列表。
+ * 功能：消息列表（@base docs/前端设计规划.md §8 / Day136 任务：滚动锚定）。
  * 锚定策略：用户位于底部时新消息/流式增量自动滚底；用户上滚阅读时不打扰（stick 关闭）。
  * - 切换会话（sessionKey 变化）→ 永远先定位最新（底部/正在执行消息），不从顶部开始；
  * - 容器/内容尺寸变化（决策卡出现消失、窗口缩放）→ 贴底保持，防消息面板跳动；
@@ -57,7 +57,7 @@ interface MessageListProps {
   children?: React.ReactNode;
 }
 
-/** 交付物 chip 的最小字段面。 */
+/** 交付物 chip 的最小字段面（会话/项目两源同构）。 */
 export interface SessionArtifactLike {
   id: string;
   path: string;

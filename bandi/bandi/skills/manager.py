@@ -5,7 +5,7 @@ from bandi.skills.loader import SkillLoader
 from bandi.skills.models import SkillDef
 from bandi.skills.registry import SkillRegistry
 
-# 功能：技能索引预算
+# 功能：技能索引预算（对齐 cc-haha 的 1% 上下文 + 单项 250 字硬 cap + 三级降级）
 _CATALOG_DESC_CAP = 250
 _CATALOG_BUDGET_CHARS = 6000
 _BOUND_BADGE = "（岗位推荐）"

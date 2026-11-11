@@ -250,11 +250,12 @@ def _handle_user_rework(
     """功能：用户对话修正「某次已派发任务」——不新建卡，受控回转原卡并
     把修正指令写进其元数据（执行侧 brief 注入），线程消息照落以保持对话连续。
 
-    对标 参考实现 `_prepare_company_followup_target`：修正指令落 `latest_user_directive`
+    对标 OpenOPC `_prepare_company_followup_target`：修正指令落 `latest_user_directive`
     等价键（我们写 `user_rework_directive` + 复用 `rework_feedback` 注入通道）。
 
     仅支持已 的卡（`reopen_approved_work_item_for_rework` fail-closed 抛
-    `InvalidPhaseTransitionError`）；执行中/待执行的卡由调用方按错误帧回给用户。"""
+    `InvalidPhaseTransitionError`）；执行中/待执行的卡由调用方按错误帧回给用户。
+    """
     from bandi.company.user_rework import prepare_user_rework_target
 
     item = store.get(target_work_item_id)

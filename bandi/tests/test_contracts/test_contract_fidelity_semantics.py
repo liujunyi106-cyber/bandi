@@ -2,11 +2,12 @@
 调用/数值）必须被摘要保留；遗漏超阈值触发「重试一次 + degradation 告警」；产物仍
 接受（不阻断主链）；保真不足不触碰压缩失败计数（独立维度）。
 
- 1. MemoryCompactor.compact —— compaction.py（单块全量摘要）
- 2. ProgressiveCompressor.compress 分块路径 —— compression_pipeline.py
-
- 3. ProgressiveCompressor.compress final merge —— compression_pipeline.py
-契约钉行为不钉实现：只断言「最终摘要内容 + 请求/重试次数 + 告警日志 + 统计」。"""
+  1. MemoryCompactor.compact —— compaction.py（单块全量摘要）
+  2. ProgressiveCompressor.compress 分块路径 —— compression_pipeline.py
+     （内部复用 MemoryCompactor，故单块下与 compact 行为同构）
+  3. ProgressiveCompressor.compress final merge —— compression_pipeline.py
+契约钉行为不钉实现：只断言「最终摘要内容 + 请求/重试次数 + 告警日志 + 统计」。
+"""
 
 from __future__ import annotations
 

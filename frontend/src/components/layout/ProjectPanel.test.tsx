@@ -156,7 +156,7 @@ describe("ProjectPanel", () => {
     expect(screen.queryByTestId("project-panel")).not.toBeInTheDocument();
   });
 
-  it("助理条目不再常驻：未选择项目 / 无秘书会话时不显示", async () => {
+  it("助理条目不再常驻：未选择项目 / 无秘书会话时不显示（2026-10-19 拍板）", async () => {
     useUiStore.setState({ assistantEntryProjects: [] });
     renderPanel();
     await screen.findByTestId("project-panel");
@@ -279,7 +279,7 @@ describe("ProjectPanel", () => {
     expect(screen.queryByText("员工会话")).not.toBeInTheDocument();
   });
 
-  it("秘书行「＋新建会话」平时隐形，悬浮该行才浮现", async () => {
+  it("秘书行「＋新建会话」平时隐形，悬浮该行才浮现（2026-10-19 拍板）", async () => {
     useChatStore.setState({ sessions: panelSessions() });
     renderPanel();
     const button = await screen.findByTestId("panel-secretary-new-session");
@@ -417,7 +417,7 @@ describe("ProjectPanel", () => {
     expect(screen.getAllByTestId("panel-session-more").length).toBe(3);
   });
 
-  it("破坏者：已挂团队但无可解析成员/员工会话 → 不得出现提醒字段", async () => {
+  it("破坏者：已挂团队但无可解析成员/员工会话 → 不得出现提醒字段（2026-10-01 拍板）", async () => {
     // 判据从「有可解析成员」改为「**是否配置了团队**」：团队已挂、员工全停用/无会话时
     // 旧实现会误报「本项目还没有团队与员工」，用户明确此场景不该提示。
     vi.mocked(companyApi.projects).mockResolvedValue({
@@ -478,7 +478,7 @@ describe("ProjectPanel", () => {
     expect(await screen.findByTestId("panel-session-delete-confirm")).toBeInTheDocument();
   });
 
-  it("群聊删除：后端 404（会话本已不存在）时本地照常清理，条目不残留", async () => {
+  it("群聊删除：后端 404（会话本已不存在）时本地照常清理，条目不残留（2026-10-16 真机）", async () => {
     const user = userEvent.setup();
     vi.mocked(sessionsApi.remove).mockRejectedValue(new ApiError(404, "SESSION_NOT_FOUND"));
     try {
@@ -783,7 +783,7 @@ describe("ProjectPanel", () => {
     expect(await screen.findByTestId("panel-select-team")).not.toHaveAttribute("data-disabled");
   });
 
-  // 2026-10-09 面板内秘书/团队会话与员工单聊都要有任务状态；「更多」改悬浮显示
+  // 2026-10-09 用户拍板：面板内秘书/团队会话与员工单聊都要有任务状态；「更多」改悬浮显示
   describe("头像行任务状态与悬浮更多", () => {
     it("秘书会话组有在跑 → 秘书行显示执行中转圈", async () => {
       useChatStore.setState({

@@ -1,7 +1,7 @@
 """
 契约族：群聊 @ 路由语义（Day 129）——已注册角色匹配 + 中文/大小写归一 + clean_message + 广播回退。
 
-背景：已实现 @角色 → QUEUED work_item
+背景（技术债 / 架构 §38.6 / ADR-24 决策一）：已实现 @角色 → QUEUED work_item
 但 `_MENTION_RE` 大小写敏感且不匹配中文角色名（`@Worker` 提取 "Worker" ≠ 注册 "worker"
 → 创建 assignee 悬空卡）。本契约钉 Day 129 强化后的行为族：
 
@@ -16,7 +16,8 @@
 - `@未注册角色` → 不建卡（broadcast 回退，消息仍落盘广播）；
 - `@all` / `@所有人` 已废弃 → 不建卡、不落盘；无 @ 的消息走默认首位/未命中回退；
 - clean_message 去掉 @ 语法纯文本，落盘 work_item 用 clean 文本；
-- 广播回调 payload 带 route 标注（user_to_agent / broadcast），供 面板消费。"""
+- 广播回调 payload 带 route 标注（user_to_agent / broadcast），供 面板消费。
+"""
 
 from __future__ import annotations
 
@@ -218,7 +219,7 @@ def test_contract_resolve_mentions_registered_filter() -> None:
 
     result4 = resolve_mentions("普通消息无提及", registered)
     assert result4.target_agents == []
-    assert result4.is_broadcast is True, "无 @ 命中 → broadcast 回退"
+    assert result4.is_broadcast is True, "无 @ 命中 → broadcast 回退（对齐架构 §38.6）"
 
 
 def test_contract_mention_keeps_registered_role_case(tmp_path) -> None:

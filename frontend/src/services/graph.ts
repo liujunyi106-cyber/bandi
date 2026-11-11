@@ -1,5 +1,5 @@
 /**
- * 功能：知识图谱数据层。
+ * 功能：知识图谱数据层（@base docs/前端设计规划.md §6「知识 · 图谱」）。
  * 后端契约：`GET /api/ontology/graph?includeInferred=&limit=` → `build_graph_payload()`
  * 快照最小字段 `{entities:[{id,type,name}], edges:[{source,target,type}]}`（无坐标，布局由前端算）。
  * 实体类型 = 用户声明的类名（动态无上限）——颜色/标签由 graph-visual 按类名散列与回退。
@@ -160,7 +160,7 @@ export interface FilterResult {
 
 /**
  * 功能：按名称子串过滤快照（大小写不敏感、trim 后空查询原样返回）。
- * 语义命中实体**保留其一跳邻域**——只显示命中点会让图碎成孤岛，无法继续探索；
+ * 语义拍板：命中实体**保留其一跳邻域**——只显示命中点会让图碎成孤岛，无法继续探索；
  * 边仅保留两端都在保留集内的。确定性：实体/边保持原快照相对顺序。
  */
 export function filterSnapshot(snapshot: GraphSnapshot, rawQuery: string): FilterResult {

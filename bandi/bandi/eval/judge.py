@@ -154,6 +154,7 @@ class BenchmarkRunner:
                 ],
                 label="judge",
                 session_id="judge",
+                agent_id="judge",
                 budget_sec=QUALITY_CHECK_BUDGET_SEC,
                 temperature=0.0,
             )

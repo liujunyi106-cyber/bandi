@@ -1,5 +1,5 @@
 /**
- * 功能：模型字段契约——两态字段文案、候选按 provider 分组
+ * 功能：模型字段契约（Day137b-2b ）——两态字段文案、候选按 provider 分组
  * 底部配置入口两态均保留（破坏者：只在一态出现 = 违规）、箭头旋转态、选择回传。
  */
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -39,7 +39,7 @@ function openMenu(jsx: React.ReactElement) {
   return screen.getByTestId("composer-model-menu");
 }
 
-describe("ModelField", () => {
+describe("ModelField（Day137b-2b）", () => {
   it("无档案无模型 → 字段显示「配置模型」；有模型 → 显示模型名", () => {
     const { rerender } = render(
       <ModelField
@@ -118,15 +118,15 @@ describe("ModelField", () => {
         options={OPTIONS}
         activeProfile={null}
         profiles={[PROFILE]}
-        employeeModel="mimo-v2.6-pro"
+        employeeModel="agnes-2.5-flash"
         onActivate={onActivate}
         onOpenConfig={vi.fn()}
       />,
     );
     // 字段显示员工实际使用的模型（不是全局档案模型）
-    expect(screen.getByTestId("composer-model")).toHaveTextContent("mimo-v2.6-pro");
+    expect(screen.getByTestId("composer-model")).toHaveTextContent("agnes-2.5-flash");
     fireEvent.click(screen.getByTestId("composer-model"));
-    expect(screen.getByTestId("model-option-current")).toHaveTextContent("mimo-v2.6-pro");
+    expect(screen.getByTestId("model-option-current")).toHaveTextContent("agnes-2.5-flash");
     // 锁定：无候选列表（全局切换对员工无效）
     expect(screen.queryByTestId("model-option-list")).not.toBeInTheDocument();
     expect(screen.getByTestId("composer-model-menu")).toHaveTextContent("独立模型");
@@ -259,7 +259,7 @@ describe("ModelField", () => {
     expect(onOpenConfig).toHaveBeenCalledTimes(2);
   });
 
-  it("当前生效行（档案态）点击 → onOpenConfig(edit)", () => {
+  it("当前生效行（档案态）点击 → onOpenConfig(edit)（编辑该档案，非新建——第八轮拍板）", () => {
     const onOpenConfig = vi.fn();
     openMenu(
       <ModelField
@@ -344,7 +344,7 @@ describe("ModelField", () => {
     expect(screen.queryByTestId("session-model-input")).not.toBeInTheDocument();
   });
 
-  it("模型区无分割线，仅底部「配置模型」入口有上边框", () => {
+  it("模型区无分割线，仅底部「配置模型」入口有上边框（2026-09-29 用户拍板）", () => {
     openMenu(
       <ModelField
         model="deepseek-v4-pro"

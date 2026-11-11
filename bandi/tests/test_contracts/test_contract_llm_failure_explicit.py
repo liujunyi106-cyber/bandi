@@ -27,7 +27,7 @@ from bandi.llm.streaming import StreamEvent, StreamEventType
 
 class TestP1HttpDeterministicFailure:
     def test_429_classified_recoverable(self) -> None:
-        # 语义回调：429 限流属**暂时故障** → 可重试（带退避），
+        # 语义回调（用户拍板，对齐参考源）：429 限流属**暂时故障** → 可重试（带退避），
         # 只有 4xx 非 429（配置/请求类）才是确定性失败。
         rm = RecoveryManager()
         err = httpx.HTTPStatusError(

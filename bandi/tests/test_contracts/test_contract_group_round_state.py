@@ -58,6 +58,7 @@ def test_render_round_context_includes_order_previous_and_pass_rule() -> None:
         role_names={"lead": "负责人", "worker": "执行"},
     )
     assert "第 2 位" in text
+    assert "原始目标：做一版方案" in text
     assert "负责人" in text
     assert "做一版方案" in text
     assert "我先看需求" in text

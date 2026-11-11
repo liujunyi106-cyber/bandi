@@ -148,7 +148,7 @@ describe("SidebarContextList", () => {
     expect(screen.getByText("普通任务一")).toBeInTheDocument();
   });
 
-  it("点项目行默认打开该项目最新会话记录", async () => {
+  it("点项目行默认打开该项目最新会话记录（Day137b-1 用户拍板）", async () => {
     const projectSessions = [
       {
         id: "s-old",
@@ -461,7 +461,7 @@ describe("SidebarContextList", () => {
     expect(persisted.state?.sidebarTasksOpen).toBe(false);
   });
 
-  // 2026-10-09 项目行也有任务状态（聚合组内会话）；「更多」改悬浮显示
+  // 2026-10-09 用户拍板：项目行也有任务状态（聚合组内会话）；「更多」改悬浮显示
   describe("项目行状态与悬浮更多", () => {
     const projectSession = (id: string) => ({
       id,

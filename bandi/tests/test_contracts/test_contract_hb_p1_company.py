@@ -50,7 +50,7 @@ def _dispatcher(store: WorkItemStore) -> CompanyDispatcher:
 
 
 def _mk_item(store: WorkItemStore, phase: Phase, metadata: dict[str, Any] | None = None) -> str:
-    item = create_work_item(title="用例", turn_type=WorkItemTurnType.EXECUTE)
+    item = create_work_item(title="HB-P1 用例", turn_type=WorkItemTurnType.EXECUTE)
     item.phase = phase
     if metadata:
         item.metadata.update(metadata)

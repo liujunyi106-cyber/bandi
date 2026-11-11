@@ -6,7 +6,7 @@
 # - 凭据形状的键（*KEY*/*TOKEN*/*SECRET*/*PASSWORD*/*CREDENTIAL*/*_COOKIE 等）
 #   不得出现在子进程环境里；
 # - 显式传入的 extra 键是调用方的**刻意授权**，即使形似凭据也必须透传
-# ；
+#   （对齐 deepseek-harness「键名即授权」语义）；
 # - 默认走清洗，但可显式关闭（inherit_all=True）以兼容依赖完整环境的 server。
 from __future__ import annotations
 

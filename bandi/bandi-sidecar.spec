@@ -1,10 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
-# 功能：bandi-sidecar 的 PyInstaller 打包配置。
+# 功能：bandi-sidecar 的 PyInstaller 打包配置（Day147 C-5 / ADR-42）。
 #
 # 产物：onedir 桌面 sidecar（`bandi-sidecar/bandi-sidecar.exe`），供 Electron 壳
 # 在打包态 spawn（electron/sidecar.ts），提供 SPA + API + WS 单端口服务。
 #
-# 构建口径：
+# 构建口径（Windows 实测，见 交付文档收集 §13）：
 #   父解释器 + PYTHONPATH=<repo>/.venv/Lib/site-packages -m PyInstaller 本 spec
 #   （venv 解释器本身在本机 spawn 异常，父解释器借 venv 的包跑 PyInstaller）。
 # B-11 约束：原生二进制不得留在含中文的路径——distpath/workpath 必须指到

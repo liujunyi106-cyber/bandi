@@ -13,6 +13,10 @@ from bandi.company.group_chat_protocol import GROUP_PASS_HINT, is_pass_output
 DEFAULT_RELAY_PER_MEMBER = 3
 DEFAULT_CONTEXT_LINES = 24
 DEFAULT_CONTEXT_MAX_CHARS = 6000
+GROUP_GOAL_HINT = (
+    "目标约束：所有发言必须服务于原始用户目标；不要擅自把讨论改成开发、交付或写文件，"
+    "除非用户明确确认。"
+)
 GROUP_HANDOFF_TOKEN_THRESHOLD = 6000
 GROUP_HANDOFF_KEEP_LINES = 8
 GROUP_HANDOFF_NOTE_MAX_CHARS = 4000
@@ -56,6 +60,11 @@ TERMINAL_SLOT_STATUSES = frozenset(
 
 
 _DISPATCH_CLAIM_RE = re.compile(r"已派发|派发给|交给|转给|交接给|已转给|已下达")
+_GOAL_REQUEST_RE = re.compile(
+    r"(?:设定|设置|新建|创建|修改|调整|修订|重设|对齐).{0,8}(?:目标|goal)"
+    r"|(?:目标|goal).{0,8}(?:设定|设置|修改|调整|修订|重设|对齐)",
+    re.IGNORECASE,
+)
 
 
 def default_relay_limit(member_count: int) -> int:
@@ -333,12 +342,14 @@ class GroupRoundService:
         timeout_seconds: float = 240.0,
         work_grace_seconds: float = 15.0,
         handoff_summarizer: Any | None = None,
+        goal_service: Any | None = None,
     ) -> None:
         self._rounds = round_store
         self._items = work_items
         self._org = org_engine
         self._mention_resolver = mention_resolver
         self._broadcast = broadcast
+        self._goals = goal_service
         self._clock = clock or time.time
         self._relay_limit = relay_limit
         self._timeout = max(1.0, float(timeout_seconds))
@@ -372,6 +383,10 @@ class GroupRoundService:
         wanted = [str(item) for item in targets if str(item)]
         if members:
             wanted = [item for item in wanted if item in members]
+        if self._goals is not None and _GOAL_REQUEST_RE.search(text):
+            owner = str(self._goals.owner_for(members) or "")
+            if owner and owner not in wanted:
+                wanted.insert(0, owner)
         if not wanted and str(default_role or "").strip():
             wanted = [str(default_role).strip()]
         if not wanted:
@@ -454,6 +469,15 @@ class GroupRoundService:
             return 0
         return int(delete(session_id))
 
+    def delete_session_goal(self, session_id: str) -> int:
+        """功能：会话删除后清理其群聊目标账本。"""
+        if self._goals is None:
+            return 0
+        delete = getattr(self._goals, "delete_session", None)
+        if not callable(delete):
+            return 0
+        return int(delete(session_id))
+
     def context_for(self, work_item: Any) -> str:
         """功能：按卡的 round/slot 渲染本轮上下文；无回合元数据返回空。"""
         metadata = getattr(work_item, "metadata", None) or {}
@@ -468,7 +492,26 @@ class GroupRoundService:
         if slot is None:
             return ""
         names = {role_id: self._role_name(role_id) for role_id in round_.member_role_ids}
-        return render_round_context(round_, slot, role_names=names)
+        goal_context = ""
+        if self._goals is not None:
+            try:
+                goal_context = str(
+                    self._goals.render_block(round_.session_id, slot.role_id) or ""
+                )
+            except Exception:  # noqa: BLE001 — 目标渲染失败不阻断群聊
+                goal_context = ""
+            if not goal_context and _GOAL_REQUEST_RE.search(round_.user_input):
+                goal_context = (
+                    "## 目标请求\n"
+                    "用户要求设置或调整群目标。顶层角色先对齐目标、完成标准和分工，"
+                    "再用 group_goal draft/start/revise 写入；其他成员只提供事实。"
+                )
+        return render_round_context(
+            round_,
+            slot,
+            role_names=names,
+            goal_context=goal_context,
+        )
 
     async def maybe_handoff(self, work_item: Any, result: Any) -> None:
         """功能：群聊上下文超预算时用刚发言成员的模型生成交接摘要（失败保留原文）。"""
@@ -570,6 +613,12 @@ class GroupRoundService:
                 f"{self._role_name(slot.role_id)} 本轮未能回复：{output[:200] or '执行失败'}",
                 str(getattr(work_item, "id", "") or ""),
             )
+            self._mark_goal(
+                round_.session_id,
+                slot.role_id,
+                "mark_reset",
+                "执行失败",
+            )
             round_.mark_seen(slot.role_id)
             self._rounds.save(round_)
             self._emit(round_)
@@ -577,12 +626,19 @@ class GroupRoundService:
             return
         if is_pass_output(output):
             slot.status = SlotStatus.PASSED
+            self._mark_goal(
+                round_.session_id,
+                slot.role_id,
+                "mark_reset",
+                "成员选择跳过",
+            )
             round_.mark_seen(slot.role_id)
             self._rounds.save(round_)
             self._emit(round_)
             self._advance(round_)
             return
         slot.status = SlotStatus.POSTED
+        self._mark_goal(round_.session_id, slot.role_id, "mark_reported")
         round_.add_line(
             slot.role_id,
             "bot",
@@ -613,9 +669,10 @@ class GroupRoundService:
         round_.add_line(
             "system",
             "notice",
-            f"{self._role_name(slot.role_id)} 本轮已中断：{reason}",
+            f"{self._role_name(slot.role_id)} �������жϣ�{reason}",
             work_item_id,
         )
+        self._mark_goal(round_.session_id, slot.role_id, "mark_reset", "已中断")
         self._rounds.save(round_)
         self._emit(round_)
         self._advance(round_)
@@ -810,6 +867,7 @@ class GroupRoundService:
     ) -> None:
         if not success:
             slot.status = SlotStatus.FAILED
+            self._mark_goal(round_.session_id, slot.role_id, "mark_reset", "执行失败")
             round_.add_line(
                 "system",
                 "notice",
@@ -818,8 +876,10 @@ class GroupRoundService:
             )
         elif is_pass_output(output):
             slot.status = SlotStatus.PASSED
+            self._mark_goal(round_.session_id, slot.role_id, "mark_reset", "成员选择跳过")
         else:
             slot.status = SlotStatus.POSTED
+            self._mark_goal(round_.session_id, slot.role_id, "mark_reported")
             round_.add_line(slot.role_id, "bot", output, work_item_id)
         round_.mark_seen(slot.role_id)
         self._rounds.save(round_)
@@ -883,6 +943,22 @@ class GroupRoundService:
         for index, slot in enumerate(round_.slots):
             slot.order = index
 
+    def _mark_goal(
+        self, session_id: str, role_id: str, method: str, note: str = ""
+    ) -> None:
+        if self._goals is None:
+            return
+        action = getattr(self._goals, method, None)
+        if not callable(action):
+            return
+        try:
+            if method == "mark_reset":
+                action(session_id, role_id, note)
+            else:
+                action(session_id, role_id)
+        except Exception:  # noqa: BLE001 — 目标状态同步失败不阻断群聊
+            return
+
     def _create_card(self, round_: GroupRound, slot: RoundSlot) -> Any:
         from bandi.company.work_item import (
             Phase,
@@ -936,6 +1012,7 @@ class GroupRoundService:
             phase=Phase.QUEUED,
         )
         self._items.save(item)
+        self._mark_goal(round_.session_id, slot.role_id, "mark_working")
         return item
 
     def _delegate_role_ids(self, role_id: str) -> list[str]:
@@ -1053,6 +1130,7 @@ async def _summarize_with_role_model(
         messages,
         label="group_handoff",
         session_id=f"group:{role_id}",
+        agent_id=str(role_id or ""),
         max_tokens=800,
     )
     return str(getattr(response, "content", "") or "").strip()
@@ -1063,6 +1141,7 @@ def render_round_context(
     slot: RoundSlot,
     *,
     role_names: dict[str, str] | None = None,
+    goal_context: str = "",
     max_chars: int = DEFAULT_CONTEXT_MAX_CHARS,
 ) -> str:
     """功能：给当前发言人渲染本轮上下文（顺序 + 未读消息 + PASS 规则）。"""
@@ -1084,13 +1163,20 @@ def render_round_context(
         if following is not None
         else "无"
     )
-    header = [
-        "## 群聊回合上下文",
-        f"你是本轮第 {index + 1} 位发言（共 {total} 位）。",
-        f"上一位：{previous_label}；下一位：{following_label}。",
-    ]
+    header = ["## 群聊回合上下文"]
+    goal = " ".join(str(round_.user_input or "").split())[:600]
+    if goal:
+        header.append(f"原始目标：{goal}")
+    header.extend(
+        [
+            f"你是本轮第 {index + 1} 位发言（共 {total} 位）。",
+            f"上一位：{previous_label}；下一位：{following_label}。",
+        ]
+    )
     if round_.handoff_note:
         header.append(f"前情交接：{round_.handoff_note}")
+    if goal_context:
+        header.append(goal_context)
     lines = round_.unseen_lines(slot.role_id)
     rendered: list[str] = []
     for line in lines:
@@ -1100,7 +1186,7 @@ def render_round_context(
         else:
             rendered.append(f"{speaker}：{line.text}")
     body = ["本轮此前消息：", *rendered] if rendered else ["本轮暂无新消息。"]
-    footer = [GROUP_PASS_HINT]
+    footer = [GROUP_PASS_HINT] if goal_context else [GROUP_PASS_HINT, GROUP_GOAL_HINT]
     text = "\n".join([*header, "", *body, "", *footer])
     if len(text) <= max_chars:
         return text

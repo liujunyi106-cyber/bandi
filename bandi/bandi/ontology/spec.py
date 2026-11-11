@@ -1,8 +1,9 @@
-"""本体存储 schema：三张表的持久化声明。
+"""本体存储 schema：三张表的持久化声明（复刻 dsh-ontology `src/spec.ts`）。
 
-用 zod + 插件存储域，这里用 SQLite DDL——同一套记录形状，换一个介质。
+参考源用 zod + 插件存储域，这里用 SQLite DDL——同一套记录形状，换一个介质。
 三张表对应 TBox 词表 / ABox 实体 / ABox 断言事实，事实按三元组复合键存储，
-使重复断言成为幂等覆盖而非重复行。"""
+使重复断言成为幂等覆盖而非重复行。
+"""
 
 from __future__ import annotations
 

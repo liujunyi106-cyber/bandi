@@ -152,7 +152,7 @@ def test_clear_session_unbinds_routing() -> None:
 #
 # `core/config.py:97` `max_concurrency` 默认 None（= 不限制）→ 一批 N 个并发安全工具
 # 全部同时执行、无背压；而子代理侧有 `subagent_max_concurrency=4` 的上限——工具侧裸奔。
-# 参考实现 maxParallelSubCalls）。
+# deepseek-harness maxParallelSubCalls）。
 #
 # 本契约钉死的是**行为**（峰值并发数），不是实现细节：
 # 1) 默认配置带上限（工具 8 / 子代理 10）

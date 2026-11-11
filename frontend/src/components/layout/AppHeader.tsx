@@ -1,5 +1,5 @@
-/**
- * 功能：顶栏。
+﻿/**
+ * 功能：顶栏（@base docs/前端设计规划.md §8 顶栏 56px 三槽位）。
  * 左：收缩开关（一键全部收缩/展开：左栏 + 项目面板）+ 当前会话名（+ 重命名按钮）；
  * 右：右栏开合 icon（v5：连接灯移除，与左栏切换按钮对称；WS 异常时保留文字提示）。
  * ：通知中心移至左栏底部；顶栏标题旁加重命名；
@@ -13,7 +13,7 @@ import { PanelToggleIcon } from "@/components/layout/PanelToggleIcon";
 import { RenameSessionDialog } from "@/components/chat/RenameSessionDialog";
 import { SessionTools } from "@/components/chat/SessionTools";
 import { Button } from "@/components/ui/button";
-import { useProjectTeamName } from "@/hooks/use-project-team-name";
+import { useEmployees } from "@/hooks/use-employees";
 import { useT } from "@/i18n";
 import { resolvePanelScope } from "@/lib/panel-scope";
 import type { WsStatus } from "@/services/ws";
@@ -61,19 +61,24 @@ export function AppHeader({
   const [renamingOpen, setRenamingOpen] = useState(false);
 
   const isChatRoute = location.pathname === "/" || location.pathname.startsWith("/chat");
-  // 单聊路由：标题取项目所属团队名（会话标题属于群聊，直接沿用会显示「项目总群聊」）
+  // 单聊路由：标题取员工名（会话标题可能是「你好」/群聊名，不能作为 DM 标题）
+  const { employees } = useEmployees();
   const searchParams = new URLSearchParams(location.search);
   const isDmView = isChatRoute && searchParams.get("view") === "dm";
-  const dmProjectId = isDmView ? searchParams.get("project") || activeProjectId : "";
-  const dmTeamName = useProjectTeamName(dmProjectId);
   const activeSession = sessions.find((item) => item.id === activeSessionId);
+  const dmTarget = isDmView
+    ? searchParams.get("target") || activeSession?.target_role || activeSession?.employee_id || ""
+    : "";
+  const dmEmployee = employees.find(
+    (employee) => employee.role_id === dmTarget || employee.employee_id === dmTarget,
+  );
   const pageTitle = isDmView
-    ? dmTeamName || t("chat.panel.groupEntry")
+    ? dmEmployee?.name || dmTarget || activeSession?.title?.trim() || t("nav.chat")
     : activeSession?.title?.trim() || t("nav.chat");
   const status = worseStatus(wsStatus, sessionWsStatus);
   const labelKey = wsLabelKey(status);
   // 右栏开合（v5：与左栏 SidebarTrigger 同款镜像图标；仅收起态出现——展开后收起由右栏自身负责
-  // 单一开合入口、不与右栏「⇥ 收起」双按钮并存）
+  // 用户拍板：单一开合入口、不与右栏「⇥ 收起」双按钮并存）
   // .2：作用域放宽——会话与项目内员工单聊（DM 路由）均有右栏入口
   const panelOpen = usePanelStore((state) => state.open);
   const panelScope = isChatRoute
@@ -108,9 +113,7 @@ export function AppHeader({
 
   return (
     <>
-      <header
-        className="bg-chat-bg flex h-14 shrink-0 items-center gap-2 px-3"
-      >
+      <header className="bg-chat-bg flex h-14 shrink-0 items-center gap-2 px-3">
         {/* 功能：项目面板收起后，顶栏出现「展开项目面板」按钮——
             普通会话（无项目归属）不显示；展开态由项目面板内按钮负责收起 */}
         {panelsCollapsed && isChatRoute && activeProjectId ? (
@@ -143,7 +146,7 @@ export function AppHeader({
 
         {/* 右侧组：搜索/历史提问 + 连接提示 + 右栏开合（统一 gap-1——2026-09-26 用户反馈三类 icon 间距一致） */}
         <div className="flex shrink-0 items-center gap-1">
-          {/* 2026-09-23 会话内搜索/历史提问移到顶栏，与连接状态指示同排对齐 */}
+          {/* 2026-09-23 用户拍板：会话内搜索/历史提问移到顶栏，与连接状态指示同排对齐 */}
           {headerToolTestId && headerToolItems.length > 0 ? (
             <SessionTools items={headerToolItems} testId={headerToolTestId} />
           ) : null}
@@ -159,7 +162,7 @@ export function AppHeader({
             </div>
           ) : null}
 
-          {/* 右栏展开入口 */}
+          {/* 右栏展开入口（仅收起态显示；左侧 SidebarTrigger 的镜像图标——2026-09-26 用户拍板） */}
           {showPanelTrigger ? (
             <button
               type="button"

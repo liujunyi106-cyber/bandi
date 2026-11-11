@@ -1,4 +1,4 @@
-# 功能：定时任务 API 契约（设置面板消费面）
+# 功能：Day134 定时任务 API 契约（设置面板消费面）
 # 装配点：api/app.py _task_store 单例（~/.bandi/data/scheduler.db）+ _task_runner（默认
 # 包装 run_agent_turn；测试可 patch 替换为 spy——API 契约不钉执行体内核）。
 # 契约钉：CRUD 全端点 / 非法 cron 400 / 缺字段 400 / 404 / 启停 PATCH / cron 变更重排程 /

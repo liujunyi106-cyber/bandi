@@ -1,5 +1,5 @@
 /**
- * 功能：宿主级聚合流。
+ * 功能：宿主级聚合流（events.host，@base docs/前端设计规划.md §8 应用内通知中心）。
  * 把两条 WS 通道的关键事件聚合为「宿主感」输出：通知中心条目（完成/出错/交互/断线补发）
  * + 会话连接状态镜像（ui store）。数据归并在 use-session-stream；本 hook 只管通知与状态。
  */
@@ -7,7 +7,7 @@ import { useEffect, useRef } from "react";
 
 import { translate } from "@/i18n";
 import { normalizeProjectScope, progressKey } from "@/lib/progress-key";
-import type { GroupRoundSnapshot } from "@/services/company";
+import type { GroupGoalSnapshot, GroupRoundSnapshot } from "@/services/company";
 import type { InteractionFrame } from "@/services/sessions";
 import { sessionSocket, socket, type WsFrame } from "@/services/ws";
 import { useChatStore } from "@/stores/chat-store";
@@ -167,6 +167,14 @@ export function useHostEvents(): void {
         console.debug("[ws] resume gap", { from, to });
         return;
       }
+      if (frame.type === "group_goal") {
+        const data = frameData(frame);
+        const goalSessionId = String(data.session_id ?? "");
+        if (goalSessionId) {
+          useChatStore.getState().applyGoal(data as unknown as GroupGoalSnapshot);
+        }
+        return;
+      }
       if (frame.type === "group_round") {
         const data = frameData(frame);
         const roundSessionId = String(data.session_id ?? "");
@@ -176,7 +184,7 @@ export function useHostEvents(): void {
         return;
       }
       if (frame.type === "thread_progress") {
-        // 插队批：员工执行过程帧 → 过程槽归并（单聊/群聊实时过程块数据源）；
+        // Day137b-1 插队批：员工执行过程帧 → 过程槽归并（单聊/群聊实时过程块数据源）；
         // 槽键含 thread_id（= 「这一次执行」的身份，与产出回写同源）
         const data = frameData(frame);
         const inner = data.event as { type?: unknown; data?: unknown } | undefined;

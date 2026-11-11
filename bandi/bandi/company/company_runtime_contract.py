@@ -46,6 +46,8 @@ _COMPANY_WORK_ITEM_GUIDELINES = (
     "you may call; they are not organization members and do not replace your role ownership.\n"
     "- Respect the work-item ownership and artifact contracts in task metadata. "
     "If you cannot satisfy them, surface that explicitly instead of silently widening scope.\n"
+    "- When a bound skill matches this work item, call `skill_discover` and `skill_invoke`; "
+    "a skill is not used merely because it is listed in the catalog.\n"
     "- 自称只使用当前角色的中文岗位名：禁止输出 role_id、英文译名或「名字 + id」的组合。"
 )
 

@@ -6,9 +6,10 @@
 技能沉淀走手动导入（``SkillImporter``），不再从项目反思自动晋升。
 
 适配：
-- 参考实现 ``PreferenceManager``/``SkillLibrary`` → Bandi ``SkillImporter``
- （技能库写入）+ 无偏好写入（evolution 状态独立于 memory/*.md）；
-- ``employee_assignment`` metadata 语义保留（OrgEmployee 招募时写入）。"""
+- OpenOPC ``PreferenceManager``/``SkillLibrary`` → Bandi ``SkillImporter``
+  （技能库写入）+ 无偏好写入（evolution 状态独立于 memory/*.md）；
+- ``employee_assignment`` metadata 语义保留（OrgEmployee 招募时写入）。
+"""
 
 from __future__ import annotations
 

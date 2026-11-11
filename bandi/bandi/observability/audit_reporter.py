@@ -84,7 +84,8 @@ def resolve_audit_actor(explicit: AuditActor | None = None) -> AuditActor:
 
     显式传入优先（调用方最清楚）；否则从日志上下文派生——多 Agent 场景下
     `loop._run_loop` 已绑定 `agent_id`，据此可自动落到 `agent` 主体。
-    无任何身份线索时回落 `system`/`local`。"""
+    无任何身份线索时回落 `system`/`local`（本仓暂无账号体系，见 ADR-34）。
+    """
     if explicit is not None:
         if explicit.kind not in VALID_ACTOR_KINDS:
             raise ValueError(
@@ -307,7 +308,7 @@ class AuditReporter:
 
         为什么要 fsync：审计链的完整性靠逐条 sha256 串联，崩溃时若尾部只落半行
         链校验会直接判「invalid JSON」而无法区分是崩溃还是篡改。
-        为什么要回滚：写失败后留下半行同样会污染链——照 参考实现
+        为什么要回滚：写失败后留下半行同样会污染链——照 deepseek-harness
         `session-persistence-jsonl` 的 rollbackAppend（truncate + sync）做法。
         """
         try:

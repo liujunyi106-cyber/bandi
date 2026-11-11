@@ -1,7 +1,8 @@
 """契约：会话用量/上下文必须按 thread 口径聚合，而不是项目累计。
 
-实证：DM 会话 252ca... 的 cost-detail 返回 654.3k（整个 group-test 项目），
-而该 DM thread 实际只有 52.6k；上下文环则因为 chat session 没有快照显示 —。"""
+真机实证：DM 会话 252ca... 的 cost-detail 返回 654.3k（整个 group-test 项目），
+而该 DM thread 实际只有 52.6k；上下文环则因为 chat session 没有快照显示 —。
+"""
 
 from __future__ import annotations
 

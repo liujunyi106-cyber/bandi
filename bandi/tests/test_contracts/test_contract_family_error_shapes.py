@@ -42,5 +42,5 @@ class TestOverflowTerminalShape:
 
     def test_message_carries_actionable_guidance(self) -> None:
         assert any(k in _PROMPT_TOO_LONG_MESSAGE for k in ("开新会话", "减小输入", "减小规模")), (
-            "必须给出可行动指引"
+            "必须给出可行动指引（准则 1 形状同构 + 准则 2）"
         )

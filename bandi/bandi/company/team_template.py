@@ -37,7 +37,7 @@ class TeamRoleSpec(BaseModel):
     tool_tags: list[str] = Field(default_factory=list)  # 功能：角色工具面标签（空 = 不限）
     is_final_decider: bool = False  # 功能：是否团队最终决策角色
     fs_scopes: list[str] = Field(default_factory=list)  # 功能：角色落盘目录白名单
-    skill_refs: list[str] = Field(default_factory=list)  # 功能：角色技能绑定
+    skill_refs: list[str] = Field(default_factory=list)  # 功能：角色技能绑定（SD-07c）
     prompt_refs: list[str] = Field(default_factory=list)  # 功能：角色提示词要点
     llm_config: dict[str, Any] = Field(default_factory=dict)  # 功能：per-role 模型配置
 

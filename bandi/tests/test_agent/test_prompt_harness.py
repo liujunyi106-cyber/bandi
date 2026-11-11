@@ -116,8 +116,8 @@ class TestPromptHarnessBuild:
     )
     def test_build_section_order(self, project_scoped: bool, identity_marker: str) -> None:
         """顺序：身份 → 框架 → 领域 → 模式 → 项目指令 → 实体 → 安全 → 输出控制 → 用户体感
-         → 降级（工具段已抽离为工件）。身份两态：项目会话=成员 / 无项目=秘书
-        。"""
+        → 降级（工具段已抽离为工件）。身份两态：项目会话=成员 / 无项目=秘书
+        （拍板：无项目归属会话由秘书接管）。"""
         harness = PromptHarness()
         entity = EntityLookupRow(id="t-001", name="写测试", entity_type="task")
         ctx = ContextBundle(referenced_entities=[entity], project_scoped=project_scoped)

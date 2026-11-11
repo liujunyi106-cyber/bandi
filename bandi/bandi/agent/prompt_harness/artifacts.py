@@ -1,5 +1,5 @@
 # 功能：系统提示词六段常量 -> 精简紧凑版 v1.7-lite（适配轻量模型）
-# 对齐架构 + D方案增强版 v1.7（适配 deepseek-flash 等小型模型）
+# 对齐架构 §十八-G + D方案增强版 v1.7（适配 deepseek-flash 等小型模型）
 # 体积：约为原版 50%
 
 from __future__ import annotations

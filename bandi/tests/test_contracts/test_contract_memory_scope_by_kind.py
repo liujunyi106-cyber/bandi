@@ -161,7 +161,8 @@ def test_markdown_carries_sediment_not_transcript(tmp_path: Path) -> None:
     """dm/group 的 markdown 只装沉淀条目——不得再写「用户: X → 回答: Y」原文快照。
 
     原文快照会在注入时被原样读回，等于把上一轮对话当记忆复读，且绕过噪声闸门与
-    价值门。"""
+    价值门（真机实证：注记显示「计入记忆 x3」，实际记的是对话原文）。
+    """
     manager, _long_term = _manager(tmp_path)
     hierarchy = _RecordingHierarchy()
 

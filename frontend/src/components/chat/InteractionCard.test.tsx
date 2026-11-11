@@ -1,5 +1,5 @@
 /**
- * 功能：InteractionCard 行为测试（倒计时显示 / 超时禁用；；
+ * 功能：InteractionCard 行为测试（倒计时显示 / 超时禁用；Day137b-1；
  * -3a：权限三态 + notify 分流）。
  */
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -269,7 +269,7 @@ describe("InteractionCard 权限三态 + notify 分流（137b-3a）", () => {
   });
 });
 
-describe("InteractionCard 多决策点分页 + 无描边", () => {
+describe("InteractionCard 多决策点分页 + 无描边（2026-09-25 用户拍板）", () => {
   it("questions 多决策点：<1/2> 可切换上下决策点，跨页收集答案并汇总 JSON 提交", async () => {
     apiMocks.clarify.mockClear();
     render(
@@ -307,14 +307,14 @@ describe("InteractionCard 多决策点分页 + 无描边", () => {
     expect(JSON.parse(answer)).toEqual({ q1: "prod", q2: "手动" });
   });
 
-  it("卡片无描边 + 宽度略大于输入框", () => {
+  it("卡片无描边 + 宽度略大于输入框（-mx-1 含住——2026-09-25 用户拍板）", () => {
     render(<InteractionCard frame={frame()} onResolved={vi.fn()} onError={vi.fn()} />);
     const card = screen.getByTestId("interaction-card");
     expect(card.className).not.toContain("border-chat-hairline");
     expect(card.className).toContain("-mx-1");
   });
 
-  it("生产形态（request_user_input 多问、题无选项）：每题文本框作答，答一题即可确定并汇总 JSON", async () => {
+  it("生产形态（request_user_input 多问、题无选项）：每题文本框作答，答一题即可确定并汇总 JSON（2026-09-29 §18.16② 允许部分作答）", async () => {
     apiMocks.clarify.mockClear();
     render(
       <InteractionCard
@@ -491,7 +491,7 @@ describe("InteractionCard 2026-10-01 调整", () => {
     expect(screen.queryByTestId("decision-next")).not.toBeInTheDocument();
   });
 
-  it("无题卡（权限卡）不渲染 ‹ ›：没有翻页数字就不该有箭头", () => {
+  it("无题卡（权限卡）不渲染 ‹ ›：没有翻页数字就不该有箭头（2026-10-01 三次拍板）", () => {
     // 即使并存多张卡，权限卡自身也不显示箭头——无 n/m 即无翻页器
     render(
       <InteractionCard
@@ -555,7 +555,7 @@ describe("InteractionCard 2026-10-01 调整", () => {
     expect(cls).not.toContain("bg-primary/5");
   });
 
-  it("有选项时**并存**自由输入框", () => {
+  it("有选项时**并存**自由输入框（选项覆盖不到的答案直接手打；2026-10-01 用户拍板）", () => {
     render(<InteractionCard frame={questionsFrame()} onResolved={vi.fn()} onError={vi.fn()} />);
     // 第 1 题带两个选项 + 一个输入框
     expect(screen.getAllByTestId("interaction-choice")).toHaveLength(2);
@@ -592,7 +592,7 @@ describe("InteractionCard 2026-10-01 调整", () => {
     expect(dot()?.className).not.toContain("bg-primary"); // 点击输入 → 选项自动取消
   });
 
-  it("选项条恒白底无描边 + 输入框无描边无焦点效果", () => {
+  it("选项条恒白底无描边 + 输入框无描边无焦点效果（2026-10-01 拍板）", () => {
     render(<InteractionCard frame={questionsFrame()} onResolved={vi.fn()} onError={vi.fn()} />);
     const row = screen.getByRole("button", { name: "C 端" });
     expect(row.className, "选项条必须白底").toContain("bg-card");

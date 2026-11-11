@@ -1,6 +1,6 @@
 /**
- * 功能：插件宿主 契约。
- * 轨道落地；只固化「插件 manifest 形状 + iframe bridge 白名单」这两条边界
+ * 功能：插件宿主 契约（@base docs/前端设计规划.md §11 插件化演进口径 / docs/ADR.md ADR-38）。
+ * 轨道落地；Day135 只固化「插件 manifest 形状 + iframe bridge 白名单」这两条边界
  * 让后续 前端插件（iframe sandbox + postMessage）不需要回头改壳。
  */
 import type { SlotRegion } from "@/types";

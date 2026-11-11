@@ -1,20 +1,21 @@
-"""契约：本体词表提示词注入 + 记忆侧推理接线。
+"""契约：本体词表提示词注入 + 记忆侧推理接线（对照表 §4.1-6 / §4.2-6）。
 
-复刻 参考实现 `src/prompt.ts`（57 行）。
+复刻 dsh-ontology `src/prompt.ts`（57 行）。
 
 行为不变式：
 
-**词表注入**
- 1. **只注词汇，不注实例**——TBox 小、慢变、便宜；实例数据大、快变，
- 属于 `ontology_query` 的职责
- 2. 词表摘要**≤ 60 词**（超限截断并留省略提示）
- 3. 顺序稳定（先类后关系，各按 id）→ 未变的图产生未变的提示词，缓存友好
- 4. **空图给引导语而非空列表**——列出「什么都没有」教不会模型任何东西
- 5. 非空图给出计数（类/关系/实体/事实）+ 词汇清单 + 读/扩展指引
+**词表注入（§4.2-6a）**
+  1. **只注词汇，不注实例**——TBox 小、慢变、便宜；实例数据大、快变，
+     属于 `ontology_query` 的职责
+  2. 词表摘要**≤ 60 词**（超限截断并留省略提示）
+  3. 顺序稳定（先类后关系，各按 id）→ 未变的图产生未变的提示词，缓存友好
+  4. **空图给引导语而非空列表**——列出「什么都没有」教不会模型任何东西
+  5. 非空图给出计数（类/关系/实体/事实）+ 词汇清单 + 读/扩展指引
 
 **记忆侧推理接线（D5）**
- 6. `tbox.entailed_edges` 从零生产调用变为有生产调用点——
- 记忆三元组按 symmetric/transitive/inverse 推导，派生不落盘"""
+  6. `tbox.entailed_edges()` 从零生产调用变为有生产调用点——
+     记忆三元组按 symmetric/transitive/inverse 推导，派生不落盘
+"""
 
 from __future__ import annotations
 
@@ -109,7 +110,7 @@ class TestPopulatedGraphSection:
         assert render_ontology_section(graph, 60) == render_ontology_section(graph, 60)
 
     def test_term_cap_is_sixty(self) -> None:
-        """计划 -6：词表摘要 ≤60 词。"""
+        """计划 §4.2-6：词表摘要 ≤60 词。"""
         assert MAX_TBOX_TERMS == 60
 
     def test_overflow_produces_elision_note(self) -> None:
@@ -253,7 +254,7 @@ class TestMemoryTriplesEntailment:
         assert entailed_structured(given) == []
 
     def test_no_production_imports_broken(self) -> None:
-        """本体模块不得反向导入记忆侧模块。"""
+        """本体模块不得反向导入记忆侧模块（两套体系边界，§4.4b）。"""
         import bandi.ontology.engine as engine
         import bandi.ontology.tools as tools_mod
         import bandi.ontology.triple_store as triple

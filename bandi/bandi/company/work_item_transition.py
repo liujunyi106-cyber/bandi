@@ -588,21 +588,21 @@ def refresh_dependents(
 ) -> bool:
     """Walk all work items and propagate dependency state to parent phases.
 
-    Synchronous Bandi adaptation of 参考实现 ``refresh_dependents_for_run``:
+    Synchronous Bandi adaptation of OpenOPC ``refresh_dependents_for_run``:
     the run_id dimension collapses to the single global store, and the
     update path collapses to ``store.save`` (Bandi's field-level
     ``update_delegation_work_item`` has no equivalent here). One pass:
 
     - WAITING_DEPENDENCIES → READY / READY_FOR_REWORK when all deps approve.
     - WAITING_FOR_CHILDREN → READY as a synthesis turn when delegated
-    children are done; otherwise → RUNNING.
+      children are done; otherwise → RUNNING.
     - Failure-triage release: when every dep is terminal or doomed and at
-    least one failed, the delegating parent / roll-up card is released
-    anyway with a ``dependency_settlement`` stamp.
+      least one failed, the delegating parent / roll-up card is released
+      anyway with a ``dependency_settlement`` stamp.
     - Reverse direction: READY → WAITING_DEPENDENCIES, RUNNING →
-    WAITING_FOR_CHILDREN when a new dep appears.
+      WAITING_FOR_CHILDREN when a new dep appears.
     - Settlement cascade: once a stamped triage card reaches , its
-    leftover doomed descendants are cancelled so the graph can terminalize.
+      leftover doomed descendants are cancelled so the graph can terminalize.
 
     Transitions go through ``validate_transition`` (the extended state
     machine), and metadata is written in the same ``store.save``. Returns
@@ -610,7 +610,8 @@ def refresh_dependents(
 
     两阶段提交：主循环先在内存计算全部 pending 变更（不写库），再统一经
     ``store.save_checked`` 乐观锁提交——并发修改的卡被跳过并记入 ``errors_out``
-    下轮 tick 幂等重试，杜绝「前几张已保存、后几张失败」的部分提交静默态。"""
+    下轮 tick 幂等重试，杜绝「前几张已保存、后几张失败」的部分提交静默态。
+    """
     if not store or not hasattr(store, "list_all") or not hasattr(store, "save"):
         return False
     if not hasattr(store, "save_checked"):

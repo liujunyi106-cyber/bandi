@@ -54,7 +54,7 @@ def _bandi_config() -> Any:
 async def test_retry_uses_current_provider_direct_mode() -> None:
     """同模型保底重发一次，不经候选/resolver。"""
     current = _FakeProvider("deepseek-flash", "retry-ok")
-    retry = _FakeProvider("mimo-v2.6-pro", "should-not-use")
+    retry = _FakeProvider("agnes-2.5-flash", "should-not-use")
     registry = _FakeRegistry(retry)
     ctx = _ctx(current)
 

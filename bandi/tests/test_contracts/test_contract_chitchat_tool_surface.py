@@ -1,6 +1,6 @@
 """契约：**纯闲聊**轮不注入完整工具面（能力询问见 capability_honesty 契约）。
 
-台账（`sess-93a6c77d`，3 轮）：闲聊轮 tool_schema=5524 tokens，占单轮 input
+真机台账（`sess-93a6c77d`，3 轮）：闲聊轮 tool_schema=5524 tokens，占单轮 input
 的 61%，而 history 仅 16 tokens——对话内容几乎不占预算，工具面却是最大头。
 3 轮累计 33.1k tokens 里，工具面占约 50%。
 
@@ -10,7 +10,8 @@
 
 **能力询问（「你能做什么」「有什么功能」）不属于闲聊**：裁掉工具面会让模型只能
 看见挑剩的几个工具，从而如实却错误地回答「暂不支持写文件/图表/团队」——
-对用户谎报能力。判定见 `test_contract_capability_honesty.py`。"""
+对用户谎报能力。判定见 `test_contract_capability_honesty.py`。
+"""
 
 from __future__ import annotations
 

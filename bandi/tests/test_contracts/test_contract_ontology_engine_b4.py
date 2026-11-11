@@ -1,36 +1,37 @@
-"""契约：本体推理内核。
+"""契约：本体推理内核（对照表 §4.1-2 / §4.2-2,3,4）。
 
-复刻 参考实现 `src/ontology.ts`（749 行全读）。行为不变式：
+复刻 dsh-ontology `src/ontology.ts`（749 行全读）。行为不变式：
 
 **标识与闭包**
- 1. `check_id` 管字符语法 + 长度上限（≤128）——正则不表达长度
- 2. `class_ancestors` 含自身且环安全；`class_descendants` 不动点
- 3. `entity_classes` = 直接类 ∪ 全部祖先（继承）
+  1. `check_id` 管字符语法 + 长度上限（≤128）——正则不表达长度
+  2. `class_ancestors` 含自身且环安全；`class_descendants` 不动点
+  3. `entity_classes` = 直接类 ∪ 全部祖先（继承）
 
 **四层校验**
- 4. class：kind 冲突 / 未知父类 / `subClassOf` 成环
- 5. relation：kind 冲突 / domain·range 未知类 / **literal 关系不得
- symmetric/transitive/inverse**（派生命题的主语会是字面量）/ inverse 须为关系
- 6. entity：id 语法 + 类必须已定义
- 7. fact：未知谓词 → 未知主语 → domain 匹配 → objectKind/range 匹配 →
- **functional 冲突**（同一主语不得指向两个不同 object）
+  4. class：kind 冲突 / 未知父类 / `subClassOf` 成环
+  5. relation：kind 冲突 / domain·range 未知类 / **literal 关系不得
+     symmetric/transitive/inverse**（派生命题的主语会是字面量）/ inverse 须为关系
+  6. entity：id 语法 + 类必须已定义
+  7. fact：未知谓词 → 未知主语 → domain 匹配 → objectKind/range 匹配 →
+     **functional 冲突**（同一主语不得指向两个不同 object）
 
 **推理三规则**
- 8. inverse：声明 `inverseOf` 即双向推导
- 9. symmetric：自反无意义时跳过自环
- 10. transitive：链式合成，且**不产生自环**
- 11. **不动点**（≤32 轮）——规则可复合：传递关系的逆关系本身也传递闭合
- 12. **派生态不落盘**——`entail` 只返回，不写库；派生物不得覆盖已断言事实
- 13. 每条派生物带 `via` 标记，可解释
+  8. inverse：声明 `inverseOf` 即双向推导
+  9. symmetric：自反无意义时跳过自环
+  10. transitive：链式合成，且**不产生自环**
+  11. **不动点**（≤32 轮）——规则可复合：传递关系的逆关系本身也传递闭合
+  12. **派生态不落盘**——`entail` 只返回，不写库；派生物不得覆盖已断言事实
+  13. 每条派生物带 `via` 标记，可解释
 
 **查询六模式**
- 14. `query_entities` 类匹配双向闭包（问 Service 返回其子类 HttpService 的成员）
- 15. `query_facts` 三位通配 + `includeInferred`；断言在前
- 16. `neighbors` 有向双向按半径扩散
- 17. `find_path` 边视为无向找最短链
- 18. `stats_of` / `render_tbox`（≤60 词、顺序稳定 → prompt 缓存友好）
+  14. `query_entities` 类匹配双向闭包（问 Service 返回其子类 HttpService 的成员）
+  15. `query_facts` 三位通配 + `includeInferred`；断言在前
+  16. `neighbors` 有向双向按半径扩散
+  17. `find_path` 边视为无向找最短链
+  18. `stats_of` / `render_tbox`（≤60 词、顺序稳定 → prompt 缓存友好）
 
-参考实现。"""
+参考源：dsh-ontology `src/ontology.ts:113-749`。
+"""
 
 from __future__ import annotations
 

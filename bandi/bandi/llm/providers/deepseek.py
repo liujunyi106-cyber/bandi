@@ -18,7 +18,7 @@ class DeepSeekProvider(OpenAICompatProvider):
         super().__init__(config, getattr(config, "base_url", "") or "https://api.deepseek.com/v1")
 
     def _thinking_payload(self) -> dict[str, Any]:
-        # 功能：thinking_mode → DeepSeek 官方参数（参考实现：
+        # 功能：thinking_mode → DeepSeek 官方参数（参考源 LeAgent：
         # thinking.type 开关 + 独立 reasoning_effort）；空=不发送（用服务端默认）
         mode = (self.config.thinking_mode or "").strip().lower()
         if mode in self._DISABLED_MODES:

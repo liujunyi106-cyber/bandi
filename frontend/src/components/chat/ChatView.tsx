@@ -1,5 +1,5 @@
 /**
- * 功能：对话主视图。
+ * 功能：对话主视图（@base docs/前端设计规划.md §6 会话行 / §8 交互规范）。
  * 组成：会话详情加载 + 消息流（keyed 增量）+ 过程块 + 中断恢复提示 + 回滚暂存条 +
  * 挂起交互卡 + Composer（发送/转向/停止）。群聊·单聊视图见 pages/chat 分流。
  */
@@ -9,7 +9,7 @@ import { toast } from "sonner";
 
 import { Composer } from "@/components/chat/Composer";
 import { EmployeePickerDialog } from "@/components/chat/EmployeePickerDialog";
-import { GroupRoundBar } from "@/components/chat/GroupRoundBar";
+import { GroupGoalBar } from "@/components/chat/GroupGoalBar";
 import { InteractionCard, type InteractionDraft } from "@/components/chat/InteractionCard";
 import { PendingEmployeeReply } from "@/components/chat/PendingEmployeeReply";
 import { PendingSendBar } from "@/components/chat/PendingSendBar";
@@ -75,6 +75,9 @@ export function ChatView() {
   const activeProjectId = useChatStore((state) => state.activeProjectId);
   const activeRound = useChatStore((state) =>
     activeSessionId ? state.roundsBySession[activeSessionId] : undefined,
+  );
+  const activeGoal = useChatStore((state) =>
+    activeSessionId ? state.goalsBySession[activeSessionId] : undefined,
   );
   const streams = useChatStore((state) => state.streams);
   const stagedRevert = useChatStore((state) => state.stagedRevert);
@@ -297,7 +300,7 @@ export function ChatView() {
         useChatStore
           .getState()
           .loadMessages(activeSessionId, entriesToMessages(activeSessionId, detail.messages));
-        // 任务台账从会话 metadata 恢复（刷新后任务条不消失）
+        // Day137b-1：任务台账从会话 metadata 恢复（刷新后任务条不消失）
         useChatStore.getState().setTaskLedger(activeSessionId, sessionTaskLedger(detail.session));
         // 模式从会话持久值恢复（sessions.mode；无持久值时保留当前选择）
         const persistedMode = detail.session?.mode;
@@ -346,6 +349,22 @@ export function ChatView() {
       cancelled = true;
     };
   }, [activeSessionId, activeProjectId]);
+
+  useEffect(() => {
+    if (!activeSessionId) return;
+    let cancelled = false;
+    companyApi
+      .goal(activeSessionId)
+      .then(({ goal }) => {
+        if (cancelled) return;
+        if (goal) useChatStore.getState().applyGoal(goal);
+        else useChatStore.getState().clearGoal(activeSessionId);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSessionId]);
 
   // 团队会话：监听群聊、员工回复、线程回写等消息，维护消息头像+名字。
   useEffect(() => {
@@ -401,7 +420,7 @@ export function ChatView() {
         content: String(data.content ?? ""),
         // 成员任务卡关联键（线程消息 message_id = work item id）
         workItemId: String(data.message_id ?? "").trim() || undefined,
-        // 员工执行过程随回复固化（回复消息上方过程块；槽取出即清）
+        // Day137b-1：员工执行过程随回复固化（回复消息上方过程块；槽取出即清）
         // 槽键含 thread（= 这一次执行的身份，与产出回写同源）
         // 落定即结算 running（回写是执行中途快照，残留 running 是死状态）
         process: settleRunningNodes(processNodes),
@@ -479,14 +498,34 @@ export function ChatView() {
   const teamRunning = teamRunningItems.length > 0;
   const executing = busy || teamRunning || activeRound?.status === "running";
   const stopTeam = async () => {
-    if (!teamRunningItems.length) return;
+    // 先取消群聊回合：round 可能在员工交接间隙运行、当前没有 running 卡，
+    // 只 abort 工作项会直接 return，表现为停止键失效。
+    const round = activeRound?.status === "running" ? activeRound : null;
+    if (round) {
+      try {
+        await companyApi.cancelRound(round.round_id);
+      } catch {
+        // 取消失败仍继续中断本线程活动卡；最终以任务列表刷新收敛
+      }
+    }
+    const activeItems = projectRawItems.filter(
+      (item) => item.phase === "running" && String(item.thread_id ?? "") === activeThreadId,
+    );
     const results = await Promise.allSettled(
-      teamRunningItems.map((item) => companyApi.abortWorkItem(item.id)),
+      activeItems.map((item) => companyApi.abortWorkItem(item.id)),
     );
     const interrupted = results.filter(
       (result) => result.status === "fulfilled" && result.value.interrupted,
     ).length;
-    if (interrupted > 0) toast.info(t("chat.composer.teamStopped"));
+    const store = useChatStore.getState();
+    if (activeSessionId) {
+      store.clearRound(activeSessionId);
+      store.clearSessionActivity(activeSessionId);
+    }
+    for (const key of store.settleStaleEmployeeProgress("stopped")) {
+      store.expireEmployeeProgressByKey(key);
+    }
+    if (round || interrupted > 0) toast.info(t("chat.composer.teamStopped"));
     setTasksRefreshTick((value) => value + 1);
   };
   const memberTasks = useMemo(() => {
@@ -634,7 +673,7 @@ export function ChatView() {
       type: "chat",
       message: outgoingText,
       session_id: sessionId,
-      // 模式切换器（后端 resolve_initial_mode；plan=只读规划）
+      // Day137b-1：模式切换器（后端 resolve_initial_mode；plan=只读规划）
       mode: ui.chatMode,
       // 新会话标题由后端创建时一次写入（无 PATCH 竞态；列表刷新后标题不丢）
       ...(title ? { title } : {}),
@@ -656,7 +695,7 @@ export function ChatView() {
         : !dmTargetRole && isNewSession && activeProjectId
           ? { session_origin: "secretary" }
           : {}),
-      // 附件引用（upload_id）+ 会话级模型/思考覆盖（控制条）
+      // Day137b-2：附件引用（upload_id）+ 会话级模型/思考覆盖（控制条）
       ...(attachments?.length
         ? {
             attachments: attachments.map((item) => ({
@@ -677,7 +716,7 @@ export function ChatView() {
     return true;
   };
 
-  // 中断重试：重试属于**新的一次请求**——先终止内核侧
+  // 中断重试（2026-10-15 用户拍板）：重试属于**新的一次请求**——先终止内核侧
   // 可能仍挂着的旧轮（刷新页面不会终止它，槽位未释放时重发会撞 SESSION_BUSY），
   // 再以同内容重发；中断上下文（目标+已执行过程）经会话历史自动携带。
   const retryInterrupted = async (messageId: string) => {
@@ -978,9 +1017,9 @@ export function ChatView() {
   const [interactionIndex, setInteractionIndex] = useState(0);
   const pendingInteraction =
     pendingInteractions[Math.min(interactionIndex, pendingInteractions.length - 1)];
-  // ①：作答草稿按 interaction_id 分桶持久化。key={interaction_id} 让切卡时
+  // §18.16①：作答草稿按 interaction_id 分桶持久化。key={interaction_id} 让切卡时
   // 卡片重挂载（-3 要求「卡 A 移除后卡 B 不残留 A 的答案」），但重挂载也会连带丢掉
-  // 用户在 A 上已答的内容——而 ① 的语义恰恰是「先翻到别的决策点，回头再答这张」。
+  // 用户在 A 上已答的内容——而 §18.16① 的语义恰恰是「先翻到别的决策点，回头再答这张」。
   // 分桶后两个语义同时成立：新卡无桶即全新，同卡回访从桶复原；卡片解决时删桶防泄漏。
   const [cardDrafts, setCardDrafts] = useState<Record<string, InteractionDraft>>({});
   // 当前卡被解决/移除后游标回落到有效范围（否则会停在空档）
@@ -1038,9 +1077,9 @@ export function ChatView() {
             onClear={() => void clearRevert()}
           />
         ) : null}
-        {/* 2026-09-23 会话内搜索/历史提问已移至顶栏（AppHeader 渲染，与连接状态同排） */}
+        {/* 2026-09-23 用户拍板：会话内搜索/历史提问已移至顶栏（AppHeader 渲染，与连接状态同排） */}
 
-        {activeRound ? <GroupRoundBar round={activeRound} /> : null}
+        <GroupGoalBar goal={activeGoal} />
 
         {messages.length ? (
           <MessageList
@@ -1100,7 +1139,7 @@ export function ChatView() {
         {/* 员工执行的实时过程已挪入消息流尾部（MessageList children——随滚动，
             不再固定挤占消息区）；此处原独立渲染块删除 */}
 
-        {/* 2026-09-29 新建会话英雄区——品牌字段 + 输入框组垂直居中
+        {/* 2026-09-29 用户拍板：新建会话英雄区——品牌字段 + 输入框组垂直居中
             （不再显示秘书头像；秘书提示改挂在输入框下方 below 槽） */}
         <div
           className={cn(
@@ -1140,7 +1179,7 @@ export function ChatView() {
             busy={busy}
             executing={executing}
             disabled={projectLocked}
-            teamRunning={teamRunning}
+            teamRunning={teamRunning || activeRound?.status === "running"}
             enhanced
             sessionId={activeSessionId ?? ""}
             usageRefreshKey={messages.length}
@@ -1158,7 +1197,7 @@ export function ChatView() {
             onSteer={steer}
             onStop={() => {
               if (busy) stop();
-              if (teamRunning) void stopTeam();
+              if (teamRunning || activeRound?.status === "running") void stopTeam();
             }}
             above={
               pendingSends.length > 0 || interrupted || pendingInteraction ? (
@@ -1207,7 +1246,7 @@ export function ChatView() {
                   ) : null}
                   {pendingInteraction ? (
                     <div className="flex flex-col gap-1" data-testid="interaction-stack">
-                      {/* 2026-10-01 卡序指示从卡外（本处原「待决策 N 项 · 第 N 项」条）
+                      {/* 2026-10-01 用户拍板：卡序指示从卡外（本处原「待决策 N 项 · 第 N 项」条）
                           挪进 InteractionCard 头部（倒计时左侧，形如 1/2） */}
                       <InteractionCard
                         key={pendingInteraction.interaction_id}
@@ -1252,7 +1291,7 @@ export function ChatView() {
             }
             below={isNewSession ? <ProjectSpaceCard /> : undefined}
           />
-          {/* 2026-09-29 秘书提示在「整个会话框 + 项目空间卡」之外（壳外、面板居中）；
+          {/* 2026-09-29 用户拍板：秘书提示在「整个会话框 + 项目空间卡」之外（壳外、面板居中）；
             第五轮：与会话框/卡片间距再收（负 margin 抵消 Composer 组件底部留白 pb-5） */}
           {showSecretaryHint ? (
             <p

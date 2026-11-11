@@ -1,22 +1,22 @@
-"""契约：本体四工具。
+"""契约：本体四工具（对照表 §4.1-5 / §4.2-3,6）。
 
-复刻 参考实现 `src/tools.ts`（727 行全读）。行为不变式：
+复刻 dsh-ontology `src/tools.ts`（727 行全读）。行为不变式：
 
 **ontology_define（TBox）**
- 1. **重复遍解析**——同一调用内的定义按「反复重试直到无进展」应用，
- 故子类可先于父类、关系可先于其逆；只有永远无法解析的才被拒
- 2. 重定义整体替换
- 3. 输出分 `classes`/`relations`/`rejected` 三组，rejected 带 ref + 违规文案
+  1. **重复遍解析**——同一调用内的定义按「反复重试直到无进展」应用，
+     故子类可先于父类、关系可先于其逆；只有永远无法解析的才被拒
+  2. 重定义整体替换
+  3. 输出分 `classes`/`relations`/`rejected` 三组，rejected 带 ref + 违规文案
 
 **ontology_assert（ABox）**
- 4. **先建实体后写事实**——一次调用可同时引入个体及其关系
- 5. 事实逐条校验；被拒的事实带 ref（`s p o` 三元组文本）与违规
- 6. 非 strict 模式写成功但带违规 → 进 `warnings`（不混进 rejected）
- 7. 重复断言幂等
+  4. **先建实体后写事实**——一次调用可同时引入个体及其关系
+  5. 事实逐条校验；被拒的事实带 ref（`s p o` 三元组文本）与违规
+  6. 非 strict 模式写成功但带违规 → 进 `warnings`（不混进 rejected）
+  7. 重复断言幂等
 
 **ontology_query（六模式）**
- 8. 六模式全量：schema / stats / entities / facts / neighbors / path
- 9. `includeInferred` 出 `via` 标记；**inference 关闭时强制不推论**
+  8. 六模式全量：schema / stats / entities / facts / neighbors / path
+  9. `includeInferred` 出 `via` 标记；**inference 关闭时强制不推论**
  10. entities 模式给 `allClasses`（直接类 + 继承闭包，排序稳定）
  11. `limit` 截断须置 `truncated` 标志（多取一条判断是否截断）
  12. neighbors 缺 `entity` 报错；path 缺 from/to 报错
@@ -27,7 +27,8 @@
  15. 撤回词表被依赖时进 `refused`（不是 missing）；不存在进 `missing`
  16. 撤回不存在的事实进 `missing`
 
-参考实现。"""
+参考源：dsh-ontology `src/tools.ts:145-727`。
+"""
 
 from __future__ import annotations
 

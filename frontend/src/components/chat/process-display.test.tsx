@@ -254,7 +254,7 @@ describe("终态注记：折叠后仍可见（spec ⑥ 用户中断 / 断线）"
   });
 });
 
-describe("终态消息不得再挂 running 节点（回合后过程块不结算）", () => {
+describe("FM-103：终态消息不得再挂 running 节点（回合后过程块不结算）", () => {
   it("已终态消息收到晚到 tool_call_start ⇒ 节点直接结算（不卡 running）", () => {
     let list = [emptyMessage({ id: "p1" })];
     list = applyThinking(list, "p1", "想");
@@ -275,7 +275,7 @@ describe("终态消息不得再挂 running 节点（回合后过程块不结算�
     expect(tool?.status).toBe("running");
   });
 
-  it("序列复现：思考→定稿→晚到工具 ⇒ 总耗时可见且非空", () => {
+  it("真机序列复现：思考→定稿→晚到工具 ⇒ 总耗时可见且非空", () => {
     let list = [emptyMessage({ id: "p1" })];
     list = applyThinking(list, "p1", "## 摘要\n\n正文");
     vi.setSystemTime(Date.now() + 3000);
@@ -346,8 +346,8 @@ describe("思考条目不显示逐条耗时（避免挤占展开按钮）", () =
     expect(screen.getByTestId("process-total-ms")).toHaveTextContent("42.1s");
   });
 
-  it("工具条目：行内不显示逐条耗时，只在总行汇总", () => {
-    // 2026-10-12 毫秒级耗时对用户无信息量且挤占展开按钮位置。
+  it("工具条目：行内不显示逐条耗时，只在总行汇总（L1 真机：12ms 常驻无意义）", () => {
+    // 2026-10-12 用户拍板：毫秒级耗时对用户无信息量且挤占展开按钮位置。
     // 破坏者视角：把耗时加回明细行时本用例必须变红。
     const nodes: ProcessNode[] = [
       { id: "t1", kind: "tool", toolName: "web_search", status: "success", durationMs: 320 },

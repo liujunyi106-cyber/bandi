@@ -316,6 +316,25 @@ class TestDispatcherGateHarness:
             "执行结束必须释放租约（residual claim 阻塞 gate）"
         )
 
+    def test_toplevel_default_reviewer_requires_active_employee(
+        self, dispatcher: CompanyDispatcher
+    ):
+        """顶层卡默认评审角色需同时存在角色与在职员工；否则回落自动通过。"""
+        from bandi.company.org_engine import OrgEmployee
+
+        item = create_work_item(
+            title="top level",
+            turn_type=WorkItemTurnType.EXECUTE,
+            assignee_role="worker",
+        )
+        assert dispatcher._resolve_reviewer_role(item) == ""
+        dispatcher.org_engine.register_role("reviewer", "Reviewer")
+        assert dispatcher._resolve_reviewer_role(item) == "", "无在职员工不得启用"
+        dispatcher.org_engine.register_employee(
+            OrgEmployee(employee_id="reviewer-1", name="Reviewer", role_id="reviewer")
+        )
+        assert dispatcher._resolve_reviewer_role(item) == "reviewer"
+
     def test_default_does_not_auto_approve_review(
         self, store: WorkItemStore, dispatcher: CompanyDispatcher
     ):

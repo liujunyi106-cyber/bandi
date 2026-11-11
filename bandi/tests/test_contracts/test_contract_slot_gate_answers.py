@@ -1,6 +1,6 @@
 # 功能：契约——槽位门答复解析：clarify 通道提交的是 JSON 字符串（前端 JSON.stringify(answers)），
 # 执行侧必须解析还原为 answers 映射并写回任务描述（否则答复被静默丢弃、口径丢失、
-# 门形同虚设——2026-10-19 验证实锤：多问卡答完执行侧拿到的仍是空答复）。
+# 门形同虚设——2026-10-19 真机验证实锤：多问卡答完执行侧拿到的仍是空答复）。
 from __future__ import annotations
 
 import importlib

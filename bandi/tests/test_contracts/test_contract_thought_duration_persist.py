@@ -1,13 +1,14 @@
 """契约：思考耗时必须在**落库侧**结算。
 
 证据（API 实读持久化的 process 节点）：
- kind=tool durationMs=3.04 / 4.89 / 5.57 ← 有（tool_result 帧带入）
- kind=thought durationMs=缺失 ← 无
+    kind=tool durationMs=3.04 / 4.89 / 5.57 ← 有（tool_result 帧带入）
+    kind=thought durationMs=缺失 ← 无
 
 后果：思考耗时只存在于浏览器内存（前端 `settleThought`），**从未回传后端** ⇒
 重载/切会话后纯文本轮完全没有耗时、混合轮只剩工具耗时 ⇒ 过程块显示「已完结 · —」。
 
-口径：opencode `ReasoningPart.time.{start,end}` —— 思考段是可度量的时间区间。"""
+参考源口径：opencode `ReasoningPart.time.{start,end}` —— 思考段是可度量的时间区间。
+"""
 
 from __future__ import annotations
 
@@ -99,7 +100,7 @@ class TestThoughtDurationSettledAtPersist:
 
     @pytest.mark.asyncio
     async def test_internal_marker_stripped_before_persist(self, monkeypatch) -> None:
-        """落库形态必须干净：内部起止标记不得进持久化。"""
+        """落库形态必须干净：内部起止标记不得进持久化（前端 ProcessNode 同构）。"""
         _patch_clock(monkeypatch, [1.0, 2.0])
         rec, store, _ = _recorder()
         await rec.on_thinking("s1", "x")

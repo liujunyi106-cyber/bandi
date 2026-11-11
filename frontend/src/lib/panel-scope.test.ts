@@ -1,6 +1,6 @@
 /**
  * 功能：右栏面板作用域测试（.2）——会话（session）与项目内员工单聊
- * （employee:<项目>::<角色>）两形态的键解析。
+ * （employee:<项目>::<角色>）两形态的键解析（@base docs/前端设计规划.md §8）。
  */
 import { describe, expect, it } from "vitest";
 

@@ -1,13 +1,13 @@
-# 功能：记忆本体词汇表（TBox）——谓词必须先声明才能用
+# 功能：记忆本体词汇表（TBox）——谓词必须先声明才能用（移植 dsh-ontology 的 TBox）
 #
-# 自 `参考实现` 的 `ontology_define` / `ontology_assert` 两段式：
+# 移植自 `dsh-ontology` 的 `ontology_define` / `ontology_assert` 两段式：
 # 该项目的核心设计是 **validate, not parse**——LLM 通过 tool-call 显式给三元组，
 # 代码侧不解析散文，只校验三元组是否落在已声明的词汇上。
 #
 # 我们此前是「谓词词表硬编码在抽取函数里 + 关系类型任意字符串」（技术债 AR-18：
 # "rel_type 无校验——类型枚举随 AR-18 退役，无白名单来源"）。本模块就是那个
 # 缺失的白名单来源：关系类型集中声明、附带 domain/range 约束、违规时给出
-# **写给模型看的可操作错误消息**（参考实现 的原话：
+# **写给模型看的可操作错误消息**（dsh-ontology `src/types.ts:120-126` 的原话：
 # "One reason an input was rejected, phrased for the model that must fix it"）。
 from __future__ import annotations
 
@@ -18,8 +18,9 @@ from dataclasses import dataclass
 class RelationTerm:
     """功能：一个可声明的关系词条——谓词 + 适用主体/客体 + 逻辑特征。
 
-    字段对齐 参考实现 `RelationTerm`（）的子集，
-    我们不需要 domain/range 全套描述逻辑，够用即可。"""
+    字段对齐 dsh-ontology `RelationTerm`（`src/types.ts:47-66`）的子集，
+    我们不需要 domain/range 全套描述逻辑，够用即可。
+    """
 
     id: str
     label: str
@@ -106,7 +107,7 @@ RELATION_TERMS: dict[str, RelationTerm] = {
 }
 
 
-# 功能：词汇表缺项时给模型的补全提示——参考实现 的做法是
+# 功能：词汇表缺项时给模型的补全提示——dsh-ontology 的做法是
 # "A rejected fact tells you exactly which constraint failed — fix the input or
 # extend the vocabulary with ontology_define, do not work around it"。
 # 预留：记忆关系词表 prompt 注入；启用时机 记忆关系补全提示接入提示词时
@@ -147,7 +148,9 @@ def suggest_relations(predicate: str) -> list[str]:
 class Violation:
     """功能：一条校验失败原因。
 
-    措辞面向**必须修复它的那个模型**，不是给人看的日志——参考实现：错误消息要能直接驱动下一轮自我修正。"""
+    措辞面向**必须修复它的那个模型**，不是给人看的日志——移植 dsh-ontology
+    `src/types.ts:120-126`：错误消息要能直接驱动下一轮自我修正。
+    """
 
     code: str
     message: str
@@ -164,7 +167,8 @@ def validate_fact(
     """功能：校验一个三元组是否落在已声明词汇上——validate, not parse。
 
     返回违规列表（空 = 通过）。调用方遇到非空必须**拒绝写入并把消息回给模型**，
-    不允许绕过、不允许自动改写——这是 参考实现 的核心纪律。"""
+    不允许绕过、不允许自动改写——这是 dsh-ontology 的核心纪律。
+    """
     violations: list[Violation] = []
     term = relation_for(predicate)
     if term is None:
@@ -205,8 +209,9 @@ def entailed_edges(
 ) -> list[tuple[str, str, str]]:
     """功能：按对称/传递/逆关系特征推导隐含边——只读推导，永不落库。
 
-    参考实现 `entail`（）的核心：推论是
-    read-time 的派生物，撤回前提即自动消失，不留过期推理残留。"""
+    移植 dsh-ontology `entail()`（`src/ontology.ts:481-519`）的核心：推论是
+    read-time 的派生物，撤回前提即自动消失，不留过期推理残留。
+    """
     known = {tuple(e) for e in edges}
     derived: list[tuple[str, str, str]] = []
     for _ in range(max_rounds):

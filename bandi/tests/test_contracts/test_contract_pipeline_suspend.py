@@ -1,4 +1,4 @@
-# 功能：真挂起端到端契约——PermissionsPipeline × HTTPUserInteraction × InteractionStore
+# 功能：Day132c 真挂起端到端契约——PermissionsPipeline × HTTPUserInteraction × InteractionStore
 # 背景：核心设计验证「挂起落在工具执行路径内，AgentLoop 状态机零侵入」。
 # → register + await get_decision（真挂起）→ 用户决策 resolve 唤醒 → check 返回 allow。
 # 契约钉行为：同 turn 挂起→唤醒闭环、超时 fail-closed deny、拒绝 deny、confirm 缓存族不变。

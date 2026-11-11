@@ -221,7 +221,7 @@ class TestUnansweredNote:
 class TestPlanPrompt:
     def test_plan_prompt_drops_time_estimate(self) -> None:
         prompt = MODE_PROMPTS["plan"]
-        assert "预期耗时" not in prompt, "用户反馈：耗时标注对用户无价值"
+        assert "预期耗时" not in prompt, "用户真机反馈：耗时标注对用户无价值"
 
     def test_plan_prompt_forbids_mode_self_reference(self) -> None:
         prompt = MODE_PROMPTS["plan"]

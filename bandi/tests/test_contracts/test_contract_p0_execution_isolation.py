@@ -1,4 +1,4 @@
-# 功能：执行隔离契约——环境清洗 / 工作区 fail-closed / Docker 缺失 fail-closed
+# 功能：P0-4 执行隔离契约——环境清洗 / 工作区 fail-closed / Docker 缺失 fail-closed
 from __future__ import annotations
 
 from pathlib import Path

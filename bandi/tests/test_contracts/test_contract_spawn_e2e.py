@@ -1,9 +1,10 @@
-"""功能：spawn_thread_task 生产主链路端到端契约。
+"""功能：spawn_thread_task 生产主链路端到端契约（DoD-12/§6a）。
 
 重建根因：registry 裸注册 spawn 工具，公司链路（EngineSeatExecutor→run_agent→
 run_agent_turn）必须在 registry 建成后 bind_deps，否则工具对 LLM 可见但每次调用
 必 fail-closed。本契约走真实装配链 + MockProvider 注入 spawn tool_call，断言最终
-产物（子卡真实落 WorkItemStore + 线程真实收到产出回写消息 + 事件广播触发）。"""
+产物（子卡真实落 WorkItemStore + 线程真实收到产出回写消息 + 事件广播触发）。
+"""
 
 from __future__ import annotations
 

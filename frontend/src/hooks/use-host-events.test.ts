@@ -359,7 +359,7 @@ describe("137c-B4 宿主通知 i18n（REV-137b2-10）", () => {
 // 发现：宿主通道的 interaction 帧此前**只发通知、不留帧**。
 // 会话通道（use-session-stream）只投递「当前活动会话」的帧 → 用户切到别处时
 // 该会话的审批帧只经宿主通道到达 → 切回后决策区无卡 → Agent 永久阻塞（死路）。
-describe("2026-09-30 跨会话审批帧必须留帧（不可只发通知）", () => {
+describe("2026-09-30 真机：跨会话审批帧必须留帧（不可只发通知）", () => {
   beforeEach(() => {
     wsHarness.shellFrame = null;
     wsHarness.sessionFrame = null;

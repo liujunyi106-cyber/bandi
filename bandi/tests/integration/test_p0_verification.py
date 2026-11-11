@@ -1,5 +1,5 @@
 # 功能：6 项 Harness 差距项验收测试
-# 对齐 清单
+# 对齐 docs/Harness工程差距分析与改进.md §五 清单
 
 from __future__ import annotations
 

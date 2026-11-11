@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
-"""功能：构建 bandi-sidecar（PyInstaller onedir）——。
+"""功能：构建 bandi-sidecar（PyInstaller onedir）——Day147 C-5。
 
-口径：
- 父解释器借 venv 的包跑 PyInstaller（本机 venv 解释器 spawn 异常）：
- PYTHONPATH=<repo>/.venv/Lib/site-packages <parent_python> -m PyInstaller bandi-sidecar.spec
- 本脚本自动完成：venv site-packages 解析、PYTHONPATH 注入、distpath/workpath
- 指到 ASCII 路径（B-11 约束：原生二进制不落中文路径）。
+口径（Windows 实测，见 交付文档收集 §13）：
+  父解释器借 venv 的包跑 PyInstaller（本机 venv 解释器 spawn 异常）：
+    PYTHONPATH=<repo>/.venv/Lib/site-packages  <parent_python> -m PyInstaller bandi-sidecar.spec
+  本脚本自动完成：venv site-packages 解析、PYTHONPATH 注入、distpath/workpath
+  指到 ASCII 路径（B-11 约束：原生二进制不落中文路径）。
 
 用法：
- python scripts/build-sidecar.py # 默认输出 ~/.bandi/sidecar-build/dist/bandi-sidecar
- python scripts/build-sidecar.py --dist-dir <dir>
+  python scripts/build-sidecar.py            # 默认输出 ~/.bandi/sidecar-build/dist/bandi-sidecar
+  python scripts/build-sidecar.py --dist-dir <dir>
 
 产物：bandi-sidecar/bandi-sidecar.exe（同目录含 _internal/）。
 验收：exe 所在目录整体拷到 ~/.bandi/sidecar/ 或随 electron-builder 打进安装目录；
- 双击 exe（或 `bandi-sidecar.exe serve --port 0`）能起 HTTP 服务、stdout 出现
- `BANDI_SIDECAR_READY port=` 行。"""
+  双击 exe（或 `bandi-sidecar.exe serve --port 0`）能起 HTTP 服务、stdout 出现
+  `BANDI_SIDECAR_READY port=` 行。
+"""
 
 from __future__ import annotations
 
@@ -81,7 +82,7 @@ def main() -> int:
         os.makedirs(ascii_dir, exist_ok=True)
 
     # 解释器优先级：venv python（干净 sys.path，产物最小）> 父解释器 -S + PYTHONPATH
-    # 。
+    # （本机 venv 解释器 spawn 异常时的兜底口径，见 交付文档 §13/§14）。
     # -S：跳过 base 解释器的 site-packages——否则 PyInstaller 会扫进本机全部无关包
     # （paddle/modelscope 等 ML 大件），既拖慢构建（20min+）又可能因 import 探测
     # 崩溃（paddle.jit.sot 实测炸构建），产物也虚胖数百 MB。
@@ -133,7 +134,7 @@ def main() -> int:
         print(f"[build] OK：{product}（整体 {size_mb:.1f} MB）")
 
         # 同步到 electron-builder extraResources 源目录（frontend/build/sidecar/），
-        # 与 electron-builder.yml 的 extraResources 配置对齐。
+        # 与 electron-builder.yml 的 extraResources 配置对齐（C-6）。
         staging = REPO_ROOT.parent / "frontend" / "build" / "sidecar"
         target = staging / "bandi-sidecar"
         source = dist_dir / "bandi-sidecar"

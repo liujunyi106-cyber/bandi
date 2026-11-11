@@ -473,6 +473,7 @@ class SecretaryService:
                 ],
                 label="secretary",
                 session_id="secretary",
+                agent_id="secretary",
             )
             parsed = self._parse_response(response.content)
         except (KeyError, TypeError, OSError, ValueError, AttributeError):

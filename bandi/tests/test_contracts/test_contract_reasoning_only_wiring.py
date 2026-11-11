@@ -2,13 +2,14 @@
 
 这一版的由来：第一版实现写成 `engine.execute(...)`，而 `FallbackEngine` 的方法
 其实叫 `call_with_fallback` —— AttributeError 被自己写的 `except Exception`
-吞掉，静默返回 None。于是**重试代码从未执行过**，Pass^N 里 reasoning-only
+吞掉，静默返回 None。于是**重试代码从未执行过**，真机 Pass^N 里 reasoning-only
 依旧以 MODEL_ERROR 出现（日志里连 debug 都看不到，因为异常被吃了）。
 
 教训两条，都在本文件钉死：
 1. 兜底分支不得用 `except Exception` 把自身的实现错误一起吞掉；
 2. 契约必须断言**调用发生**，不能只断言助手函数返回 True——只测
- `_is_reasoning_only` 会让「重试根本调不到」这类缺陷 100% 漏网。"""
+   `_is_reasoning_only` 会让「重试根本调不到」这类缺陷 100% 漏网。
+"""
 
 from __future__ import annotations
 
@@ -29,10 +30,11 @@ class TestGuardOnEveryReturnPath:
     前两版都只把重试挂在 `_do_llm_call_inner` 的**直调**返回点（1295 行附近），
     但主路径根本不经过那里——流式候选成功（`return response`）与非流式
     `complete_with_fallback`（`return response`）各自提前 return。重试代码因此
-    是死代码，events 里 `reasoning_only_retry` 事件数恒为 0。
+    是死代码，真机 events 里 `reasoning_only_retry` 事件数恒为 0。
 
     本类用 AST 静态核对：函数内所有 `return <LLMResponse 类表达式>` 的返回点，
-    除经 `_guard_reasoning_only` 包裹的以外不得裸返回响应。"""
+    除经 `_guard_reasoning_only` 包裹的以外不得裸返回响应。
+    """
 
     def test_return_points_are_guarded(self) -> None:
         src = STATES.read_text(encoding="utf-8")
@@ -120,7 +122,7 @@ class TestNoBlanketExcept:
 
 class TestDetectionShape:
     def test_real_provider_shape_detected(self) -> None:
-        """返回的响应形态（finish_reason=stop、无 tool_calls）必须被判中，
+        """真机返回的响应形态（finish_reason=stop、无 tool_calls）必须被判中，
         否则线上永远触发不了重试。"""
         from bandi.agent.states import _is_reasoning_only
 

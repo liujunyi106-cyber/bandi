@@ -289,6 +289,66 @@ def test_usage_stats_reflects_ledger_write(client: Any, isolated_home: Path) -> 
     )
 
 
+def test_usage_stats_flushes_pending_ledger_write(
+    client: Any, isolated_home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """契约②（一致性）：刚入队未落库的成本，在读取统计前必须被 flush 可见。"""
+    from bandi.observability.cost_store import CostRecord, get_shared_cost_store
+
+    store = get_shared_cost_store(isolated_home / ".bandi" / "data" / "cost.db")
+    flush_calls: list[int] = []
+    original_flush = store.flush
+
+    def _flush_spy() -> None:
+        flush_calls.append(1)
+        original_flush()
+
+    monkeypatch.setattr(store, "flush", _flush_spy)
+    store.enqueue(
+        CostRecord(
+            session_id="sess-fresh",
+            model="m1",
+            agent_id="dev@fresh",
+            input_tokens=10,
+            output_tokens=2,
+            breakdown={"input_tokens_total": 10},
+        )
+    )
+    body = client.get("/api/usage/stats?range=all").json()
+    assert flush_calls, "用量统计读取前必须先 flush 异步台账队列"
+    assert body["by_agent"]["dev@fresh"]["requests"] == 1
+
+
+def test_cost_session_history_flushes_pending_write(
+    client: Any, isolated_home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """契约（一致性）：会话成本历史读取前也必须 flush，避免重启/刚调用后空台账。"""
+    from bandi.observability.cost_store import CostRecord, get_shared_cost_store
+
+    store = get_shared_cost_store(isolated_home / ".bandi" / "data" / "cost.db")
+    flush_calls: list[int] = []
+    original_flush = store.flush
+
+    def _flush_spy() -> None:
+        flush_calls.append(1)
+        original_flush()
+
+    monkeypatch.setattr(store, "flush", _flush_spy)
+    store.enqueue(
+        CostRecord(
+            session_id="sess-history",
+            model="m1",
+            agent_id="dev@history",
+            input_tokens=7,
+            output_tokens=3,
+            breakdown={"input_tokens_total": 7},
+        )
+    )
+    body = client.get("/api/cost/sessions/sess-history").json()
+    assert flush_calls
+    assert body["records"][0]["agent_id"] == "dev@history"
+
+
 def test_aggregate_never_exceeds_full_hit_rate(client: Any, isolated_home: Path) -> None:
     """契约②（破坏者视角）：Anthropic 行「命中 >> 原生 input_tokens」不得让
     命中率越界——分母必须是 breakdown 里的归一总量。"""

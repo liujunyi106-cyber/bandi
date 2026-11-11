@@ -14,12 +14,12 @@ from bandi.core.message import LLMResponse
 from bandi.llm.base import BaseProvider
 
 # 旁路质量检查（验证器 / 裁判 / 幻觉校验 / 门禁）的**总时间预算**：
-# 一次检查的最坏耗时 = 上游超时 × 重试轮数（上游抖动时 60s × 3 ≈ 180s，
+# 一次检查的最坏耗时 = 上游超时 × 重试轮数（实测 agnes 抖动时 60s × 3 ≈ 180s，
 # 把整个回合拖到 3 分钟以上，而主回复早已流完）。这些检查都是 best-effort
 # （调用方失败即降级），故用总预算封顶：超时按失败降级，不拖回合。
 QUALITY_CHECK_BUDGET_SEC = 20.0
 
-# 公司执行链裁判（verifier / gate_harness）独立预算：LLM 单次含内部重试
+# 公司执行链裁判（verifier / gate_harness）独立预算：真机 LLM 单次含内部重试
 # 常超 20s；超时按基础设施失败降级放行（不误杀已产出回复），60s 为最坏等待上限。
 COMPANY_JUDGE_BUDGET_SEC = 60.0
 

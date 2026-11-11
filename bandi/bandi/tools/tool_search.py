@@ -1,4 +1,4 @@
-# 功能：ToolSearchTool——运行时按关键词/select 检索 MCP 外部工具
+# 功能：ToolSearchTool——运行时按关键词/select 检索内部工具与 MCP 外部工具
 from __future__ import annotations
 
 from typing import Any
@@ -65,9 +65,10 @@ def _keyword_search(
 class ToolSearchTool(BaseTool):
     name: str = "tool_search"
     description: str = (
-        "Search MCP-integrated (external) tools by keyword or select: to discover "
-        'available external tool names. Query forms: "read file" keyword search, '
-        '"select:tool1,tool2" exact names. Returns matched tool names.'
+        "Search available tools (internal and MCP-integrated external tools) by "
+        'keyword or select: to discover tool names. Query forms: "read file" '
+        'keyword search, "select:tool1,tool2" exact names. Matched tool schemas '
+        "are loaded into the next turn. Returns matched tool names."
     )
     category: ToolCategory = ToolCategory.UTIL
     risk_level: str = "low"
@@ -103,4 +104,4 @@ class ToolSearchTool(BaseTool):
         max_results = int(params.get("max_results", _DEFAULT_MAX_RESULTS))
         if max_results <= 0:
             max_results = _DEFAULT_MAX_RESULTS
-        return self._registry.search(query, max_results=max_results)
+        return self._registry.search(query, max_results=max_results, scope="all")

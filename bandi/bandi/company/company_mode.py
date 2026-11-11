@@ -163,6 +163,8 @@ class DispatcherConfig:
     # 宽松自动化：员工卡完成提交后停在经理评审且无评审意见时自动通过放行
     # （人无需逐卡点批；需强审的卡仍可显式写 review_verdict）；关则保持人工评审
     auto_approve_reviews: bool = False
+    # 顶层无父卡时的默认评审角色；角色或待命员工缺失则自动通过
+    default_reviewer_role: str = "reviewer"
     # 会整批 cancel，是明确要避开的反例。
     # 等待用户授权由审批窗口（30 分钟 TTL）承担——超时执行被取消、降级文本、释放槽位
     per_item_timeout_sec: float = 1860.0
@@ -990,7 +992,7 @@ class CompanyDispatcher:
             logger.debug("deadlock check failed: %s", e)
 
     def _tick_peer_wait_refresh(self, report: DispatcherReport) -> None:
-        """peer wait 解析接入 tick——WAITING_FOR_PEER 卡批量解析
+        """Day125-peer wait 解析接入 tick——WAITING_FOR_PEER 卡批量解析
         （回复到达解除回 READY / 超时升级 manager / 超时升级 meeting）。
         此前 refresh_waiting_tasks 生产零调用，等待卡永不流转。解除与
         meeting 升级（metadata 变更）均落库。"""
@@ -1627,6 +1629,28 @@ class CompanyDispatcher:
             report.released.append(item.assignee_role)
         return item
 
+    def _resolve_reviewer_role(self, item: WorkItem) -> str:
+        """功能：解析评审人——显式 metadata > 父卡负责人 > 默认评审角色（需在职员工）。"""
+        metadata = dict(item.metadata or {})
+        explicit = str(
+            metadata.get("reviewer_role") or metadata.get("manager_role_id") or ""
+        ).strip()
+        if explicit:
+            return explicit
+        if item.parent_id:
+            parent_item = self.store.get(item.parent_id)
+            if parent_item is not None:
+                return str(parent_item.assignee_role or "").strip()
+        candidate = str(getattr(self.config, "default_reviewer_role", "") or "").strip()
+        if not candidate:
+            return ""
+        org = getattr(self, "org_engine", None)
+        if org is None or org.get_role(candidate) is None:
+            return ""
+        if not org.list_employees(role_id=candidate):
+            return ""
+        return candidate
+
     async def _tick_gate_items(
         self, gate_items: list[WorkItem], report: DispatcherReport, runtime: CompanyRuntime
     ) -> None:
@@ -1692,7 +1716,21 @@ class CompanyDispatcher:
                 "self_reported_risks": item.runtime_metadata.get(META_RISKS, []),
             }
             if self.gate_llm is not None:
-                gate_result = await self.gate_harness.evaluate_llm(**gate_args, llm=self.gate_llm)
+                gate_result = await self.gate_harness.evaluate_llm(
+                    **gate_args,
+                    llm=self.gate_llm,
+                    agent_id=str(
+                        item.metadata.get("agent_id")
+                        or item.runtime_metadata.get("agent_id")
+                        or item.assignee_role
+                        or ""
+                    ),
+                    session_id=str(
+                        item.metadata.get("origin_session_id")
+                        or item.metadata.get("dm_conversation_id")
+                        or "gate"
+                    ),
+                )
             else:
                 gate_result = self.gate_harness.evaluate(**gate_args)
             if gate_result.verdict == GateVerdict.PASS:
@@ -1740,12 +1778,12 @@ class CompanyDispatcher:
                     "chat_mention",
                     "chat_dm",
                 )
-                # 评审人 = 父卡负责人；顶层任务没有父卡即没有审批员
+                # 顶层卡默认评审角色需有在职员工；缺失则自动通过
                 reviewer_role = ""
-                if not is_chat_turn and item.parent_id:
-                    parent_item = self.store.get(item.parent_id)
-                    if parent_item is not None:
-                        reviewer_role = str(parent_item.assignee_role or "").strip()
+                if not is_chat_turn:
+                    reviewer_role = self._resolve_reviewer_role(item)
+                if reviewer_role and reviewer_role.lower() == str(item.assignee_role or "").lower():
+                    reviewer_role = ""
                 # 没有审批员或自动通过：产出即终态，不停在待审
                 needs_review = bool(reviewer_role) and not self.config.auto_approve_reviews
                 item = transition_work_item(
@@ -2121,10 +2159,13 @@ class CompanyDispatcher:
     ) -> list[tuple[str, str, str, str, bool, str, float]]:
         """并行执行已认领的工作项，返回 `(item_id, role_id, claimed_role, old_phase, ok, err)`。
 
-        语义逐条对齐* 并发闸门 `Semaphore(max_concurrent)` —— 参考实现；
-        * `gather(return_exceptions=True)` 且每项内部再兜一层——**单点失败绝不取消
-        其余项**；
-        * **每项独立 `wait_for`** —— 参考实现。刻意避开其 的批次级超时：那会在任一项超时时 `cancel` 整批。"""
+        语义逐条对齐参考源：
+          * 并发闸门 `Semaphore(max_concurrent)` —— LeAgent workflow/engine/executor.py:326；
+          * `gather(return_exceptions=True)` 且每项内部再兜一层——**单点失败绝不取消
+            其余项**（LeAgent rules/engine.py:522、dsh workflow runtime.ts:400）；
+          * **每项独立 `wait_for`** —— LeAgent cron/executor.py:186。刻意避开其
+            executor.py:338 的批次级超时：那会在任一项超时时 `cancel()` 整批。
+        """
         sem = asyncio.Semaphore(max(1, self.config.max_concurrent))
 
         async def _limited(entry: tuple[str, str, str, str]) -> Any:

@@ -1,5 +1,5 @@
 /**
- * 功能：右栏 v5 外壳测试。
+ * 功能：右栏 v5 外壳测试（视图切换下拉 / 页签开合 / 收起 / 全屏 / 宽度重置——@base §8）。
  * .2：作用域视图集（员工单聊 = 概览/文件）；宽度/收起记忆按作用域键。
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";

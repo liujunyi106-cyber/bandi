@@ -1,4 +1,4 @@
-# 功能：权限规则契约——规则 CRUD / 审批来源解释 / always-allow 撤销
+# 功能：P0-3 权限规则契约——规则 CRUD / 审批来源解释 / always-allow 撤销
 from __future__ import annotations
 
 from pathlib import Path

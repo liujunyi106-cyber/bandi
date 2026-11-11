@@ -1,10 +1,10 @@
 """
-本体图只读增强契约+ 工程增强修复契约：
+本体图只读增强契约（ADR-33：不建重图 / 不写图）+ 工程增强修复契约：
 
 extract_entities 纯文本抽取三类（引号专名/路径/英文驼峰）——不访问图
 find_facts 实体名→图内事实文本（name 优先、description 回退），去重 + 上限
 find_contradictions 共享实体 + 低相似（token Jaccard < 0.15）+ 长度 ≥20；
- 高相似/短文本/无共享实体不报
+   高相似/短文本/无共享实体不报
 search_unified 增强只写 metadata（enriched_entities），不改 value/key/排序
 contradiction_with 双向标注另一条命中 key
 装配（_build_memory_manager / run_agent_turn）把本体只读适配注入 enricher
@@ -12,7 +12,7 @@ MemoryContextSource.collect 消费增强字段：相关实体/矛盾后缀；无
 作用域：EntityGraphEnricher(project_id=...) 只召回本项目 + 全局实体
 脏类型防御：输入/图返回脏类型不炸链、不写字符拆分
 组合排序：reliability × question 倍率 × intent 加法 × 软保底；
- 缺省 reliability 与「无 factor」逐条一致（兼容 B 组把乘子移到最终分的改法）
+   缺省 reliability 与「无 factor」逐条一致（兼容 B 组把乘子移到最终分的改法）
 增强只作用于截断后返回集（limit=1 时 extract 调用恰 1 次）
 
 破坏者断言：
@@ -21,7 +21,8 @@ MemoryContextSource.collect 消费增强字段：相关实体/矛盾后缀；无
 - 假图写方法（add_entity/add_relation/save/delete）在增强全流程零调用（只读证明）
 - enricher=None → 零行为（既有 facade 契约不回归）
 - 实体无 project_id 字段（旧库形态）→ 作用域过滤不得误杀
-- find_related 已删除（零生产调用 DoD-11 实锤）——契约引用同步删除"""
+- find_related 已删除（零生产调用 DoD-11 实锤）——契约引用同步删除
+"""
 
 from pathlib import Path
 from typing import Any

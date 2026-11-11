@@ -1,5 +1,5 @@
 # 功能：契约——会话用量「家族聚合」（团队会话含全员执行成本）
-# 背景：员工执行的 token 记在各自 role-session 名下，群聊会话自身
+# 背景（真机实证）：员工执行的 token 记在各自 role-session 名下，群聊会话自身
 # 零 LLM 调用 ⇒ 会话级精确查询恒 0。family_prefix 聚合本会话 + 员工会话家族。
 from __future__ import annotations
 

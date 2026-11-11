@@ -201,7 +201,7 @@ describe("OverviewView", () => {
     expect(screen.queryByTestId("panel-plan-todo")).not.toBeInTheDocument();
   });
 
-  it("计划段显示团队工作项（project_id 过滤）；概览无团队板块", async () => {
+  it("计划段显示团队工作项（project_id 过滤）；概览无团队板块（2026-10-03 拍板删除）", async () => {
     useChatStore.setState({ activeProjectId: "p1", tasksBySession: {} });
     vi.mocked(companyApi.projects).mockResolvedValueOnce({
       projects: [
@@ -272,7 +272,7 @@ describe("OverviewView", () => {
     expect(panelApi.projectArtifacts).not.toHaveBeenCalled();
   });
 
-  it("旧工作项无 project_id 时回落项目成员角色过滤", async () => {
+  it("旧工作项无 project_id 时回落项目成员角色过滤（2026-09-26 真机反馈场景）", async () => {
     useChatStore.setState({ activeProjectId: "p1", tasksBySession: {} });
     vi.mocked(companyApi.projects).mockResolvedValueOnce({
       projects: [

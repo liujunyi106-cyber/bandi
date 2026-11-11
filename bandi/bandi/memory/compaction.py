@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 MIN_MESSAGES_FOR_COMPRESSION = 2
 _SPLIT_RATIO = 0.5
 _SOURCE_TEXT_MAX_TOKENS = 4000
-# 大窗口摘要源上限：单次摘要请求最多携带 32K token 源文本（参考 参考实现
+# 大窗口摘要源上限：单次摘要请求最多携带 32K token 源文本（参考 deepseek-harness
 # compaction-basic 的 selected-span 摘要：优先完整重放选中区间，而不是固定 4K 头尾）。
 _SUMMARIZER_SOURCE_MAX_TOKENS = 32000
 # 小窗口强制摘要时允许更大源文本，避免只摘要块头尾、丢掉中段
@@ -106,14 +106,14 @@ _PREVIOUS_TAG_CLOSE = "\n</previous-summary>"
 
 
 def append_previous_summary(user_content: str, previous_summary: str) -> str:
-    """功能：以 <previous-summary> 标签把旧摘要追加到摘要请求 user 内容。"""
+    """功能：以 <previous-summary> 标签把旧摘要追加到摘要请求 user 内容（pi/opencode 同构）。"""
     return f"{user_content}{_PREVIOUS_TAG_OPEN}{previous_summary}{_PREVIOUS_TAG_CLOSE}"
 
 
 def extract_previous_summary(messages: list[Message]) -> tuple[str | None, list[Message]]:
     """功能：识别并剥离历史压缩摘要消息，返回（摘要文本, 剩余消息）。多条摘要
     （fork/多路径压缩/历史恢复）全部按出现顺序合并保留——只留最后一条会令较早
-    摘要承载的目标与决策消失。"""
+    摘要承载的目标与决策消失（审计 2.5，opencode completedCompactions 同构）。"""
     previous_parts: list[str] = []
     remaining: list[Message] = []
     for m in messages:
@@ -144,7 +144,7 @@ _FIDELITY_BACKFILL_TOTAL_MAX = 150
 
 def extract_file_operations(messages: list[Message], max_files: int = _FILE_OPS_MAX) -> list[str]:
     """功能：从消息的 tool_calls 确定性提取被触碰文件路径（最近优先、去重保序）——
-    摘要尾部文件清单来源。"""
+    摘要尾部文件清单来源（审计 2.16，pi extractFileOperations 同构）。"""
     files: list[str] = []
     seen: set[str] = set()
     for m in reversed(messages):
@@ -288,6 +288,7 @@ class MemoryCompactor:
         backfill_missing: bool = True,
         report_sink: list[FidelityReport] | None = None,
         force_progressive: bool = False,
+        force: bool = False,
         partial: bool = False,
     ) -> tuple[list[Message], bool, int]:
         from bandi.utils.token_counter import TokenCounter
@@ -300,13 +301,16 @@ class MemoryCompactor:
         # 小窗口渐进压缩的块天然小于全局块目标，必须强制摘要而不是 bail，
         # 否则每块失败会退化为 truncate。极小块（≤800）仍跳过。
         if total_tokens <= effective_budget:
-            if not force_progressive or total_tokens <= 800:
+            if force:
+                effective_budget = max(64, total_tokens // 2)
+            elif not force_progressive or total_tokens <= 800:
                 return messages, False, 1
-            effective_budget = max(800, total_tokens // 2)
+            else:
+                effective_budget = max(800, total_tokens // 2)
         if (
             len(non_system) <= MIN_MESSAGES_FOR_COMPRESSION
             and total_tokens <= _SOURCE_TEXT_MAX_TOKENS
-            and not force_progressive
+            and not (force_progressive or force)
         ):
             return messages, False, 1
 
@@ -349,7 +353,7 @@ class MemoryCompactor:
         source_max_tokens = max(
             _SOURCE_TEXT_MAX_TOKENS, min(total_tokens, _SUMMARIZER_SOURCE_MAX_TOKENS)
         )
-        if force_progressive:
+        if force_progressive or force:
             source_max_tokens = max(
                 _SOURCE_TEXT_MAX_TOKENS, min(total_tokens, _FORCED_SOURCE_MAX_TOKENS)
             )

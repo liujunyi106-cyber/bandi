@@ -25,9 +25,10 @@ def _now_ts() -> float:
 class UtilStore:
     """功能：cache_entries 单库持久化；调用方持有单例（工具构造时注入）。
 
-    设计：key = f"{namespace}:{key}"；TTL 惰性过期（读命中检查+删）；
+    设计 §5：key = f"{namespace}:{key}"；TTL 惰性过期（读命中检查+删）；
     increment/decrement 走 int_value 列避免 JSON 竞争读改写；写操作经 to_thread。
-    cron 工具面已改接 TaskStore（cron 桥接：存储唯一事实源=调度库）。"""
+    cron 工具面已改接 TaskStore（cron 桥接：存储唯一事实源=调度库）。
+    """
 
     def __init__(self, db_path: str | Path | None = None) -> None:
         self._db_path = str(db_path or default_util_db_path())

@@ -1,5 +1,5 @@
 /**
- * 功能：设置域 API。
+ * 功能：设置域 API（模型设置——控制条模型选择器数据源；Day137b-2）。
  */
 import { api, apiFetch } from "@/services/api";
 
@@ -17,14 +17,14 @@ export interface ModelSettings {
   current_model: string;
   has_api_key: boolean;
   available_models: ModelOption[];
-  /** 激活档案摘要。 */
+  /** 激活档案摘要（Day137b-2b；无激活档案 = null）。 */
   active_profile?: ProfileSummary | null;
   /** 档案解析后的实际生效模型（无档案时与 current_model 一致）。 */
   effective_model?: string;
   effective_has_api_key?: boolean;
 }
 
-/** Provider 档案。 */
+/** Provider 档案（Day137b-2b 「B 方案」：多档案并存，跨 provider 不丢 key）。 */
 export interface LlmProfile {
   profile_id: string;
   name: string;
@@ -51,7 +51,7 @@ export interface ProfilesPayload {
   profiles: (LlmProfile & { has_api_key?: boolean })[];
 }
 
-/** 用量分桶。后端 `/usage/stats` 的 total / by_model / by_role。 */
+/** 用量分桶。后端 `/usage/stats` 的 total / by_model / by_role 同构。 */
 export interface UsageBucket {
   /** 请求数 */
   requests: number;
@@ -102,7 +102,7 @@ export const settingsApi = {
   /** 功能：切换全局默认模型（控制条切换；下次回合生效）。 */
   setModel: (model: string) => api.put<{ current_model: string }>("/settings/model", { model }),
 
-  // ── Provider 档案─────────────────────────────────────────
+  // ── Provider 档案（Day137b-2b）─────────────────────────────────────────
   profiles: () => api.get<ProfilesPayload>("/settings/llm/profiles"),
   createProfile: (profile: Partial<LlmProfile> & { profile_id: string; model: string }) =>
     api.post<{ profile: LlmProfile; active_profile_id: string }>("/settings/llm/profiles", profile),

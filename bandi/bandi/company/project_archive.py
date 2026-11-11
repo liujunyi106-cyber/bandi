@@ -166,5 +166,6 @@ async def summarize_session(
         [{"role": "user", "content": prompt}],
         label="project_archive",
         session_id=session_id or "project-archive",
+        agent_id="project_archive",
     )
     return str(getattr(response, "content", "") or "").strip()

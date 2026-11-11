@@ -275,6 +275,7 @@ class DocClassifierTool(FsTool):
                 [{"role": "user", "content": prompt}],
                 label="doc_classify",
                 session_id="doc_classify",
+                agent_id="doc_classify",
                 max_tokens=_LLM_MAX_TOKENS,
             )
             predicted = (response.content or "").strip().lower()

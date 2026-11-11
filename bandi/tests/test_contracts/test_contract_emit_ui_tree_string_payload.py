@@ -1,9 +1,10 @@
 """契约：emit_ui_tree 对 JSON 字符串载荷的宽容解析（模型真实行为）。
 
-- 背景：（APPR-7 群聊 plan）中模型把组件树序列化成 JSON 字符串提交，
- schema（type: object）直接校验失败 → 员工连接 3 次失败 → 15 轮 MAX_TURNS。
+- 背景：真机（APPR-7 群聊 plan）中模型把组件树序列化成 JSON 字符串提交，
+  schema（type: object）直接校验失败 → 员工连接 3 次失败 → 15 轮 MAX_TURNS。
 - 修复语义：schema 接受 object|string；execute 对字符串做 json.loads 宽容解析，
- 非法 JSON 显式报错（不静默）；object 直传原路径不变。"""
+  非法 JSON 显式报错（不静默）；object 直传原路径不变。
+"""
 
 from __future__ import annotations
 

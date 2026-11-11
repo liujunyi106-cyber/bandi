@@ -1,4 +1,4 @@
-# 功能：知识库三层实体（document → bucket → chunk）——参考实现 knowledge/schema
+# 功能：知识库三层实体（document → bucket → chunk）——StaffDeck knowledge/schema 同构
 
 from __future__ import annotations
 

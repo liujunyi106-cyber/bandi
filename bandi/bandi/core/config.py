@@ -129,7 +129,9 @@ class ComputerUseConfig(
     allow_sensitive_windows: bool = False
 
 
-class FeatureFlagsConfig(BaseModel):  # 功能：特性门控配置
+class FeatureFlagsConfig(
+    BaseModel
+):  # 功能：特性门控配置（CC-24 tool_groups：组名→开关，未列出的组默认开放）
     tool_groups: dict[str, bool] = Field(default_factory=dict)
 
 
@@ -207,7 +209,7 @@ class VerifierPolicyConfig(BaseModel):  # 功能：验证器策略配置（启�
 class AgentConfig(
     BaseModel
 ):  # 功能：Agent 模式/迭代上限/压缩阈值/上下文窗口/Token 预算/折叠阈值配置
-    mode: str = "execute"  # plan | execute
+    mode: str = "execute"  # plan | execute（双模式，u 日拍板）
     max_iterations: int = 15
     # 员工/委托回合墙钟上限（秒）；0=不限。默认与 dispatcher 的 per_item_timeout 对齐，
     # 防止单卡无限跑占用席位；显式 0 可由调用方关闭。
@@ -346,6 +348,8 @@ class CompanyConfig(BaseModel):
     max_items_per_tick: int = Field(default=64, ge=1, le=512)
     # 业务质量门：默认关闭自动通过，评审人存在时必须留待人工/经理裁决
     auto_approve_reviews: bool = False
+    # 顶层卡默认评审角色；该角色存在且有待命员工时才启用，否则自动通过
+    default_reviewer_role: str = "reviewer"
 
 
 class BandiConfig(BaseModel):  # 功能：配置对象（聚合所有子配置 + YAML 加载/合并/校验 + 多环境支持）

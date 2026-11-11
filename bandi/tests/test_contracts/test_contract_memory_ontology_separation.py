@@ -205,7 +205,7 @@ async def test_plain_turn_never_direct_writes(tmp_path: Path) -> None:
     ontology.close()
 
 
-# ── 1b. 本体写入轮的记忆副作用隔离────────────────────
+# ── 1b. 本体写入轮的记忆副作用隔离（用户拍板 2026-10-14）────────────────────
 
 
 def _no_ask_config() -> Any:
@@ -236,7 +236,7 @@ def _final_response(text: str) -> Any:
 
 @pytest.mark.asyncio
 async def test_ontology_write_turn_skips_auto_direct_write(tmp_path: Path) -> None:
-    """预期：本体写入轮——用户输入为可记事实（含数字）时**不自动直写**
+    """预期（用户拍板）：本体写入轮——用户输入为可记事实（含数字）时**不自动直写**
     长期记忆（防同一内容「本体一份 + 长期记忆一份」重复；写本体=只写本体）。"""
     from unittest.mock import patch
 
@@ -546,7 +546,7 @@ async def test_memory_search_returns_memory_not_ontology(long_term: Any, ontolog
 
 @pytest.mark.asyncio
 async def test_ontology_query_returns_graph_not_memory(long_term: Any, ontology: Any) -> None:
-    """预期：ontology_query 只查图事实——
+    """预期：ontology_query 只查图事实（facts 按实体 ID 渲染，与参考源一致）——
     记忆独有词元不得出现。"""
     _seed_memory(long_term)
     _seed_ontology(ontology)

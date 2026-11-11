@@ -1,18 +1,19 @@
-"""契约：本体词汇表数据模型。
+"""契约：本体词汇表数据模型（对照表 §4.1-1 / §4.2-1）。
 
-复刻 参考实现 `src/types.ts`（126 行全读）。
+复刻 dsh-ontology `src/types.ts`（126 行全读）。
 行为不变式（钉行为，不钉实现）：
 
- 1. **复合键** `factKey(s,p,o)` = `s|p|o`——同一三元组重复断言是幂等覆盖而非重复
- 2. **Term 二态判别**：`kind` 为 `class`/`relation`，取错类返回 None（不抛）
- 3. **Fact.objectKind** 二态：`entity`/`literal`，随谓词词的 rangeKind 定
- 4. **DerivedFact.via** 四态：`asserted`/`inverse`/`symmetric`/`transitive`
- 5. **Violation** = (code, message)——code 机器可判、message 面向模型可修复
- 6. **id 语法**：字母/下划线开头，仅含字母数字与 `_ . : -`，≤128 字符
- （分隔符 `|` 被排除在外，故复合键无需转义）
- 7. **日期戳**：术语与实体保留 createdAt（重定义不得改），updatedAt 每次写刷新
+  1. **复合键** `factKey(s,p,o)` = `s|p|o`——同一三元组重复断言是幂等覆盖而非重复
+  2. **Term 二态判别**：`kind` 为 `class`/`relation`，取错类返回 None（不抛）
+  3. **Fact.objectKind** 二态：`entity`/`literal`，随谓词词的 rangeKind 定
+  4. **DerivedFact.via** 四态：`asserted`/`inverse`/`symmetric`/`transitive`
+  5. **Violation** = (code, message)——code 机器可判、message 面向模型可修复
+  6. **id 语法**：字母/下划线开头，仅含字母数字与 `_ . : -`，≤128 字符
+     （分隔符 `|` 被排除在外，故复合键无需转义）
+  7. **日期戳**：术语与实体保留 createdAt（重定义不得改），updatedAt 每次写刷新
 
-参考实现。"""
+参考源：dsh-ontology `src/types.ts:15-126`。
+"""
 
 from __future__ import annotations
 

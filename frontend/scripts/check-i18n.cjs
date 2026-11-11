@@ -2,7 +2,7 @@
 /**
  * 功能：校验 i18n 文案 key 漂移（zh 为基准，en 必须完全对齐）。
  * 用法：npm run i18n:check —— 不一致时打印差集并以退出码 1 失败。
- * `i18n:check` 防 key 漂移
+ * @base docs/前端设计规划.md §2（`i18n:check` 防 key 漂移，StaffDeck §7 对齐）
  */
 const fs = require("node:fs");
 const path = require("node:path");

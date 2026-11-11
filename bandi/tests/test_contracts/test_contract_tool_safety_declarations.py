@@ -5,17 +5,18 @@
 契约 12），但同族的 todo_write/config_file/archive_manager/pdf_reader/request_user_input
 与纯只读族（read_document/entity_query/ontology_query/*_processor/skill_*）仍无声明——
 安全仅靠「失败走 _err dict → executor 标 non_retryable」的隐式兜底，一旦未来改成
-抛异常失败即落入默认重试重放。
+抛异常失败即落入默认重试重放（与协作工具修复前完全同构）。
 
 本契约钉的行为族（全部生产调用路径 = registry 注册的工具类元数据）：
 - 写/混合/交互工具：必须显式声明 retry_policy=RetryPolicy(retryable=False)（权威
- 独立于隐式 dict 兜底）——重试会重放副作用（todo 重复写入 / 重复发消息 / 重复解压 /
- PDF split-merge 重复产出 / 重复打扰用户）
+  独立于隐式 dict 兜底）——重试会重放副作用（todo 重复写入 / 重复发消息 / 重复解压 /
+  PDF split-merge 重复产出 / 重复打扰用户）
 - 纯只读工具：必须标 is_read_only=True——去重（executor._is_dedup_eligible）与
- 超时重试（retry_mw ）都依赖此标记；未标则只读工具不去重、超时被禁重试（可用性损失）
+  超时重试（retry_mw ）都依赖此标记；未标则只读工具不去重、超时被禁重试（可用性损失）
 
 断言「最终产物」：工具类元数据声明（retry_policy / is_read_only）——这是后续
-executor 去重与 retry 决策链的行为前提。"""
+executor 去重与 retry 决策链的行为前提。
+"""
 
 from __future__ import annotations
 

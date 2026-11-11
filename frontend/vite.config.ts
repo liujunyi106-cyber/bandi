@@ -7,7 +7,7 @@ import { defineConfig } from "vitest/config";
 
 import { backendLauncher } from "./vite-backend-plugin";
 
-/** 内核（FastAPI sidecar）监听地址——与 /42 口径一致，仅回环。 */
+/** 内核（FastAPI sidecar）监听地址——与 ADR-35/42 口径一致，仅回环。 */
 const KERNEL_ORIGIN = process.env.BANDI_KERNEL_ORIGIN ?? "http://127.0.0.1:8766";
 
 export default defineConfig(({ command }) => ({

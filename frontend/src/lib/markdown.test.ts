@@ -1,5 +1,5 @@
 /**
- * 功能：markdown 纯函数测试。
+ * 功能：markdown 纯函数测试（长内容文档布局判定——参考源 cc-haha 同构）。
  */
 import { describe, expect, it } from "vitest";
 

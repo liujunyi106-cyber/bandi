@@ -1,4 +1,4 @@
-# 功能：text_splitter — 文本分块
+# 功能：text_splitter — 文本分块（字符/token/句/段/行/regex/smart，7 个 op；基准 LeAgent tools/util/text_splitter.py 移植）
 from __future__ import annotations
 
 import re

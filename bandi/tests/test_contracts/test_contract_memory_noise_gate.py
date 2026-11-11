@@ -1,9 +1,10 @@
 """契约：噪声闸门必须拒掉「任务完成汇报」，且不误伤合法长期内容。
 
-缺陷实证：长期记忆审批里出现
+缺陷实证（真机 2026-11-06）：长期记忆审批里出现
 「[事实] 做好了老板！待办列表 App 已生成：预览路径：canvas/待办清单-app/index.html 功能：…」
 ——`distill.rule_distill` 取情节回答侧原文 + 晋升门不挡执行汇报所致。
-本契约钉住的是**判据层**：这类文本在进入情节层 / 长期层 / 晋升通道前就被拒。"""
+本契约钉住的是**判据层**：这类文本在进入情节层 / 长期层 / 晋升通道前就被拒。
+"""
 
 from __future__ import annotations
 
@@ -17,7 +18,7 @@ from bandi.memory.ingest_review import (
     review_ingest,
 )
 
-# 原文（取自 ~/.bandi/memory/pending/memory/*.json 的 summary / payload.content）
+# 真机原文（取自 ~/.bandi/memory/pending/memory/*.json 的 summary / payload.content）
 EXECUTION_REPORTS = [
     "做好了老板！待办列表 App 已生成： 预览路径：canvas/待办清单-app/index.html 功能： "
     "- 输入框添加待办（支持回车） - 点击圆圈标记完成/取消 - × 按钮删除",
@@ -30,7 +31,7 @@ EXECUTION_REPORTS = [
 
 @pytest.mark.parametrize("text", EXECUTION_REPORTS)
 def test_execution_report_is_detected(text: str) -> None:
-    """四类汇报文都要被判成执行汇报。"""
+    """四类真机汇报文都要被判成执行汇报。"""
     assert is_execution_report(text), f"未识别为执行汇报：{text[:40]}"
 
 
@@ -57,7 +58,7 @@ def test_execution_report_inside_episode_wrapper() -> None:
 
 @pytest.mark.parametrize("text", ["ping", "pong", "测试", "在吗"])
 def test_trivial_probe_episode_rejected(text: str) -> None:
-    """连通性探针不构成经历。"""
+    """连通性探针不构成经历（真机实证：ping → pong 曾被提名晋升）。"""
     assert is_noise_memory(f"用户: {text} → 回答: 老板，pong。收到消息，一切正常。") == "greeting"
 
 

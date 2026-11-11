@@ -7,7 +7,7 @@ import { NODE_RADIUS, layoutGraph } from "@/lib/graph-layout";
 import { describeGraph, normalizeSnapshot } from "@/services/graph";
 
 /**
- * 功能：真实后端产物回归。
+ * 功能：真实后端产物回归（@base docs/测试与评测标准.md 真实数据形态要求）。
  * fixture 由**生产 EntityStore + EntityGraph.export_snapshot()** 跑出（样本库 5 实体 / 3 边）
  * 不是手写的理想 JSON —— 任何字段改名/契约漂移都会在这里断掉。
  */

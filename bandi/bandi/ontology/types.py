@@ -1,14 +1,15 @@
 """本体词汇表数据模型（TBox 词表 + ABox 三元组）。
 
-复刻 参考实现 `src/types.ts`（126 行）：类词表 / 关系词表 / 实体 / 断言事实 /
+复刻 dsh-ontology `src/types.ts`（126 行）：类词表 / 关系词表 / 实体 / 断言事实 /
 派生事实 / 图视图 / 违规。纯数据形状，无 IO——校验与推理都在 `engine.py`。
 
 设计要点：
 - `Term` 是判别联合（`kind` 为 `class`/`relation`），id 空间共享，故取词必须按 kind
- 过滤而非直接查表（`class_of`/`relation_of`）。
+  过滤而非直接查表（`class_of`/`relation_of`）。
 - `Fact` 按三元组复合键存（`fact_key`），重复断言即幂等覆盖。
 - `DerivedFact.via` 记录推理来源，使派生结论可解释、可回溯到规则。
-- `Violation` 分机器码与文案两层：code 供程序判别，message 供模型自纠。"""
+- `Violation` 分机器码与文案两层：code 供程序判别，message 供模型自纠。
+"""
 
 from __future__ import annotations
 

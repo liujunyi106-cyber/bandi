@@ -1,5 +1,5 @@
 /**
- * 功能：radix-nova UI 组件导出完整性。
+ * 功能：radix-nova UI 组件导出完整性（Day136：forwardRef 修复后防 undefined 组件）。
  * 断言：模块每个导出都可渲染（函数或 forwardRef 对象）——不假设具体名单（各组件导出面不同）。
  */
 import { describe, expect, it } from "vitest";

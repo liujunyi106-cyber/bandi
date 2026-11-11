@@ -1,5 +1,5 @@
 # 功能：BrowserTool 真实浏览器集成测试（依赖 playwright 1.61 + chromium 1228 + 外网）
-# 环境缺浏览器或外网不可达时跳过；就绪则真实导航并断言最终产物
+# 环境缺浏览器或外网不可达时跳过；就绪则真实导航并断言最终产物（功能验证纪律 §6a）
 from __future__ import annotations
 
 import socket

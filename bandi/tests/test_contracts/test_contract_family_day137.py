@@ -279,8 +279,8 @@ class TestWorkItemSubjectWiring:
 
 
 # ==================== day137_timeline ====================
-# 功能：契约测试——工具时间线数据源（CoT thinking 透传 + tool_input 透传）
-# 钉行为族：
+# 功能：Day137 契约测试——工具时间线数据源（CoT thinking 透传 + tool_input 透传）
+# 钉行为族（前端过程块/工具时间线的数据来源，docs/前端设计规划.md §8）：
 # ① LLM_STREAM_EVENT(thinking_delta) 经真实 EventBus + _subscribe_handler 转发到
 # StreamHandler.on_thinking（CoT 思维链节点数据源）；
 # ② thinking 事件按会话归属过滤（其他会话不串流）；
@@ -293,7 +293,7 @@ class TestWorkItemSubjectWiring:
 
 
 class R137RecorderHandler:
-    """StreamHandler 记录实现。"""
+    """StreamHandler 记录实现（Day137：含 on_thinking）。"""
 
     def __init__(self) -> None:
         self.deltas: list[str] = []
@@ -658,7 +658,7 @@ async def test_all_stream_handlers_emit_note_frames() -> None:
 #
 # 现状：用户在单聊/群聊补充要求只会**新建** work_item；已派发/已 APPROVED 的卡
 # 用户碰不到（`READY_FOR_REWORK` 只有「评审失败」自动入口；APPROVED 仅允许回
-# `READY` 且走内部邮件复活）。对标 参考实现：
+# `READY` 且走内部邮件复活）。对标 OpenOPC：
 # `_prepare_company_followup_target`（写 latest_user_directive）
 # → `reopen_approved_delegation_work_item_for_rework`（named bypass 受控回转）
 # → `build_rework_feedback_context`（把修正指令 + 上一版产出注入 brief
@@ -1131,7 +1131,7 @@ class TestReopenCasUnderConcurrency:
 
 
 # ==================== day137b_employee_progress ====================
-# 功能：插队批契约——员工执行过程流式（thread_progress 帧数据源）
+# 功能：Day137b-1 插队批契约——员工执行过程流式（thread_progress 帧数据源）
 # 钉行为族（员工单聊/群聊/团队会话的实时过程块）：
 # ① EmployeeProgressHandler 帧映射族（run_agent_turn 过程帧 → thread_progress 事件：
 # content/thinking/tool_start/tool_progress/tool_result/skill/note/memory/task_ledger/done/error）；
@@ -1500,8 +1500,8 @@ async def test_progress_scope_normalizes_empty_to_company() -> None:
 
 
 # ==================== day137b_process_frames ====================
-# 功能：契约——过程消息数据源补全（记忆写入行 / 会话任务条 / 挂起倒计时）
-# 钉行为族：
+# 功能：Day137b-1 契约——过程消息数据源补全（记忆写入行 / 会话任务条 / 挂起倒计时）
+# 钉行为族（docs/前端设计规划.md §8 过程块规范）：
 # ① MEMORY_WRITTEN 经真实 _emit_memory_written + 真实 EventBus + _subscribe_handler
 # 转发到 StreamHandler.on_memory_written（前端「记入记忆 xN」数据源）；
 # ② MEMORY_WRITTEN 按会话归属过滤（loop 外发射，data.session_id 兜底——不串会话）；
@@ -1514,7 +1514,7 @@ async def test_progress_scope_normalizes_empty_to_company() -> None:
 
 
 class R137bRecorderHandler:
-    """StreamHandler 记录实现。"""
+    """StreamHandler 记录实现（Day137b-1：含 on_memory_written / on_task_ledger）。"""
 
     def __init__(self) -> None:
         self.memory_channels: list[list[str]] = []
@@ -1768,7 +1768,7 @@ async def test_notification_frame_has_no_countdown() -> None:
 
 
 # ==================== day137b2_attachments ====================
-# 功能：契约——对话附件通道（消息绑定落库 + 文本类内容注入）
+# 功能：Day137b-2 契约——对话附件通道（消息绑定落库 + 文本类内容注入）
 
 
 def r5xday137b2__isolate_home(monkeypatch, tmp_path: Path) -> None:
@@ -2000,7 +2000,7 @@ class TestWsProviderConfig:
 
 
 # ==================== day137b2_compact ====================
-# 功能：契约——会话压缩服务（compact：单块全量摘要 + fork 新会话）
+# 功能：Day137b-2 契约——会话压缩服务（compact：单块全量摘要 + fork 新会话）
 
 
 def r6xday137b2__isolate_home(monkeypatch, tmp_path: Path) -> None:
@@ -2056,7 +2056,12 @@ class TestCompactService:
         assert result.has_summary is True
         assert result.stage and result.stage != "none"
 
+        from bandi.core.message import message_from_entry
+
         new_entries = r6xday137b2_store.get_branch("s1")
+        new_messages = [
+            message_from_entry(e) for e in new_entries if e.get("entry_type") == "message"
+        ]
         assert any("[上下文摘要]" in (str(e.get("content") or "")) for e in new_entries)
 
         original = [
@@ -2098,7 +2103,7 @@ class TestCompactEndpoint:
 
 
 # ==================== day137b2_files_models ====================
-# 功能：契约——模型候选列表（控制条数据源）+ 项目文件列表（@文件引用数据源）
+# 功能：Day137b-2 契约——模型候选列表（控制条数据源）+ 项目文件列表（@文件引用数据源）
 
 
 class TestAvailableModels:
@@ -2176,7 +2181,7 @@ class TestProjectFilesEndpoint:
 
 
 # ==================== day137b2b_llm_profiles ====================
-# 功能：契约——多 Provider 档案（LlmProfile/ProfileStore/resolve 唯一解析入口）
+# 功能：Day137b-2b 契约——多 Provider 档案（LlmProfile/ProfileStore/resolve 唯一解析入口）
 # 钉行为族（不钉实现）：
 # ① 档案 CRUD + 首次创建自动激活 + 删除激活档案后激活指针清空；
 # ② resolve_llm_config 覆盖语义（有档案覆盖模型/凭证/地址/白名单高级项；无档案原样返回）；

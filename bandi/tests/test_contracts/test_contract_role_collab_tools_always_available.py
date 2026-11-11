@@ -1,13 +1,14 @@
 """契约：协作/派单工具在角色 tool_tags 裁剪下始终可用（组织结构性权利）。
 
 - 背景：自定义角色 tool_tags 不含 workflow 时，协作 9 工具 + spawn_thread_task +
- 经理 3 工具（board_read/modify/delete）被裁 →「上级调不了下级」潜在路径
-。经理工具的越权风险由运行时
- 所有权校验兜底（仅父卡负责人可操作），不靠 schema 面收窄。
+  经理 3 工具（board_read/modify/delete）被裁 →「上级调不了下级」潜在路径
+  （用户拍板：创建员工/选团队模板后必须能调用）。经理工具的越权风险由运行时
+  所有权校验兜底（仅父卡负责人可操作），不靠 schema 面收窄。
 - 豁免面：schema 过滤（factory.filter_tools_by_role_tags）与执行门禁
- （executor._role_gate）两层一致；单一来源 ToolRegistry.COLLAB_ALWAYS_AVAILABLE_TOOLS。
+  （executor._role_gate）两层一致；单一来源 ToolRegistry.COLLAB_ALWAYS_AVAILABLE_TOOLS。
 - 破坏者：豁免不得外溢到同类别（workflow）非协作工具（team_create 仍按 tags 裁）；
- fail-closed 空名单（[] = 显式全禁）语义保持；无限制角色（None）原样放行。"""
+  fail-closed 空名单（[] = 显式全禁）语义保持；无限制角色（None）原样放行。
+"""
 
 from __future__ import annotations
 
@@ -25,6 +26,7 @@ from bandi.tools.collaboration import (
     StartMeetingTool,
 )
 from bandi.tools.executor import ToolExecutor
+from bandi.tools.group_goal import GroupGoalTool
 from bandi.tools.manager_board import (
     DeleteWorkItemTool,
     ManagerBoardReadTool,
@@ -46,6 +48,7 @@ COLLAB_ALWAYS = frozenset(
         "route_work",
         "close_human_review",
         "spawn_thread_task",
+        "group_goal",
         "manager_board_read",
         "modify_work_item",
         "delete_work_item",
@@ -66,6 +69,7 @@ def _registry() -> ToolRegistry:
         RouteWorkTool,
         CloseHumanReviewTool,
         SpawnThreadTaskTool,
+        GroupGoalTool,
         ManagerBoardReadTool,
         ModifyWorkItemTool,
         DeleteWorkItemTool,

@@ -29,7 +29,7 @@ RESERVED_LAYERS: tuple[str, ...] = ("ui", "external")
 TOTAL_LAYERS: int = len(ACTIVE_LAYERS) + len(RESERVED_LAYERS)
 
 # 此处缺省必须与其保持一致（契约 test_contract_ask_tools_single_source 钉死相等）。
-# memory_assert 是结构化三元组直写长期记忆——与本体写入同走权限卡
+# memory_assert 是结构化三元组直写长期记忆——与本体写入同走权限卡（用户拍板 2026-10-14）
 _ASK_TOOLS: set[str] = {"bash", "write", "ontology_define", "ontology_assert", "memory_assert"}
 
 # 触发询问的风险级默认值——唯一真实默认源：core/config.py PermissionsConfig.ask_risk_levels。

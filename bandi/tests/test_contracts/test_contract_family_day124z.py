@@ -505,7 +505,7 @@ def _make_ctx(
 ) -> Any:
     """构造最小可复现 _persist_memory 的 ctx（用真实字段，不依赖完整 ExecutionContext）。
 
-    默认 raw_input 含可记内容（数字）——记忆内容源只取用户输入，
+    默认 raw_input 含可记内容（数字）——记忆内容源只取用户输入（BC-004），
     源为空则直写/暂存路径整体不成立。"""
     empty_msgs: list[Any] = []
     return SimpleNamespace(
@@ -1241,7 +1241,7 @@ class TestL2BuilderCountBasedTruncation:
 
 
 # ==================== day124zm ====================
-# 功能：m 契约测试——long_term prune 分区化（按 project/employee 分区独立配额）
+# 功能：Day124z-m 契约测试——long_term prune 分区化（按 project/employee 分区独立配额）
 
 
 def r6xday124zm__store(

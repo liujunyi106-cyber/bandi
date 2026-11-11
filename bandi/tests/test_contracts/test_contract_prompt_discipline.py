@@ -118,8 +118,9 @@ class TestMemoryWordingDiscipline:
     def test_prompt_distinguishes_direct_write_from_draft(self) -> None:
         """契约：显式「记住」才可直接落库；随口陈述只能进草稿池，措辞不得越界。
 
-        实测（2026-11-08）：用户说「我的习惯是先写测试」，模型回复「已沉淀到长期记忆」，
-        实际只进了草稿池——话术与真实落点不一致会直接误导用户。"""
+        真机实测（2026-11-08）：用户说「我的习惯是先写测试」，模型回复「已沉淀到长期记忆」，
+        实际只进了草稿池——话术与真实落点不一致会直接误导用户。
+        """
         prompt = artifacts.FRAMEWORK_PROMPT
         assert "已记住" in prompt
         assert "草稿池" in prompt

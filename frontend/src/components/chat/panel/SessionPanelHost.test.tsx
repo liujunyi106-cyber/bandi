@@ -1,5 +1,5 @@
 /**
- * 功能：右栏宿主测试。
+ * 功能：右栏宿主测试（可见性 / 自动展开 / 切作用域清态——@base §8）。
  * .2：作用域 = session:<id> / employee:<项目>::<角色>（DM 路由右栏可用）。
  */
 import { act, render, screen } from "@testing-library/react";

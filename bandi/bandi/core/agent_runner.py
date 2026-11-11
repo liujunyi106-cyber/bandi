@@ -252,9 +252,9 @@ def _acquire_session_slot(
                         expires = datetime.fromisoformat(str(expires_at))
                         now = datetime.now(expires.tzinfo) if expires.tzinfo else datetime.now()
                         if expires > now and claim.get("instance_id") != inst:
-                            # 单内核部署：异实例租约 = 上一进程崩溃/重启的残留。
+                            # ADR-35 单内核部署：异实例租约 = 上一进程崩溃/重启的残留。
                             # 不接管则崩溃后 300s 内的重试全部 SESSION_BUSY
-                            # ；本实例接管并继续写 claim。
+                            # （真机实证 2026-10-15）；本实例接管并继续写 claim。
                             logger.warning(
                                 "stale lease from other instance on session %s — taking over",
                                 session_id,
@@ -669,7 +669,7 @@ class _HandlerBindings:
             await self.handler.on_note(self.session_id, "compaction")
 
     async def _on_memory_written(self, event: Event) -> None:
-        # 功能：记忆写入通道明细 → 过程块「记入记忆 xN」行
+        # 功能：记忆写入通道明细 → 过程块「记入记忆 xN」行（Day137b-1）
         if await self._forward_subagent(event):
             return
         if not self._owns(event):
@@ -688,7 +688,7 @@ class _HandlerBindings:
         await self.handler.on_memory_written(self.session_id, channels)
 
     async def _on_task_ledger(self, event: Event) -> None:
-        # 功能：任务台账更新 → 前端会话任务条
+        # 功能：任务台账更新 → 前端会话任务条（实时帧，Day137b-1）
         if await self._forward_subagent(event):
             return
         if not self._owns(event):
@@ -960,8 +960,9 @@ _PREVIEW_SKIP_MARKERS = ("你好", "您好", "老板", "我是", "帮你", "我�
 def memory_preview(content: str, memory_type: str, *, max_chars: int = 120) -> str:
     """功能：待审批记忆的**提炼预览**——人话类型标签 + 事实主体。
 
-    用户反馈：旧摘要直接截内容开头，展示的是「你好，老板！我是…」这类
-    回复的寒暄/自我介绍，看不出**要记住什么**。此处跳过引导句后取正文主体。"""
+    用户反馈（真机）：旧摘要直接截内容开头，展示的是「你好，老板！我是 Agnes…」这类
+    回复的寒暄/自我介绍，看不出**要记住什么**。此处跳过引导句后取正文主体。
+    """
     label = _MEMORY_TYPE_LABELS.get(str(memory_type), str(memory_type))
     lines = [line.strip() for line in str(content or "").splitlines() if line.strip()]
     body_lines: list[str] = []
@@ -1278,7 +1279,7 @@ def _clip_sentence(text: str, max_chars: int) -> str:
 
 def _compaction_importance(ctx: Any) -> float:
     """功能：压缩摘要动态 importance——保真缺失率越高越可疑（0.7+0.2*(1-ratio)）
-    无保真报告回退 0.7 基线。"""
+    无保真报告回退 0.7 基线（ADJ-03）。"""
     meta = getattr(ctx, "meta", None) or {}
     stats = meta.get("last_compression_stats")
     ratio = getattr(stats, "fidelity_missing_ratio", None) if stats is not None else None
@@ -2693,7 +2694,7 @@ async def run_agent_turn(
                 store.append_message(session_id, assistant_msg)
         elif logger_instance is not None:
             logger_instance.debug("assistant 落库跳过：%s 终态无模型真实输出", ctx.terminal_reason)
-        # 中断上下文持久化：用户终止/网络波动属于中断现象，
+        # 中断上下文持久化（2026-10-15 用户拍板）：用户终止/网络波动属于中断现象，
         # 重试属于**新的一次请求**——但 LLM 需记得中断前的目标与过程。
         # SYSTEM 注记进会话历史，重试轮的上下文装配自然携带（不污染用户可见消息流）。
         if terminal_reason is not None and terminal_reason.name == "USER_INTERRUPT":
@@ -2702,7 +2703,14 @@ async def run_agent_turn(
                 "重试时请基于上文已执行的过程继续完成目标，不要重复已完成的步骤。"
             )
             try:
-                store.append_message(session_id, Message(role=MessageRole.SYSTEM, content=note))
+                store.append_message(
+                    session_id,
+                    Message(
+                        role=MessageRole.SYSTEM,
+                        content=note,
+                        meta={"note_kind": "interrupt_resume", "internal_note": True},
+                    ),
+                )
             except Exception:  # noqa: BLE001 — 注记失败不阻断终态返回
                 logger.warning("interrupt note persist failed: session=%s", session_id)
     finally:

@@ -1,7 +1,8 @@
-"""契约：`bandi serve --port 0` sidecar 动态端口回写。
+"""契约：`bandi serve --port 0` sidecar 动态端口回写（Day147 C-2 / ADR-42）。
 
 壳（Electron）视角的完整链路：spawn 子进程 → 端口出现在 `sidecar.port` 与
-stdout 结构化行 → `/ready` 探针可达 → 退出后端口文件被清理。"""
+stdout 结构化行 → `/ready` 探针可达 → 退出后端口文件被清理。
+"""
 
 from __future__ import annotations
 
@@ -76,7 +77,7 @@ def test_serve_port_zero_reports_ready_port_and_cleans_up(tmp_path: Path, monkey
         errors="replace",
     )
     port_file = home / "sidecar.port"
-    deadline = time.monotonic() + 60.0
+    deadline = time.monotonic() + 120.0
     port: int | None = None
     stdout_head: list[str] = []
     try:

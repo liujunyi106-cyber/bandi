@@ -1,16 +1,17 @@
 """功能：实体归一（同名不同写 / 不同名同物）——粗筛 + LLM 精判两阶段。
 
-datafoundry DataLink 的两阶段归一（`services/datalink/src/datalink/mapper/
+移植 datafoundry DataLink 的两阶段归一（`services/datalink/src/datalink/mapper/
 llm_mapper.py:594-609`）：
 
- 第一阶段 粗筛：把 O(n²) 的候选对压到 O(k)——datafoundry 用 embedding 余弦
- ≥0.75，我们**没有向量设施**，改用中文 2-gram
- 词元重叠 + 子串规则做同一件事。角色相同：廉价地把候选缩小，不做判定。
- 第二阶段 精判：只把候选对喂给 LLM 逐对确认「是不是同一个东西」。
+    第一阶段 粗筛：把 O(n²) 的候选对压到 O(k)——datafoundry 用 embedding 余弦
+      ≥0.75，我们**没有向量设施**（ADR-33 零 RAG/零向量依赖），改用中文 2-gram
+      词元重叠 + 子串规则做同一件事。角色相同：廉价地把候选缩小，不做判定。
+    第二阶段 精判：只把候选对喂给 LLM 逐对确认「是不是同一个东西」。
 
 关键纪律：**相似度高不等于该合并**（datafoundry prompt 原文第 6 条："High
 similarity does NOT guarantee they should be merged"）。判定权在 LLM，相似度
-只负责省 token——本模块任何一处都不用相似度阈值直接下合并结论。"""
+只负责省 token——本模块任何一处都不用相似度阈值直接下合并结论。
+"""
 
 from __future__ import annotations
 

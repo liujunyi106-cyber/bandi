@@ -2,13 +2,13 @@
 #
 # 行为不变式（钉行为，不钉实现）：
 #   1. 通用词查询不得召回任何条目——「什么 / 是什么 / 用户 / 回答 / 请问」这类
-# 单/双 token 通用词零区分度，命中即噪音
+#      单/双 token 通用词零区分度，命中即噪音（真机证据：recall 被顶到 2~4）
 #   2. 真相关短查询不得误杀——「端口」这类精准短词照常命中（区分度在此）
 #   3. 混合查询只取有效词——「我们的部署端口是什么」去掉停用词后仍能召回
 #   4. 命中占比门槛可调——min_hit_ratio=1.0 时部分命中被挡（默认口径宽松）
 #   5. 召回计数只随「返回的命中」写回——被门槛挡下的噪音不喂 consolidation
 #
-# 背景：20 轮普通对话中 5 条被召回 2~4 次，全部走
+# 真机背景（B2 真机 A 第一轮）：20 轮普通对话中 5 条被召回 2~4 次，全部走
 # 通用 gram 搭桥（「什么」「回答」「用户」），recall 虚高喂到 consolidation
 # multi_query 通道。
 
@@ -123,10 +123,11 @@ class TestRecallWriteback:
 class TestFunctionWordGramGate:
     """中文 2-gram 跨词切分会产出「高的 / 的代 / 有哪」这类只含虚词的 gram。
 
-    证据（recall 分布复验）：查询「梵高的代表作有哪些？」的 gram 集合为
+    真机证据（recall 分布复验）：查询「梵高的代表作有哪些？」的 gram 集合为
     ['梵高','高的','的代','代表','表作','作有','有哪','哪些？']，整词停用表一个都
     滤不掉，于是「世界上**高的**山峰」只凭 1 个 gram「高的」即被召回，
-    recall_count 被顶到 15；「彩虹**有哪**几种颜色」同理。"""
+    recall_count 被顶到 15；「彩虹**有哪**几种颜色」同理。
+    """
 
     @pytest.fixture()
     def gram_store(self, tmp_path: Path) -> Any:
@@ -203,10 +204,11 @@ class TestFunctionWordGramGate:
     def test_no_single_gram_bridge_raises_recall(self, gram_store: EpisodicStore) -> None:
         """端到端：虚词搭桥的跨条目召回为 0——别条目的 recall 不被顶高。
 
-        证据（recall_queries 反查）：修复前「梵高的代表作有哪些？」曾召回
+        真机证据（recall_queries 反查）：修复前「梵高的代表作有哪些？」曾召回
         「世界上最高的山峰叫什么？」（recall 顶到 15）；「莫比乌斯环有几个面？」
         曾召回「太阳系一共有几颗行星？」——两侧共享「的有」「有几」这类
-        虚词 gram 即被判相关。修复后只有真相关条目被召回。"""
+        虚词 gram 即被判相关。修复后只有真相关条目被召回。
+        """
         for query in (
             "梵高的代表作有哪些？",
             "人体最大的器官是什么？",
@@ -225,10 +227,11 @@ class TestFunctionWordGramGate:
 class TestLikeFallbackFunctionWordGate:
     """FTS 主链是全 gram AND（精确）；LIKE 兜底是 OR 语义——单个虚词 gram 即可命中。
 
-    证据：episodic 与 long_term/working 同库，FTS5 方言异常时回落 LIKE
+    真机证据：episodic 与 long_term/working 同库，FTS5 方言异常时回落 LIKE
     （bandi.log 里 long_term/working 已在刷「FTS5 search failed, falling back」）。
     兜底路径若不过滤虚词 gram，「梵高的代表作有哪些？」会因「高的」命中
-    「世界上最高的山峰叫什么？」——即修复前 recall 顶到 15 的那条路径。"""
+    「世界上最高的山峰叫什么？」——即修复前 recall 顶到 15 的那条路径。
+    """
 
     @pytest.fixture()
     def fallback_store(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Any:

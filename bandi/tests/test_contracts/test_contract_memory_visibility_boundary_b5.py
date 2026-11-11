@@ -1,11 +1,12 @@
-"""契约族：B5 可见性边界。
+"""契约族：B5 可见性边界（计划 §5）。
 
 行为不变式：
 1. **前端可见面 = 通知（消息中心读 `/api/memory/pending`）+ 结构化草稿**——
- 晋升草稿以 `[kind] 断言句` 摘要形态可见；不得裸情节原文包装。
+   晋升草稿以 `[kind] 断言句` 摘要形态可见；不得裸情节原文包装。
 2. **episodic 情节原文零前端出口**——全 `/api/memory/*` 端点响应不得携带
- 情节原文（"用户: … → 回答: …" 包装与整段 transcript）；应用无 episodic 路由。
-3. **批准闭环**——消息中心批准重放落 long_term；episodic 存储不被改动。"""
+   情节原文（"用户: … → 回答: …" 包装与整段 transcript）；应用无 episodic 路由。
+3. **批准闭环**——消息中心批准重放落 long_term；episodic 存储不被改动。
+"""
 
 from __future__ import annotations
 

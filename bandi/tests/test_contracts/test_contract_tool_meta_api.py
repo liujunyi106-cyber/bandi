@@ -1,4 +1,4 @@
-# 功能：/能力管理面接线契约——GET /api/tools/meta 消费 list_tool_meta（生产调用点）
+# 功能：Day134a /能力管理面接线契约——GET /api/tools/meta 消费 list_tool_meta（生产调用点）
 # 契约钉「行为结果/最终产物」：端点返回能力元数据、与注册表面口径同步、无凭证 401。
 from __future__ import annotations
 

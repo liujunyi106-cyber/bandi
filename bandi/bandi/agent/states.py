@@ -687,7 +687,8 @@ def _track_prompt_prefix(ctx: ExecutionContext, provider_messages: list[dict]) -
 
 
 def _prune_before_request(ctx: ExecutionContext) -> None:
-    """功能：每次 LLM 请求前的零 LLM 免费 prune——旧工具输出超保护预算即占位化，未触发压缩的低占用会话同样受益；
+    """功能：每次 LLM 请求前的零 LLM 免费 prune（审计 2.11，cc-haha 每请求 microcompact
+    同构）——旧工具输出超保护预算即占位化，未触发压缩的低占用会话同样受益；
     异常不阻断主链（prune 是优化非正确性前提）。"""
     try:
         from bandi.memory.compression_pipeline import prune_before_request
@@ -738,6 +739,51 @@ def _cap_high_risk_output(output: str, *, tool_name: str, max_lines: int, max_by
     shown = len(kept)
     outlet = f"如需完整输出，请用更精确的参数重新调用 {tool_name}（缩小范围/分段获取）。"
     return "\n".join(kept) + f"\n\n[输出已截断：显示第 1-{shown} 行，共 {total} 行。{outlet}]"
+
+
+def _expand_tools_from_search(ctx: ExecutionContext, results: list[Any]) -> None:
+    """功能：把 tool_search 命中的工具 schema 注入下一轮工具面（仅限已授权工具）。"""
+    if ctx.tool_executor is None:
+        return
+    registry = getattr(ctx.tool_executor, "_registry", None)
+    if registry is None:
+        return
+    allowed = {str(name) for name in (ctx.meta.get("allowed_tool_names") or []) if str(name)}
+    if not allowed:
+        return
+    wanted: set[str] = set()
+    for result in results:
+        if str(getattr(result, "tool_name", "")) != "tool_search":
+            continue
+        if not bool(getattr(result, "success", False)):
+            continue
+        raw = getattr(result, "output", None)
+        data: Any = raw
+        if isinstance(raw, str):
+            try:
+                data = json.loads(raw)
+            except (TypeError, ValueError):
+                continue
+        if not isinstance(data, dict):
+            continue
+        wanted.update(
+            str(name)
+            for name in (data.get("matches") or [])
+            if str(name).strip() and str(name) in allowed
+        )
+    if not wanted:
+        return
+    if ctx.active_tools is None:
+        ctx.active_tools = []
+    existing = {
+        str((schema.get("function") or {}).get("name") or schema.get("name") or "")
+        for schema in (ctx.active_tools or [])
+    }
+    for schema in registry.list_schemas(allowed_tools=sorted(wanted)):
+        name = str((schema.get("function") or {}).get("name") or schema.get("name") or "")
+        if name and name not in existing:
+            ctx.active_tools.append(schema)
+            existing.add(name)
 
 
 def _append_tool_results_to_messages(ctx: ExecutionContext) -> None:
@@ -1027,7 +1073,7 @@ async def on_thinking(
                 if ctx.active_tools
                 else 0
             )
-            # 请求真实开销 = messages + 工具 schema。
+            # 请求真实开销 = messages + 工具 schema（对齐 cc-haha `calculateContextBudget` 口径）。
             # 只算 messages 会让 estimated 低估约一半（实测 8950 vs reported 19830，工具占 55%），
             # 并把这个偏差喂给校准观测对（record_observation）→ 校准系数被推到 2.2 倍补偿。
             estimated += tool_schema_tokens
@@ -1619,8 +1665,9 @@ def _is_reasoning_only(response: LLMResponse, *, safety_finish: bool) -> bool:
     """功能：判定「模型只走 reasoning 通道、正文为空」。
 
     思考型模型偶发把答案整体写进 reasoning、content 留空。这是**可自愈**的输出
-    形态问题（换模型重问一次就能拿到答案），不是真的模型故障——L1 74 条里
-    有 5 条栽在这里，等于白白作废一次交互，而系统只提示用户「可直接重试」。"""
+    形态问题（换模型重问一次就能拿到答案），不是真的模型故障——真机 L1 74 条里
+    有 5 条栽在这里，等于白白作废一次交互，而系统只提示用户「可直接重试」。
+    """
     if safety_finish:
         return False
     return not (response.content or "").strip() and bool((response.reasoning or "").strip())
@@ -1639,7 +1686,8 @@ async def _guard_reasoning_only(
 
     必须挂在**每个**返回 LLMResponse 的路径上（流式候选成功、非流式
     complete_with_fallback、直调回退），不是只挂一处：主路径走的是前两者，
-    只补直调那一处等于死代码——实测 reasoning-only 一条都没被重试过。"""
+    只补直调那一处等于死代码——真机实测 reasoning-only 一条都没被重试过。
+    """
     if not _is_reasoning_only(response, safety_finish=_safety_finish(response)):
         return response
     retried = await _retry_reasoning_only(
@@ -1656,7 +1704,7 @@ async def _guard_reasoning_only(
 async def _emit_reasoning_only_retry(ctx: ExecutionContext, outcome: str, detail: str) -> None:
     """功能：把 reasoning-only 自愈结果落成事件。
 
-    不能只写日志：应用日志在生产部署里常被丢弃，而 过程类指标要靠 events
+    不能只写日志：应用日志在生产部署里常被丢弃，而 §六 过程类指标要靠 events
     自动统计「重试挽回率」。没有这条事件就既无法观测也无法纳入回归。
     """
     from bandi.core.events import Event, EventType
@@ -1704,7 +1752,7 @@ async def _retry_reasoning_only(
     from bandi.llm.strategy import FallbackEngine, ProviderChainExhaustedError
 
     # 链来源取 bandi_config（覆盖后主配置）——ctx.config 是 AgentConfig（无 llm
-    # 字段），从它取链恒空 ⇒ 换模型重试退化为同模型重发（实证：日志恒
+    # 字段），从它取链恒空 ⇒ 换模型重试退化为同模型重发（真机实证：日志恒
     # "fallback <当前模型>" 且随 bearer 空 key 连败）。
     llm_cfg = getattr(bandi_config, "llm", None) or getattr(
         getattr(ctx, "config", None), "llm", None
@@ -2311,6 +2359,7 @@ async def on_executing(
     else:
         results = await ctx.tool_executor.execute(ctx.current_tool_calls)
     ctx.tool_results = results
+    _expand_tools_from_search(ctx, results)
     _append_tool_results_to_messages(ctx)
 
     # 转向消息按 FIFO 追加为 USER 消息（append-only 不改写已发上下文）；
@@ -2665,6 +2714,8 @@ async def on_reflecting(
         user_messages="\n".join(
             f"[{index}] {text}" for index, text in enumerate(user_texts, start=1)
         )[:4000],
+        session_id=str(ctx.meta.get("session_id", "") or ""),
+        agent_id=str(ctx.meta.get("agent_id", "") or ""),
     )
     if tool_results_str:
         packet._tool_results_str = tool_results_str  # type: ignore[attr-defined]

@@ -232,6 +232,18 @@ class ThreadManager:
                 return thread
         return None
 
+    def bind_session(self, thread_id: str, session_id: str) -> bool:
+        """功能：把既有线程绑定到会话窗口（旧单聊线程补归属，刷新后压缩可用）。"""
+        thread = self._threads.get(str(thread_id or "").strip())
+        key = str(session_id or "").strip()
+        if thread is None or not key:
+            return False
+        if thread.session_id == key:
+            return True
+        thread.session_id = key
+        _persist_thread(self._root, thread)
+        return True
+
     def delete_thread(self, thread_id: str) -> bool:
         """功能：删除线程（内存 + 磁盘）——删除会话窗口即断开该窗口上下文。"""
         key = str(thread_id or "").strip()

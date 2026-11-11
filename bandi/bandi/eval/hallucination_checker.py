@@ -326,6 +326,7 @@ async def l2_check(
             ],
             label="hallucination_l2",
             session_id="hallucination",
+            agent_id="hallucination_l2",
             budget_sec=QUALITY_CHECK_BUDGET_SEC,
             temperature=0.0,
         )

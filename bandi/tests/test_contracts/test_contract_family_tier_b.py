@@ -17,7 +17,7 @@ import pytest
 # 功能：契约——审计链主体维度（actor）+ 追加 fsync 与失败回滚（.4）
 #
 # 且 append 无 fsync —— 崩溃时尾部可能只落半行，链校验会直接判 invalid JSON
-# 参考实现 `session-persistence-jsonl` appendLines（写后 sync，失败截断回滚）。
+# deepseek-harness `session-persistence-jsonl` appendLines（写后 sync，失败截断回滚）。
 
 
 class _StubStore:

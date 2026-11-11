@@ -84,3 +84,13 @@ def test_effective_window_never_degrades_to_one_on_sentinel() -> None:
     ctx = ExecutionContext(messages=[], provider=None, config=AgentConfig(), bus=EventBus())
     assert ctx.effective_context_window == DEFAULT_CONTEXT_WINDOW - 20_000
     assert ctx.effective_context_window > 1_000
+
+
+def test_agnes_flash_registered_window_drives_compression_watermark() -> None:
+    """agnes-2.5-flash（用户 hub 模型，目录收录 500K）→ 85% 水位按 500K 计算。
+
+    收录前解析为兜底 128K；收录后应取目录真实窗口——这是「放开」语义对
+    第三方 hub 模型的直接收益面。"""
+    cfg = BandiConfig(llm=LLMConfig(default_model="agnes-2.5-flash"))
+    assert resolve_context_window(cfg) == 500_000
+    assert int((500_000 - 20_000) * 0.85) == 408_000

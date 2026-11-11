@@ -74,6 +74,8 @@ class GateHarness:
         llm: Any,
         task_status: str = "completed",
         self_reported_risks: list[str] | None = None,
+        session_id: str = "gate",
+        agent_id: str = "",
     ) -> GateResult:
         evidence: dict[str, Any] = {
             "work_item_id": work_item_id,
@@ -109,7 +111,8 @@ class GateHarness:
                 llm,
                 [{"role": "user", "content": prompt}],
                 label="gate_harness",
-                session_id="gate",
+                session_id=session_id,
+                agent_id=agent_id,
                 budget_sec=COMPANY_JUDGE_BUDGET_SEC,
             )
             response_text = response.content if hasattr(response, "content") else str(response)

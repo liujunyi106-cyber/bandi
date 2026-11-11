@@ -1,18 +1,19 @@
 """契约：交互帧投递 fail-closed（P1）+ WS 路径 abort 注册（P2）+ 挂起交互重放（P3）。
 
-背景：
+背景（2026-10-15 真机实证）：
 - P1 交互帧 `ws.send_json` 在客户端已离开的半开连接上永久阻塞 → 整轮 executing 僵尸
- （事件日志零条目、1800s TTL 形同虚设）。
+  （事件日志零条目、1800s TTL 形同虚设）。
 - P2 WS 聊天路径从不注册 AbortController → `POST /abort` 恒 404，停止按钮永远无效
- （SSE 路径有注册，WS 漏了；abort e2e 契约测试曾**手工预置** controller 掩盖该缺口）。
+  （SSE 路径有注册，WS 漏了；abort e2e 契约测试曾**手工预置** controller 掩盖该缺口）。
 - P3 交互帧只在挂起瞬间推送一次，页面刷新/重连后 pending 卡永久丢失。
 
 行为不变式：
- 1. 推帧回调永不返回（阻塞）→ 按帧超时拒绝挂起，ask_permission 快速返回 False
- 2. 推帧回调抛异常 → 同上 fail-closed；store 中该交互标记 rejected（晚到决策 409）
- 3. 推帧正常 → 挂起照旧（决策可达）
- 4. WS 聊天轮次运行期间 controller 已注册；session_abort 可终止；结束后注销
- 5. pending 交互重放端点返回带 expires_in 的帧；resolve 后为空"""
+  1. 推帧回调永不返回（阻塞）→ 按帧超时拒绝挂起，ask_permission 快速返回 False
+  2. 推帧回调抛异常 → 同上 fail-closed；store 中该交互标记 rejected（晚到决策 409）
+  3. 推帧正常 → 挂起照旧（决策可达）
+  4. WS 聊天轮次运行期间 controller 已注册；session_abort 可终止；结束后注销
+  5. pending 交互重放端点返回带 expires_in 的帧；resolve 后为空
+"""
 
 from __future__ import annotations
 

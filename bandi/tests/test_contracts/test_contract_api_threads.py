@@ -1,4 +1,4 @@
-# 功能：讨论线程 REST/WS 接线契约
+# 功能：Day134n 讨论线程 REST/WS 接线契约
 # + 经 handle_chat_message 的 @mention 建线程接线。断言最终产物（线程持久化 + 消息结构）。
 
 from __future__ import annotations

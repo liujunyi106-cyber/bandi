@@ -214,7 +214,7 @@ class TestCitations:
 
     def test_compact_labels_renumber_by_first_appearance(self) -> None:
         """契约：compact_citation_labels 把正文引用标按首次出现
-        顺序重编号，未在正文出现的引用被丢弃。"""
+        顺序重编号，未在正文出现的引用被丢弃（StaffDeck citations 同构）。"""
         content = "结论见 [3]，再引用 [1]。"
         citations = [
             {"label": "[1]", "title": "甲"},

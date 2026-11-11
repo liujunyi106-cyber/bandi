@@ -1,26 +1,27 @@
-"""契约：本体装配与 API 接入。
+"""契约：本体装配与 API 接入（对照表 §4.1-7 / §4.3）。
 
 B4c：把三元组本体接进生产链路。
 
 行为不变式：
 
 **装配（factory）**
- 1. 四个本体工具在 factory 里注册（`ontology_define`/`_assert`/`_query`/`_retract`），
- 用 `register_instance`（`OntologyStore` 需注入，无参 `register` 不适用）
- 2. 未配置本体库时**不注册**——四工具缺席而非半残（execute 里 store 为 None 会崩）
- 3. 工具 schema 通过注册门禁（`Draft202012Validator` fail-closed）
+  1. 四个本体工具在 factory 里注册（`ontology_define`/`_assert`/`_query`/`_retract`），
+     用 `register_instance`（`OntologyStore` 需注入，无参 `register` 不适用）
+  2. 未配置本体库时**不注册**——四工具缺席而非半残（execute 里 store 为 None 会崩）
+  3. 工具 schema 通过注册门禁（`Draft202012Validator` fail-closed）
 
 **API**
- 4. `GET /api/ontology/stats` 返回四计数 + 可推出事实数
- 5. `GET /api/ontology/graph` 输出 `{entities:[{id,classes,name}], edges:[{source,target,type}]}`
- —— 与旧 `/api/entities/graph` 同形，前端渲染管线可平移；`type` 取实体的
- 最具体类（子类优先），无类时回落 `unknown`
- 6. 边的 `objectKind=literal` 的事实**不进图**（字面量不是节点）
- 7. `GET /api/ontology/facts` 支持 `includeInferred`，返回带 `via` 的事实
- 8. 旧 `/api/entities*` 4 端点在 B4-删旧批次移除（此处只保证新端点可用）
+  4. `GET /api/ontology/stats` 返回四计数 + 可推出事实数
+  5. `GET /api/ontology/graph` 输出 `{entities:[{id,classes,name}], edges:[{source,target,type}]}`
+     —— 与旧 `/api/entities/graph` 同形，前端渲染管线可平移；`type` 取实体的
+     最具体类（子类优先），无类时回落 `unknown`
+  6. 边的 `objectKind=literal` 的事实**不进图**（字面量不是节点）
+  7. `GET /api/ontology/facts` 支持 `includeInferred`，返回带 `via` 的事实
+  8. 旧 `/api/entities*` 4 端点在 B4-删旧批次移除（此处只保证新端点可用）
 
 **容量与截断**
- 9. 图导出**不静默截断**（旧实现硬编码 limit=10000）——超限显式报 truncated"""
+  9. 图导出**不静默截断**（旧实现硬编码 limit=10000）——超限显式报 truncated
+"""
 
 from __future__ import annotations
 
@@ -175,7 +176,7 @@ class TestGraphPayload:
         assert payload["edges"] == []
 
     def test_payload_is_json_serialisable(self, store: OntologyStore) -> None:
-        """端点要返回 JSON——不可序列化的对象会在上炸。"""
+        """端点要返回 JSON——不可序列化的对象会在真机上炸。"""
         _seed(store)
         json.dumps(build_graph_payload(store), ensure_ascii=False)
 
@@ -237,11 +238,12 @@ class TestToolRegistration:
     def test_real_wiring_kernel_assembly_registers_four_tools(
         self, store: OntologyStore, tmp_path: Path
     ) -> None:
-        """装配点对齐：镜像真实内核装配 `_build_tool_registry_with_config`。
+        """装配点对齐（FM-1）：镜像真实内核装配 `_build_tool_registry_with_config`。
 
         真实内核（agent_runner）第一参传 None（旧实体 store 已随删旧批次移除），
         三元组 store 以关键字传入。历史 bug 是把三元组 store 当第二位置参数传，
-        绑定到了 `ontology_inference`——四工具从未注册而契约全绿。"""
+        绑定到了 `ontology_inference`——四工具从未注册而契约全绿。
+        """
         from bandi.core.agent_runner import _build_tool_registry_with_config
         from bandi.core.config import BandiConfig
 
@@ -270,11 +272,12 @@ class TestToolRegistration:
         assert "ontology_query" in ToolRegistry.READONLY_TOOL_NAMES
 
     def test_adapter_execute_matches_framework_call_convention(self, store: OntologyStore) -> None:
-        """装配点对齐：executor 以**位置参数**调 execute
+        """装配点对齐（FM-1）：executor 以**位置参数**调 execute
         （`executor.py:1220`：`tool.execute(tc.arguments, **kwargs)`）。
 
-        适配器曾用 `**kwargs` 签名——探针按关键字调用掩盖了差异，报
-        `takes 1 positional argument but 2 were given`。本条按框架方式调用。"""
+        适配器曾用 `**kwargs` 签名——探针按关键字调用掩盖了差异，真机报
+        `takes 1 positional argument but 2 were given`。本条按框架方式调用。
+        """
         import asyncio
 
         from bandi.agent.factory import build_tool_registry
@@ -310,7 +313,7 @@ class TestToolRegistration:
 
 
 class TestStringifiedParamsTolerance:
-    """（DeepSeek）：数组/对象参数会被双重编码成 JSON 字符串——
+    """真机（DeepSeek）：数组/对象参数会被双重编码成 JSON 字符串——
     适配器须在校验前还原，否则 `ontology_assert` 永远「参数校验失败」。"""
 
     def test_stringified_array_params_coerced_before_validation(self, store: OntologyStore) -> None:
@@ -371,7 +374,8 @@ class TestStringifiedParamsTolerance:
         assert tool.validate_params(normalized) == []
 
     def test_stringified_scalar_params_coerced(self, store: OntologyStore) -> None:
-        """破坏者：布尔/整数也可能被字符串化——按 schema 还原为标量，否则查询永远校验失败。"""
+        """破坏者：布尔/整数也可能被字符串化（真机 `includeInferred='True'`、
+        `depth='3'`）——按 schema 还原为标量，否则查询永远校验失败。"""
         from bandi.ontology.tools import OntologyToolContext
         from bandi.tools.ontology_tool_adapter import build_ontology_tools
 

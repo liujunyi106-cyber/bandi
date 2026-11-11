@@ -1,6 +1,6 @@
-# 功能：Electron 打包配置。
+# 功能：Electron 打包配置（@base docs/ADR.md ADR-42 / docs/前端设计规划.md §12）。
 # Windows 优先（nsis）；壳内加载 electron/main.js + 前端构建产物 dist/；
-# Python sidecar 生命周期与安装包瘦身。
+# Python sidecar 生命周期与安装包瘦身 → P5-6（Day147-151）。
 appId: com.bandi.desktop
 productName: Bandi
 copyright: Copyright © 2026 Bandi
@@ -45,7 +45,7 @@ publish:
   repo: bandi
   releaseType: release
 
-# sidecar：构建脚本 bandi/scripts/build-sidecar.py 先把
+# sidecar（Day147 C-5/C-6）：构建脚本 bandi/scripts/build-sidecar.py 先把
 # PyInstaller 产物同步到 build/sidecar/bandi-sidecar/（ASCII 目标目录、
 # 产物含 bandi-sidecar.exe + _internal/），这里整体作为 extraResources
 # 打进 resources/sidecar/——与 electron/sidecar.ts 的 ② 号候选路径对齐。

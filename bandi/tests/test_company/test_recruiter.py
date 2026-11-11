@@ -97,7 +97,7 @@ class TestRecruitmentModels:
             rationale="fits role",
             proposed_employee_name="工程一号",
             proposed_employee_id="general_engineer",
-            metadata={"source_repo": "参考实现", "experience_mode": "template_only"},
+            metadata={"source_repo": "openopc", "experience_mode": "template_only"},
         )
 
     def _employee(self) -> RecruitmentEmployeeRecommendation:

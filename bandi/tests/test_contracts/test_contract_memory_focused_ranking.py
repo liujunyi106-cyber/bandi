@@ -1,4 +1,4 @@
-# 功能：契约——AR-17 focused 检索加权。
+# 功能：契约——AR-17 focused 检索加权（ADJ-04 方案 1 过渡：focused 规则打分套检索结果）。
 # 钉行为：标题面（key/title）命中加权高于正文命中；警示词（清单/警告/坑/风险）加分；
 # 无命中保持原输入顺序（稳定排序不扰动）。
 from __future__ import annotations

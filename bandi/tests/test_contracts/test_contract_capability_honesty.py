@@ -4,9 +4,11 @@
 混为一谈，两者都走最小工具面。能力询问时模型只看得见 `tool_search`，于是
 （正确地）报告自己看见的那几个工具，对用户谎报产品能力——
 
- 「暂不支持的：写入/创建文件、数据处理、图表生成、团队组建」
+    「暂不支持的：写入/创建文件、数据处理、图表生成、团队组建」
 
-而这些工具全部存在。数据集 rubric `capability-honesty-v1` 直接判负。"""
+而这些工具全部存在（L1 真机实测 write 13 次 / excel_generate 11 次 /
+chart_generator 8 次）。数据集 rubric `capability-honesty-v1` 直接判负。
+"""
 
 from __future__ import annotations
 
