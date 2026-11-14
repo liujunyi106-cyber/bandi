@@ -1583,10 +1583,9 @@ async def _do_llm_call_inner(
                 **override_kwargs,
             )
             ctx.provider_name = used_model
-            # 空回复第二形态修复：非流式结果补发流帧（否则 UI 零帧 = 空回复表象）
-            if allow_stream:
-                await _emit_aggregated_response_as_deltas(ctx, response)
-            return await _guard_reasoning_only(
+            # 先定稿再补发流帧：reasoning-only 会被守卫换模型重问，若先补发
+            # 原响应，用户会先收到一段注定被替换的文本。
+            guarded = await _guard_reasoning_only(
                 ctx,
                 response,
                 provider_messages,
@@ -1595,6 +1594,11 @@ async def _do_llm_call_inner(
                 bandi_config=bandi_config,
                 **override_kwargs,
             )
+            if allow_stream and guarded is not response:
+                await _emit_aggregated_response_as_deltas(ctx, guarded)
+            elif allow_stream:
+                await _emit_aggregated_response_as_deltas(ctx, response)
+            return guarded
         except Exception as e:
             # 继续烧配置链/直调（止损语义在生产路径生效）
             if is_prompt_too_long_error(e):
@@ -1644,13 +1648,12 @@ async def _do_llm_call_inner(
             **override_kwargs,
         )
     # 非流式直调（use_fallback=False / provider 不支持流式）：stream_to_ui 时同样
-    # 补发流帧——否则该路径天然零 delta，UI 表现同空回复第二形态
+    # 补发流帧——否则该路径天然零 delta，UI 表现同空回复第二形态。
+    # 顺序与 fallback 分支一致：守卫定稿后再补发，避免发出会被替换的内容。
     response = await ctx.provider.complete(
         provider_messages, tools=ctx.active_tools, **override_kwargs
     )
-    if allow_stream:
-        await _emit_aggregated_response_as_deltas(ctx, response)
-    return await _guard_reasoning_only(
+    guarded = await _guard_reasoning_only(
         ctx,
         response,
         provider_messages,
@@ -1659,6 +1662,9 @@ async def _do_llm_call_inner(
         bandi_config=bandi_config,
         **override_kwargs,
     )
+    if allow_stream:
+        await _emit_aggregated_response_as_deltas(ctx, guarded)
+    return guarded
 
 
 def _safety_finish(response: LLMResponse) -> bool:

@@ -6,6 +6,8 @@ import logging
 import queue
 import sqlite3
 import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -50,11 +52,22 @@ class EffectLog:
         self._writer = threading.Thread(target=self._drain, name="effect-log", daemon=True)
         self._writer.start()
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
+        """功能：短连接上下文——退出时提交并关闭。
+
+        裸 `with sqlite3.connect(...)` 只管理事务不关闭连接，每次写日志都会泄漏
+        一个句柄；长驻进程里句柄累积，Windows 上还会锁住 -wal/-shm 让日志目录删不掉。
+        """
         from bandi.utils.db import connect
 
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        return connect(self._path, wal=True, timeout=3)
+        conn = connect(self._path, wal=True, timeout=3)
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     def _ensure(self, conn: sqlite3.Connection) -> None:
         if not self._ready:

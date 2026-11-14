@@ -67,6 +67,19 @@ _GOAL_REQUEST_RE = re.compile(
 )
 
 
+def _slot_since(slot: RoundSlot) -> float:
+    """功能：取槽位最近活动时刻（无记录归 0，表示「很久以前」）。
+
+    不能用 `a or b` 链：合法时间戳 0.0 是 falsy，会被误当成「没记录」而回退到
+    当前时刻，于是「已等待多久」恒为 0，超时判定永远不成立。
+    """
+    if slot.last_activity_at is not None:
+        return float(slot.last_activity_at)
+    if slot.started_at is not None:
+        return float(slot.started_at)
+    return 0.0
+
+
 def default_relay_limit(member_count: int) -> int:
     """功能：群聊接力上限——成员数 ×3，至少 1。"""
     return max(1, DEFAULT_RELAY_PER_MEMBER * max(0, int(member_count)))
@@ -669,7 +682,7 @@ class GroupRoundService:
         round_.add_line(
             "system",
             "notice",
-            f"{self._role_name(slot.role_id)} �������жϣ�{reason}",
+            f"{self._role_name(slot.role_id)} 已中断：{reason}",
             work_item_id,
         )
         self._mark_goal(round_.session_id, slot.role_id, "mark_reset", "已中断")
@@ -742,6 +755,32 @@ class GroupRoundService:
                     round_.status = RoundStatus.COMPLETED
                     self._rounds.save(round_)
                     self._emit(round_)
+                else:
+                    # 功能：迟到补发窗口已过——把久等的未回应/执行中成员收口为终态。
+                    # 这两种状态保留补发机会（迟到结果能直接落卡），本身不属终态；
+                    # 但没人再推进时回合会永远 RUNNING，每 tick 空转且 UI 一直显示执行中。
+                    expired = [
+                        item
+                        for item in round_.slots
+                        if item.status in (SlotStatus.MISSED, SlotStatus.WORKING)
+                        and moment - _slot_since(item) > self._timeout
+                    ]
+                    if not expired:
+                        continue
+                    for item in expired:
+                        item.status = SlotStatus.FAILED
+                        round_.add_line(
+                            "system",
+                            "notice",
+                            f"{self._role_name(item.role_id)} 超时未回应，已跳过该成员。",
+                            item.work_item_id,
+                        )
+                    self._rounds.save(round_)
+                    self._emit(round_)
+                    if round_.is_complete:
+                        round_.status = RoundStatus.COMPLETED
+                        self._rounds.save(round_)
+                        self._emit(round_)
                 continue
             if slot.status == SlotStatus.WAITING_APPROVAL:
                 continue
