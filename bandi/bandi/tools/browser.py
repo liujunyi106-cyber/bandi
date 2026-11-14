@@ -263,12 +263,10 @@ class BrowserRuntime:
     async def get_page(self) -> object:
         if self._page is not None:
             return self._page
-        from playwright.async_api import async_playwright
-
-        from bandi.tools.web.browser_pool import chromium_launch_kwargs
+        from bandi.tools.web.browser_pool import chromium_launch_kwargs, resolve_async_playwright
 
         if self._instance is None:
-            pw = await async_playwright().start()
+            pw = await resolve_async_playwright().start()
             if self._profile_dir:
                 # 每员工独立持久化上下文——登录态/缓存不跨员工共享
                 try:

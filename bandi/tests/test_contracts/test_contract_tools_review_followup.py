@@ -79,22 +79,24 @@ async def test_contract_browser_driver_cleaned_on_launch_failure(monkeypatch) ->
         async def stop(self) -> None:
             stopped["n"] += 1
 
-    def _fake_async_playwright() -> Any:
-        class _Ctx:
-            async def start(self) -> Any:
-                return _PW()
+    class _Ctx:
+        # 与 resolve_async_playwright() 返回值同形：已实例化，带 .start()
+        async def start(self) -> Any:
+            return _PW()
 
-        return _Ctx()
+    import bandi.tools.web.browser_pool as bp
 
-    import playwright.async_api as pwa
+    # 用注入点而非 monkeypatch playwright 模块：CI 未装 playwright，
+    # import 真实模块会让该契约在干净 runner 上直接 ModuleNotFoundError。
+    bp.set_async_playwright(_Ctx())
+    try:
+        from bandi.tools.browser import BrowserRuntime
 
-    monkeypatch.setattr(pwa, "async_playwright", _fake_async_playwright)
-
-    from bandi.tools.browser import BrowserRuntime
-
-    runtime = BrowserRuntime()
-    with pytest.raises(RuntimeError):
-        await runtime.get_page()
+        runtime = BrowserRuntime()
+        with pytest.raises(RuntimeError):
+            await runtime.get_page()
+    finally:
+        bp.set_async_playwright(None)
     assert stopped["n"] == 1, "双 launch 失败路径必须 stop driver（防进程泄漏）"
 
 

@@ -11,6 +11,24 @@ from typing import Any
 # 沙箱逃生开关：默认关闭（Chromium 默认沙箱保持开启）；CI/容器环境无
 _NO_SANDBOX_ENV = "BANDI_BROWSER_NO_SANDBOX"
 
+# 功能：playwright 启动函数注入点——测试可替换，无需为跑契约安装整个 playwright
+_async_playwright_override: Any = None
+
+
+def set_async_playwright(factory: Any) -> None:
+    """功能：替换 playwright 启动函数（传 None 恢复真实导入）。"""
+    global _async_playwright_override
+    _async_playwright_override = factory
+
+
+def resolve_async_playwright() -> Any:
+    """功能：取 playwright 启动上下文——优先注入值，否则惰性导入真实包。"""
+    if _async_playwright_override is not None:
+        return _async_playwright_override
+    from playwright.async_api import async_playwright
+
+    return async_playwright()
+
 
 def no_sandbox_enabled() -> bool:
     # 功能：浏览器沙箱逃生开关读取——仅显式真值才禁用沙箱；假值/空值一律保持沙箱
@@ -79,9 +97,7 @@ class BrowserPool:
 
     async def _launch(self) -> None:
         # 功能：懒加载 playwright + 启动 chromium（优先系统 chrome，回退自带）
-        from playwright.async_api import async_playwright
-
-        self._pw = await async_playwright().start()
+        self._pw = await resolve_async_playwright().start()
         try:
             self._browser = await self._pw.chromium.launch(
                 **chromium_launch_kwargs(channel="chrome")
