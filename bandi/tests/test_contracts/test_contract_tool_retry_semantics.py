@@ -321,13 +321,18 @@ async def test_approval_deny_not_retried() -> None:
 def test_non_retryable_names_are_real_registered_tools(tmp_path: Any) -> None:
     """
     名单写模块文件名而非注册名（如 file_edit/git_ops）= 死条目
-    真实高危写工具（edit/git_commit）漏防 → commit/edit 重放风险。"""
+    真实高危写工具（edit/git_commit）漏防 → commit/edit 重放风险。
+
+    口径用「已注册」而非「已启用」：缺可选依赖的工具（如 browser 缺 playwright）
+    会被依赖门闸置 enabled=False 而不出现在 list_tools()，名字本身仍然有效。
+    """
     from bandi.agent.factory import build_tool_registry
     from bandi.ontology.spec import open_ontology
     from bandi.ontology.triple_store import OntologyStore
 
     store = OntologyStore(open_ontology(str(tmp_path / "o.db")))
-    registered = {t.name for t in build_tool_registry(triple_ontology_store=store).list_tools()}
+    registry = build_tool_registry(triple_ontology_store=store)
+    registered = set(registry._tools)
     missing = sorted(NON_RETRYABLE_TOOL_NAMES - registered)
     assert not missing, (
         f"名单死条目（registry 无此注册名，禁重试形同虚设）: {missing}；"
