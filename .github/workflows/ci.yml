@@ -57,6 +57,8 @@ jobs:
         #   路径大小写：Windows runner 的 tmp 路径与开发机不同（2 个）
         #   进程内单例：前序用例残留的 LLM 档案污染（1 个）
         #   并发替换 / 依赖文案 / 后台入库：偶发竞态与版本敏感（3 个）
+        #   桌面目录：断言用户桌面真实存在，干净 runner 上无该目录（2 个）
+        #   OCR 模型：PaddleOCR 权重需联网首下，runner 上未预置（4 个）
         shell: pwsh
         run: |
           $deselect = @(
@@ -70,7 +72,10 @@ jobs:
             "tests/test_contracts/test_contract_family_day137.py::test_resolve_llm_config_applies_profile_and_keeps_base_blanks",
             "tests/test_contracts/test_contract_edit_match_chain.py::TestEditToolConcurrencyAndAtomicity::test_concurrent_edits_are_serialized",
             "tests/test_contracts/test_contract_family_p_batches.py::test_failure_payload_bounded_global_and_per_tool",
-            "tests/test_contracts/test_contract_knowledge_nodes_api.py::test_large_ingest_endpoint_reports_scheduled"
+            "tests/test_contracts/test_contract_knowledge_nodes_api.py::test_large_ingest_endpoint_reports_scheduled",
+            "tests/test_contracts/test_contract_accessible_paths.py::TestDesktopDiscovery::test_desktop_is_real_and_exists",
+            "tests/test_contracts/test_contract_accessible_paths.py::TestSectionContent::test_lists_real_workspace",
+            "tests/test_tools/test_doc_ocr_real.py::TestImageOCRReal"
           ) | ForEach-Object { "--deselect"; $_ }
           pytest tests -q -m "not heavy and not external_tool and not timing" --timeout=120 --timeout-method=thread @deselect
           exit $LASTEXITCODE

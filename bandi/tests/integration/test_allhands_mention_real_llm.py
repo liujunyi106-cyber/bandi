@@ -36,16 +36,22 @@ _FORCED_PROVIDER = os.environ.get("BANDI_SMOKE_PROVIDER", "")
 
 
 def _resolve_agnes_key() -> str:
-    """agnes key 解析：env 优先 → opencode auth.json agnes 段。"""
+    """agnes key 解析：env 优先 → opencode auth.json agnes 段；缺失时返回空串。"""
     forced = os.environ.get("BANDI_REAL_LLM_API_KEY", "")
     if forced:
         return forced
     auth_path = Path.home() / ".local" / "share" / "opencode" / "auth.json"
-    auth = json.loads(auth_path.read_text(encoding="utf-8"))
+    try:
+        auth = json.loads(auth_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        # 干净 runner 上没有该文件；收集期不得因此崩溃，交给用例自身 skip
+        return ""
     return (auth.get("agnes", {}) or {}).get("key", "")
 
 
-_AGNES_KEY = _resolve_agnes_key()
+def _agnes_key() -> str:
+    """功能：按需解析 key——模块导入不触碰用户目录，避免影响整轮收集。"""
+    return _resolve_agnes_key()
 
 
 @pytest.fixture()
@@ -81,13 +87,14 @@ def _rate_limit_gap():
 
 def _probe_agnes() -> bool:
     """探针：agnes-2.5-flash 真实可达才让用例跑（不可达 = skip 而非 fail）。"""
-    if not _AGNES_KEY:
+    key = _agnes_key()
+    if not key:
         return False
     from bandi.core.config import LLMConfig
     from bandi.llm.providers.openai import OpenAICompatProvider
 
     async def _probe() -> bool:
-        cfg = LLMConfig(api_key=_AGNES_KEY, base_url=_AGNES_BASE, default_model=_FORCED_MODEL)
+        cfg = LLMConfig(api_key=key, base_url=_AGNES_BASE, default_model=_FORCED_MODEL)
         provider = OpenAICompatProvider(cfg, base_url=_AGNES_BASE)
         try:
             resp = await provider.complete([{"role": "user", "content": "reply OK"}])
@@ -102,18 +109,23 @@ def _probe_agnes() -> bool:
     return asyncio.run(_probe())
 
 
-_ALLHANDS_REACHABLE = _probe_agnes() and _AGNES_KEY
+def _real_enabled() -> bool:
+    """功能：真实链路开关——惰性求值，导入期不做网络探针。
 
-_REAL_ENABLED = (
-    os.environ.get("BANDI_REAL_LLM_TESTS") == "1"
-    and _FORCED_MODEL
-    and _FORCED_PROVIDER == "agnes"
-    and _ALLHANDS_REACHABLE
-)
+    模块级探针会让整轮收集在干净 runner 上挂到超时，也会把 skip 变成 error。
+    """
+    return (
+        os.environ.get("BANDI_REAL_LLM_TESTS") == "1"
+        and _FORCED_MODEL
+        and _FORCED_PROVIDER == "agnes"
+        and _probe_agnes()
+    )
+
 
 pytestmark = [
+    # 用字符串条件：pytest 在收集到用例时才求值，导入本模块不触发网络探针
     pytest.mark.skipif(
-        not _REAL_ENABLED,
+        "_real_enabled() is not True",
         reason="@allhands 真实 LLM E2E：需 BANDI_REAL_LLM_TESTS=1 + BANDI_SMOKE_MODEL + BANDI_SMOKE_PROVIDER=agnes，且 agnes 探针可达",
     ),
     pytest.mark.asyncio,
