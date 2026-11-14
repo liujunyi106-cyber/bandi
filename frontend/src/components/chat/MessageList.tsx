@@ -143,22 +143,13 @@ export function MessageList({
     return () => observer.disconnect();
   }, []);
 
-  const renderMessage = (message: ChatMessage, index: number) => {
-    // 消息级总执行时长：assistant 「已完成 · 时间」=
-    // 上一条 user 消息 → 本条回复落卡的墙钟差；缺任一时间戳则不传（回退过程累计）
-    let turnDurationMs: number | undefined;
-    if (message.role === "assistant" && message.createdAt) {
-      for (let back = index - 1; back >= 0; back -= 1) {
-        const previous = messages[back];
-        if (previous.role === "user") {
-          if (previous.createdAt) {
-            const delta = Date.parse(message.createdAt) - Date.parse(previous.createdAt);
-            if (Number.isFinite(delta) && delta > 0) turnDurationMs = delta;
-          }
-          break;
-        }
-      }
-    }
+  const renderMessage = (message: ChatMessage) => {
+    // 消息级总执行时长：优先用后端 done 帧携带的真实耗时。
+    // 旧逻辑按「上一条 user → 本条回复」的墙钟差推算，群聊里一条 user 会计出多位
+    // 成员的合并时间（后落位者显示值虚高），且无法反映 Agent 循环的真实跨度。
+    // 无 duration_ms 的历史数据传 undefined，交给过程块回退到节点累计。
+    const turnDurationMs: number | undefined =
+      message.role === "assistant" ? message.turnDurationMs : undefined;
     return (
       <MessageItem
         // 本地用户消息也显示操作条（复制/编辑对已发出内容有效）；
@@ -214,14 +205,14 @@ export function MessageList({
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
                   >
-                    {renderMessage(message, virtualRow.index)}
+                    {renderMessage(message)}
                   </div>
                 );
               })}
             </div>
           ) : (
-            messages.map((message, index) => (
-              <Fragment key={message.id}>{renderMessage(message, index)}</Fragment>
+            messages.map((message) => (
+              <Fragment key={message.id}>{renderMessage(message)}</Fragment>
             ))
           )}
           {children}

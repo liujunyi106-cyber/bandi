@@ -19,10 +19,28 @@ import path from "node:path";
 import { app } from "electron";
 
 const SIDECAR_READY_PREFIX = "BANDI_SIDECAR_READY";
-const START_TIMEOUT_MS = 30_000;
+const START_TIMEOUT_MS = 120_000;
 const PROBE_INTERVAL_MS = 250;
 const MAX_RESTARTS = 3;
 const RESTART_BACKOFF_MS = [1_000, 3_000, 5_000];
+const STDERR_TAIL_CHARS = 4_000;
+
+/**
+ * 功能：把 sidecar stderr 落到壳日志，且永不因管道断开抛出未捕获异常。
+ *
+ * 打包态 GUI 进程的 stderr 是随时可能被关闭的管道：直写 process.stderr 遇到
+ * 子进程先退出（EPIPE）会变成 main process 的 Uncaught Exception 弹窗轰炸。
+ * 这里缓存尾部用于崩溃诊断，只有可写时才写回。
+ */
+function writeStderrSafely(chunk: string): void {
+  try {
+    const stream = process.stderr;
+    if (!stream || stream.destroyed || stream.writableEnded) return;
+    stream.write(`[sidecar] ${chunk}`);
+  } catch {
+    // 管道已关闭：诊断信息不影响运行，静默跳过
+  }
+}
 
 /** 功能：BANDI_HOME 解析（与后端 bandi.api 同口径）。 */
 export function bandiHome(): string {
@@ -216,6 +234,7 @@ export class SidecarManager {
       // 通道 ①：stdout 结构化行（最快）
       child.stdout?.setEncoding("utf-8");
       let stdoutTail = "";
+      let stderrTail = "";
       child.stdout?.on("data", (chunk: string) => {
         stdoutTail = (stdoutTail + chunk).slice(-2000);
         for (const line of stdoutTail.split("\n")) {
@@ -228,9 +247,16 @@ export class SidecarManager {
           }
         }
       });
-      // 崩溃诊断：stderr 全量透传到壳日志
+
+      // 崩溃诊断：stderr 尾部透传到壳日志（管道断开时不得抛未捕获异常）
       child.stderr?.setEncoding("utf-8");
-      child.stderr?.on("data", (chunk: string) => process.stderr.write(`[sidecar] ${chunk}`));
+      child.stderr?.on("data", (chunk: string) => {
+        stderrTail = (stderrTail + chunk).slice(-STDERR_TAIL_CHARS);
+        writeStderrSafely(chunk);
+      });
+      // 管道级错误必须各自兜住：子进程先退出时 stdout/stderr 会发 EPIPE/ECONNRESET
+      child.stdout?.on("error", () => undefined);
+      child.stderr?.on("error", () => undefined);
 
       // 通道 ②：端口文件轮询兜底（stdout 丢失/缓冲被劫持时仍能拿到端口）
       const fileTimer = setInterval(() => {
@@ -249,6 +275,9 @@ export class SidecarManager {
       child.on("exit", (code) => {
         if (this.stopping) return;
         if (!settled) {
+          if (stderrTail.trim()) {
+            console.error("[sidecar] 启动失败，stderr 尾部：\n" + stderrTail.trim());
+          }
           finish(null);
           return;
         }
@@ -258,7 +287,7 @@ export class SidecarManager {
 
       const timeoutTimer = setTimeout(() => {
         if (!settled) {
-          console.error("[sidecar] 30s 内未就绪，放弃本轮（进程将被停止）");
+          console.error("[sidecar] 启动超时，放弃本轮（进程将被停止）");
           this.stop();
           this.onGiveUp?.("start-timeout");
           finish(null);

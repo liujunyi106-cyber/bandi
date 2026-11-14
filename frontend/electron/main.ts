@@ -164,14 +164,21 @@ function createWindow(): void {
   }
 
   // 生产模式（ADR-42）：spawn sidecar → /ready → loadURL（SPA+API+WS 单端口）。
-  // sidecar 起不来/超时/崩溃耗尽 → 降级 loadFile（静态壳，不白屏）。
+  // 就绪前先显示启动占位页，避免「内核未连接却已展示完整界面」造成误判；
+  // sidecar 起不来/超时/崩溃耗尽 → 占位页转为带错误原因的重试页（不白屏、不假装可用）。
+  void win.loadFile(path.join(__dirname, "..", "dist", "index.html"), {
+    query: { boot: "starting" },
+  });
   void sidecar.start().then((handle) => {
     if (handle) {
       void win.loadURL(`http://127.0.0.1:${handle.port}/`);
       return;
     }
-    console.warn("[main] sidecar 不可用，降级 loadFile（file:// 静态壳）");
-    void win.loadFile(path.join(__dirname, "..", "dist", "index.html"));
+    console.warn("[main] sidecar 不可用，占位页转为错误重试页（不假装载入）");
+    if (win.isDestroyed()) return;
+    void win.loadFile(path.join(__dirname, "..", "dist", "index.html"), {
+      query: { boot: "failed" },
+    });
   });
 }
 
@@ -198,6 +205,15 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.setAppUserModelId(APP_USER_MODEL_ID);
+  // 功能：主进程未捕获异常只记日志，不弹「A JavaScript error occurred」模态框。
+  // 打包态没有终端可看，模态框会卡住整个窗口且只能反复点确定；壳的降级路径
+  // （sidecar 失败 → 静态壳）本身可继续使用，故记录后保持运行。
+  process.on("uncaughtException", (error) => {
+    console.error("[main] uncaughtException:", error);
+  });
+  process.on("unhandledRejection", (reason) => {
+    console.error("[main] unhandledRejection:", reason);
+  });
   // 功能：移除 Electron 默认应用菜单（应用/编辑），桌面端只用自绘标题栏与托盘菜单。
   Menu.setApplicationMenu(null);
 

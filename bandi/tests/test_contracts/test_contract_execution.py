@@ -109,9 +109,12 @@ def test_contract_checkpoint_saved_after_handler_success(tmp_path: Any) -> None:
         assert entries, "run_agent_turn 必须写入 checkpoint"
         cp = ckpt.load(entries[-1]["id"])
         assert cp is not None
-        assert cp.turn_index == result.turn_index, (
-            f"最新 checkpoint turn_index 必须等于完成轮次：{cp.turn_index} != {result.turn_index}"
+        # checkpoint 的 turn_index 是「用户轮 × 1000 + 轮内步」的组合存档键，
+        # 这里按轮比对：取整后必须落在完成轮次上。
+        assert cp.turn_index // 1000 == result.turn_index, (
+            f"最新 checkpoint 必须属于完成轮次：存档键 {cp.turn_index} != 轮次 {result.turn_index}"
         )
+        assert result.steps >= 1, "完成一轮至少跑过一步"
         msgs = json.loads(cp.messages_json or "[]")
         # session store（下一契约），恢复链只读 state_json；此处反向钉住
         assert msgs == [], "checkpoint 不应再冗余存 messages_json"

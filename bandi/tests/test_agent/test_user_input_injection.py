@@ -90,7 +90,7 @@ class TestAgentLoopInjection:
         # Should have processed injection: state went through thinking
         assert ctx.current_state == "terminated" or ctx.current_state == "reflecting"
         # (we verify by checking the loop didn't crash and state progressed)
-        assert ctx.turn_index >= 1
+        assert ctx.step_index >= 1
 
     @pytest.mark.asyncio
     async def test_injection_emits_user_input_injected_event(

@@ -442,12 +442,20 @@ class ProcessRecorder:
         self._nodes = []
 
     async def on_done(
-        self, session_id: str, terminal_reason: str, total_tokens: int, turn_index: int
+        self,
+        session_id: str,
+        terminal_reason: str,
+        total_tokens: int,
+        turn_index: int,
+        duration_ms: float = 0.0,
+        steps: int = 0,
     ) -> None:
         await self.persist_partial(session_id, turn_index)
         inner_done = getattr(self._inner, "on_done", None)
         if inner_done is not None:
-            await inner_done(session_id, terminal_reason, total_tokens, turn_index)
+            await inner_done(
+                session_id, terminal_reason, total_tokens, turn_index, duration_ms, steps
+            )
 
     def __getattr__(self, name: str) -> Any:
         # 功能：协议外方法（如 _SSEStreamHandler.on_interaction_frame / put）透传内层

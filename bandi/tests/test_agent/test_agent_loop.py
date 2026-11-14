@@ -210,7 +210,8 @@ async def test_normal_flow_with_tools():
     loop = AgentLoop()
     reason = await loop.run(ctx)
     assert reason == TerminalReason.COMPLETED
-    assert ctx.turn_index == 2
+    # 两步：先调工具再看结果；步数记在 step_index（用户轮由 run_agent 推进）
+    assert ctx.step_index == 2
 
 
 @pytest.mark.asyncio

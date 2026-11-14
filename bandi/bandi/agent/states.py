@@ -170,10 +170,11 @@ def _xml_escape_attr(value: str) -> str:
 async def on_init(
     ctx: ExecutionContext,
 ) -> None:  # 功能：INIT 处理器——重置上下文、空消息时直接终止、安全护栏前置检查
-    # turn_index 为会话累计轮数——全新会话（无恢复消息）归 0
-    # 会话累计语义，避免恢复后 item_id 碰撞/事件计数重置）
+    # turn_index 由 run_agent 在每次用户请求时推进；这里只重置轮内步号与瞬态。
+    # 空消息（无历史可放）仍归 0，保持「全新会话首轮」的既有语义。
     if not ctx.messages:
         ctx.turn_index = 0
+    ctx.step_index = 0
     ctx.current_response = None
     ctx.current_content = None
     ctx.current_tool_calls = None
@@ -491,11 +492,12 @@ def _build_provider_messages(ctx: ExecutionContext) -> list[dict]:
     # 连续失败熔断承担）
     degraded = ctx.meta.get("degraded_layers")
     if degraded:
-        insert_at = len(provider_messages)
+        # 功能：降级提示插在所有 system 之后——它随状态变化，插在系统段中间会把
+        # 之后的静态提示词全部推出前缀缓存。
+        insert_at = 0
         for i, m in enumerate(provider_messages):
-            if m.get("role") != "system":
-                insert_at = i
-                break
+            if m.get("role") == "system":
+                insert_at = i + 1
         provider_messages.insert(
             insert_at,
             {
@@ -942,7 +944,10 @@ async def on_thinking(
 ) -> None:  # 功能：THINKING 处理器——追加工具结果、压缩检测、调用 LLM、累计 tokens
     if ctx.terminal_reason is not None:
         return
-    ctx.turn_index += 1
+    # 功能：一次用户轮内部的模型步自增。同一轮里「调工具→看结果→再想」会多次进入
+    # 本处理器，这些都属于同一个 turn；轮次只在收到新用户消息时推进，
+    # 否则压缩、会话分组与前端「轮」的概念全部按步切分而失真。
+    ctx.step_index = int(getattr(ctx, "step_index", 0) or 0) + 1
     # （含候选降级 / 响应式压缩重试 / 截断恢复重试）经 _do_llm_call_inner 自增
     # 供 LLM_RESPONSE 成本拆解区分「一次成」与「重试成」。
     ctx.meta["llm_attempt"] = 0
@@ -1312,13 +1317,13 @@ async def _inject_prefetch(
             data={"turn_index": ctx.turn_index, "keys": list(payload.keys())},
         )
     )
+    # 功能：插到所有 system 消息之后、历史消息之前。
+    # 预取内容每次都可能不同，若插进 system 段落中间会把后面整段静态提示词推出
+    # 前缀缓存（provider 按前缀逐字节命中），所以只让它污染 system 与历史之间的位置。
     insert_at = 0
     for i, m in enumerate(provider_messages):
-        if m.get("role") != "system":
-            insert_at = i
-            break
-    else:
-        insert_at = len(provider_messages)
+        if m.get("role") == "system":
+            insert_at = i + 1
     return [
         *provider_messages[:insert_at],
         {"role": "system", "content": block},

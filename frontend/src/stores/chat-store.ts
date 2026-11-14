@@ -384,6 +384,10 @@ export interface ChatMessage {
   /** 首帧到达/占位创建时刻——卡片完成时间 = completedAt − startedAt（总执行时长）。 */
   startedAt?: string;
   completedAt?: string;
+  /** 后端 done 帧携带的真实执行耗时（毫秒）——「已完成 · Ns」的唯一权威口径。 */
+  turnDurationMs?: number;
+  /** 本轮内部跑了多少个模型步（工具往返各算一步；1 = 一次成）。 */
+  turnSteps?: number;
   process?: ProcessNode[];
   /** 本地发出（尚未从后端列表读回）。 */
   local?: boolean;
@@ -659,7 +663,10 @@ interface ChatState {
     toolCallId: string,
     result: { success: boolean; outputPreview: string; durationMs: number; error?: string },
   ) => void;
-  finalizeStream: (sessionId: string, patch: { turnIndex?: number; error?: string }) => void;
+  finalizeStream: (
+    sessionId: string,
+    patch: { turnIndex?: number; error?: string; turnDurationMs?: number; turnSteps?: number },
+  ) => void;
   failStream: (sessionId: string, error: string) => void;
   /** 功能：本地兜底中断——后端确认无活动流（404）/超时未见终结帧时把挂起槽定稿并
    * 释放（空占位直接移除），防「正在回复中」永久残留。按会话定位槽。 */
@@ -1399,7 +1406,7 @@ export function applyToolRetryResult(
 export function finalizeMessage(
   messages: ChatMessage[],
   pendingId: string,
-  patch: { turnIndex?: number; error?: string },
+  patch: { turnIndex?: number; error?: string; turnDurationMs?: number; turnSteps?: number },
 ): ChatMessage[] {
   return messages.map((message) =>
     message.id === pendingId
@@ -1408,6 +1415,10 @@ export function finalizeMessage(
           done: true,
           turnIndex: patch.turnIndex ?? message.turnIndex,
           error: patch.error,
+          // 后端 done 帧携带的真实执行耗时与步数；缺失时保持 undefined，
+          // 由渲染层回退到过程节点累计，不用墙钟差冒充执行时长
+          turnDurationMs: patch.turnDurationMs ?? message.turnDurationMs,
+          turnSteps: patch.turnSteps ?? message.turnSteps,
           completedAt: new Date().toISOString(),
           startedAt: message.startedAt ?? message.createdAt ?? message.completedAt,
           process: message.process ? settleRunningNodes(message.process) : undefined,

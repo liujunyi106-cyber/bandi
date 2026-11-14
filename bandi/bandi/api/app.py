@@ -1236,6 +1236,8 @@ async def agent_stream(body: dict[str, Any]) -> StreamingResponse:
                         result.terminal_reason or "",
                         result.total_tokens,
                         result.turn_index,
+                        getattr(result, "duration_ms", 0.0),
+                        getattr(result, "steps", 0),
                     )
                     await handler.put(
                         "done",
@@ -1244,6 +1246,8 @@ async def agent_stream(body: dict[str, Any]) -> StreamingResponse:
                             "terminal_reason": result.terminal_reason,
                             "total_tokens": result.total_tokens,
                             "turn_index": result.turn_index,
+                            "duration_ms": int(getattr(result, "duration_ms", 0.0) or 0),
+                            "steps": int(getattr(result, "steps", 0) or 0),
                         },
                     )
             except Exception as exc:  # noqa: BLE001
@@ -4304,6 +4308,19 @@ def _build_gate_llm() -> Any | None:
         return None
 
 
+def _wake_company_dispatcher() -> None:
+    """功能：唤醒调度器处理刚建好的群聊发言人卡（失败静默，由轮询兜底）。
+
+    群聊回合按「上一位完成才建下一位的卡」推进；建卡若不唤醒，新卡要等
+    调度主循环的空闲轮询周期才被执行，多位成员的顺序发言会被拉长甚至
+    看起来只回了第一位。
+    """
+    try:
+        _get_company_dispatcher().signal_dispatcher_wake()
+    except Exception:
+        logger.debug("wake company dispatcher failed", exc_info=True)
+
+
 def _get_company_dispatcher() -> CompanyDispatcher:
     """懒加载 CompanyDispatcher 单例（~/.bandi/company/company.db）。
 
@@ -4383,6 +4400,7 @@ def _get_company_dispatcher() -> CompanyDispatcher:
                 mention_resolver=_round_mention_resolver(org),
                 broadcast=_broadcast_group_round,
                 goal_service=goal_service,
+                wake=_wake_company_dispatcher,
             )
 
             progress_seen_at: dict[str, float] = {}
@@ -5509,7 +5527,13 @@ class _WSStreamHandler:
         await self._send({"type": "interaction", "data": payload})
 
     async def on_done(
-        self, session_id: str, terminal_reason: str, total_tokens: int, turn_index: int
+        self,
+        session_id: str,
+        terminal_reason: str,
+        total_tokens: int,
+        turn_index: int,
+        duration_ms: float = 0.0,
+        steps: int = 0,
     ) -> None:
         await self._send(
             {
@@ -5519,6 +5543,8 @@ class _WSStreamHandler:
                     "terminal_reason": terminal_reason or None,
                     "total_tokens": total_tokens,
                     "turn_index": turn_index,
+                    "duration_ms": int(duration_ms or 0),
+                    "steps": int(steps or 0),
                 },
             }
         )
@@ -5702,11 +5728,14 @@ async def _handle_ws_chat(websocket: WebSocket, payload: dict[str, Any]) -> None
                 logger.warning("pending interaction sweep failed: session=%s", session_id)
 
     # -3c：轮末经 recorder 落 process 条目后转发 done（on_done 幂等于帧语义）
+    # 耗时/步数取带默认值的属性：测试桩与旧结果对象可能不带这两个字段
     await recorder.on_done(
         result.session_id,
         result.terminal_reason or "",
         result.total_tokens,
         result.turn_index,
+        getattr(result, "duration_ms", 0.0),
+        getattr(result, "steps", 0),
     )
 
 

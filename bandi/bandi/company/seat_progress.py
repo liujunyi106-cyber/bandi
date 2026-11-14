@@ -158,7 +158,13 @@ class EmployeeProgressHandler:
         self._emit("task_ledger", {"items": list(items), "count": len(items)})
 
     async def on_done(
-        self, session_id: str, terminal_reason: str, total_tokens: int, turn_index: int
+        self,
+        session_id: str,
+        terminal_reason: str,
+        total_tokens: int,
+        turn_index: int,
+        duration_ms: float = 0.0,
+        steps: int = 0,
     ) -> None:
         self._emit(
             "done",
@@ -166,6 +172,8 @@ class EmployeeProgressHandler:
                 "terminal_reason": terminal_reason,
                 "total_tokens": total_tokens,
                 "turn_index": turn_index,
+                "duration_ms": int(duration_ms or 0),
+                "steps": int(steps or 0),
             },
         )
 

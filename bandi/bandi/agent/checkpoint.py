@@ -32,11 +32,23 @@ _CHECKPOINT_SCHEMA = """
 class Checkpoint:
     id: str = field(default_factory=lambda: uuid4().hex)
     session_id: str = ""
+    # 功能：存档序号 = 用户轮 × 1000 + 轮内步号。轮次与步号共同定位一个恢复点，
+    # 使同一用户轮内的多次工具往返各有独立快照（崩溃重放不会跳过中间副作用）。
     turn_index: int = 0
     state_json: str = ""
     messages_json: str = ""
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     command_id: str = ""
+
+
+_STEP_SLOT = 1000
+
+
+def checkpoint_key(turn_index: int, step_index: int) -> int:
+    """功能：把（用户轮, 轮内步）压成存档键，保持单列递增且同轮内不互相覆盖。"""
+    turn = max(0, int(turn_index or 0))
+    step = max(0, int(step_index or 0))
+    return turn * _STEP_SLOT + min(step, _STEP_SLOT - 1)
 
 
 class CheckpointStore:

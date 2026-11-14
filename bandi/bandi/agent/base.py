@@ -110,6 +110,8 @@ class ParseOutcome(Enum):  # 功能：LLM 响应解析产物显式状态（on_pa
 @dataclass
 class TurnState:  # 功能：每轮 Agent Loop 的瞬态数据
     turn_index: int = 0
+    # 用户轮内的模型步序号（1 起）：每次进入 THINKING 自增，同一用户轮内可多次
+    step_index: int = 0
     current_response: LLMResponse | None = None
     current_content: str | None = None
     current_tool_calls: list[ToolCall] | None = None
@@ -260,6 +262,14 @@ class ExecutionContext:  # 功能：Agent 执行上下文，贯穿整个循环�
     @turn_index.setter
     def turn_index(self, value: int) -> None:
         self.turn.turn_index = value
+
+    @property
+    def step_index(self) -> int:
+        return self.turn.step_index
+
+    @step_index.setter
+    def step_index(self, value: int) -> None:
+        self.turn.step_index = value
 
     @property
     def current_response(self) -> LLMResponse | None:

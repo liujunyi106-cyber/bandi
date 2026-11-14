@@ -163,9 +163,12 @@ async def test_on_init_clears_stale_rework_for_new_artifact() -> None:
 
 
 @pytest.mark.asyncio
-async def test_injected_turn_advances_turn_index_once() -> None:
+async def test_injected_turn_advances_step_index_once() -> None:
+    """LLM_REQUEST 的步号序列必须从 1 起且无空洞（bug=注入分支与 on_thinking 双增）。
+
+    轮次（turn_index）只由 run_agent 在每次用户请求时推进，直调 AgentLoop 时保持 0；
+    轮内的每次模型调用记在 step 上。
     """
-    LLM_REQUEST 的 turn 序列必须从 1 起且无空洞（bug=注入分支与 on_thinking 双增）。"""
     from unittest.mock import AsyncMock, MagicMock
 
     from bandi.agent.base import ExecutionContext
@@ -198,21 +201,23 @@ async def test_injected_turn_advances_turn_index_once() -> None:
     ctx.current_state = "observing"
     ctx.injected_input = "中途转向：先看配置"
 
-    llm_turns: list[int] = []
+    llm_steps: list[int] = []
 
     async def capture(event: Event) -> None:
         if event.type == EventType.LLM_REQUEST:
-            llm_turns.append(event.data.get("turn"))
+            llm_steps.append(ctx.step_index)
 
     await bus.subscribe(EventType.LLM_REQUEST, capture)
 
     await AgentLoop(max_iterations=5).run(ctx)
 
-    assert llm_turns, "至少一轮 LLM 请求"
-    assert llm_turns == list(range(1, len(llm_turns) + 1)), (
-        f"LLM_REQUEST turn 序列必须连续无空洞（实际 {llm_turns}）——"
-        f"注入分支与 on_thinking 双增会使 turn 跳 2"
+    assert llm_steps, "至少一轮 LLM 请求"
+    assert llm_steps == list(range(1, len(llm_steps) + 1)), (
+        f"LLM_REQUEST 步号序列必须连续无空洞（实际 {llm_steps}）——"
+        f"注入分支与 on_thinking 双增会使步号跳 2"
     )
+    assert ctx.turn_index == 0, "直调 AgentLoop 不推进用户轮（轮次由 run_agent 负责）"
+    assert ctx.step_index >= 1, "轮内步号必须已累计"
 
 
 # 行为族：loop.run() 的 max_turns 解析 `self._max_iterations or config.max_iterations`——
@@ -222,8 +227,11 @@ async def test_injected_turn_advances_turn_index_once() -> None:
 async def _run_until_max_turns(
     loop_max_iterations: int | None, config_max_iterations: int
 ) -> tuple[int, Any]:
-    """铺开 AgentLoop 生产主链路跑至 MAX_TURNS，返回 (turn_index, reason)——
-    最终产物断言（工具轮持续推动循环，MAX_TURNS 为唯一终止点）。"""
+    """铺开 AgentLoop 生产主链路跑至 MAX_TURNS，返回 (step_index, reason)——
+    最终产物断言（工具轮持续推动循环，MAX_TURNS 为唯一终止点）。
+
+    步数是轮内循环次数的计数口径：turn_index 现在只在用户轮推进，直调 loop 时不变。
+    """
     from bandi.agent.base import ExecutionContext
     from bandi.agent.loop import AgentLoop
     from bandi.core.config import AgentConfig
@@ -257,7 +265,7 @@ async def _run_until_max_turns(
     ctx.loop_detection_window = 50
     loop = AgentLoop(max_iterations=loop_max_iterations)
     reason = await loop.run(ctx)
-    return ctx.turn_index, reason
+    return ctx.step_index, reason
 
 
 @pytest.mark.asyncio

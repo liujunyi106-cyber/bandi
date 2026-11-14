@@ -343,12 +343,14 @@ class GroupRoundService:
         work_grace_seconds: float = 15.0,
         handoff_summarizer: Any | None = None,
         goal_service: Any | None = None,
+        wake: Any | None = None,
     ) -> None:
         self._rounds = round_store
         self._items = work_items
         self._org = org_engine
         self._mention_resolver = mention_resolver
         self._broadcast = broadcast
+        self._wake = wake
         self._goals = goal_service
         self._clock = clock or time.time
         self._relay_limit = relay_limit
@@ -495,9 +497,7 @@ class GroupRoundService:
         goal_context = ""
         if self._goals is not None:
             try:
-                goal_context = str(
-                    self._goals.render_block(round_.session_id, slot.role_id) or ""
-                )
+                goal_context = str(self._goals.render_block(round_.session_id, slot.role_id) or "")
             except Exception:  # noqa: BLE001 — 目标渲染失败不阻断群聊
                 goal_context = ""
             if not goal_context and _GOAL_REQUEST_RE.search(round_.user_input):
@@ -854,6 +854,8 @@ class GroupRoundService:
         slot.work_item_id = card.id
         self._rounds.save(round_)
         self._emit(round_)
+        # 下一位发言人的卡刚建好，立刻唤醒调度器开始执行
+        self._wake_dispatcher()
         return card
 
     def _late_reply(
@@ -943,9 +945,7 @@ class GroupRoundService:
         for index, slot in enumerate(round_.slots):
             slot.order = index
 
-    def _mark_goal(
-        self, session_id: str, role_id: str, method: str, note: str = ""
-    ) -> None:
+    def _mark_goal(self, session_id: str, role_id: str, method: str, note: str = "") -> None:
         if self._goals is None:
             return
         action = getattr(self._goals, method, None)
@@ -1061,6 +1061,20 @@ class GroupRoundService:
         try:
             self._broadcast(self.snapshot(round_))
         except Exception:  # noqa: BLE001 — 广播失败不阻断回合
+            return
+
+    def _wake_dispatcher(self) -> None:
+        """功能：新建发言人卡后立即唤醒调度器，不必等下一次长轮询。
+
+        群聊每位成员的卡是完成上一位后才懒创建的；若不唤醒，新卡要等到
+        run_forever 的空闲轮询周期才被执行，多位成员连续发言时后几位迟迟
+        不出现，表现为「一轮只有第一位回复」。
+        """
+        if self._wake is None:
+            return
+        try:
+            self._wake()
+        except Exception:  # noqa: BLE001 — 唤醒失败由轮询兜底
             return
 
 

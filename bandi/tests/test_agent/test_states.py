@@ -253,7 +253,8 @@ class TestOnInit:
 
 class TestOnThinking:
     @pytest.mark.asyncio
-    async def test_increments_turn_index(self) -> None:
+    async def test_increments_step_index(self) -> None:
+        """进入 THINKING 推进轮内步号；用户轮次由 run_agent 负责，不由本处理器改。"""
         provider = StubProvider()
         provider.add_response(LLMResponse(content="ok"))
         ctx = make_ctx(
@@ -262,7 +263,8 @@ class TestOnThinking:
             turn_index=0,
         )
         await on_thinking(ctx)
-        assert ctx.turn_index == 1
+        assert ctx.step_index == 1
+        assert ctx.turn_index == 0, "轮内步数不得推进用户轮"
 
     @pytest.mark.asyncio
     async def test_appends_tool_results(self) -> None:
@@ -725,7 +727,7 @@ class TestOnThinking:
         )
         await on_thinking(ctx)
         assert ctx.current_response is not None
-        assert ctx.turn_index == 1
+        assert ctx.step_index == 1
 
     @pytest.mark.asyncio
     async def test_pii_sanitizer_exception_during_thinking(self) -> None:

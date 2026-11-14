@@ -47,7 +47,13 @@ class StreamHandler(Protocol):
     async def on_task_ledger(self, session_id: str, items: list[dict[str, Any]]) -> None: ...
 
     async def on_done(
-        self, session_id: str, terminal_reason: str, total_tokens: int, turn_index: int
+        self,
+        session_id: str,
+        terminal_reason: str,
+        total_tokens: int,
+        turn_index: int,
+        duration_ms: float = 0.0,
+        steps: int = 0,
     ) -> None: ...
 
     async def on_error(self, session_id: str, error: str) -> None: ...

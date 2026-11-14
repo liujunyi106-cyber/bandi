@@ -7,6 +7,7 @@ import json
 import logging
 import sqlite3
 import threading
+import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -114,6 +115,25 @@ def _assistant_persist_content(
     if final_text.strip() and final_text.strip() != current_text.strip():
         return current_text if current_text.strip() else None
     return final_text or current_text or None
+
+
+def _next_turn_index(store: Any, session_id: str) -> int:
+    """功能：算出本次用户轮的序号（会话内已落库最大 turn + 1，最低 1）。
+
+    轮次是「一次用户请求」的编号，不是轮内模型步数；恢复/续跑时取历史最大值
+    推进，保证不与既有会话条目撞轮。
+    """
+    try:
+        entries = store.get_branch(session_id, full=True)
+    except Exception:  # noqa: BLE001 — 读失败按首轮处理，不阻断主链
+        return 1
+    highest = 0
+    for entry in entries:
+        try:
+            highest = max(highest, int(entry.get("turn_index") or 0))
+        except (TypeError, ValueError):
+            continue
+    return highest + 1
 
 
 def _assistant_already_persisted(
@@ -431,6 +451,10 @@ class AgentTurnResult:
     total_tokens: int
     turn_index: int
     session_id: str
+    # 本轮真实耗时（毫秒，从入参解析到终态返回的墙钟时间；0 = 未记录）
+    duration_ms: float = 0.0
+    # 本轮内部跑了多少个模型步（工具往返各算一步；1 = 一次成）
+    steps: int = 0
     # 审批锚点：本轮因等待审批终止时，出问题的那一次工具调用（空 = 无审批）
     approval_tool_call_id: str = ""
     approval_tool_name: str = ""
@@ -870,10 +894,20 @@ def _boundary_post_context(entry: dict[str, Any] | None) -> str:
 
 
 def _restore_checkpoint_state(ctx: ExecutionContext, state: dict) -> None:
+    import dataclasses
+
     from bandi.agent.base import QueryState
+    from bandi.agent.checkpoint import _STEP_SLOT
 
     qs = QueryState(**{k: v for k, v in state.items() if k in QueryState.__dataclass_fields__})
+    # 功能：轮次以本次调用解析出的值为准，恢复只带回归档的轮内步号。
+    # 快照里的 turn_index 是「轮×1000+步」的存档键，直接套用会把新一轮打回旧轮。
+    current_turn = int(getattr(ctx, "turn_index", 0) or 0)
+    archived = int(getattr(qs, "turn_index", 0) or 0)
+    restored_turn, restored_step = divmod(max(0, archived), _STEP_SLOT)
+    qs = dataclasses.replace(qs, turn_index=max(current_turn, restored_turn))
     ctx.apply_query_state(qs)
+    ctx.step_index = max(int(getattr(ctx, "step_index", 0) or 0), restored_step)
     # （否则 on_compressing 首次压缩才建，fast_growth/防抖跨进程不连续）；
     # 旧格式无字段则保持 None，行为不变
     if getattr(qs, "compress_token_history", ()) or qs.compress_low_returns:
@@ -2226,6 +2260,8 @@ async def run_agent_turn(
     store = session_store or SessionStore(str(db_path))
     # 不关闭（跨轮复用），自建 store 必须随本 turn 结束关闭连接
     store_owned = session_store is None
+    # 功能：本轮真实耗时起点——覆盖解析、装配、Agent 循环与落库全程
+    _turn_started_at = time.monotonic()
 
     if not user_input.strip() and attachments:
         # 纯图片消息：给模型一个可执行的最小文本锚点，图像块随后挂载。
@@ -2398,6 +2434,11 @@ async def run_agent_turn(
             relax_workspace_asks=relax_workspace_asks,
         )
         ctx.meta["session_id"] = session_id
+        # 功能：轮次推进——一次 run_agent 就是一次「用户轮」。取会话已落库最大轮 + 1，
+        # 轮内每步只增 step_index，避免把工具往返当成多轮（压缩/分组/前端口径失真）。
+        # 注意：必须在 build_agent_context 之后覆盖，它内部按恢复快照初始化轮次。
+        ctx.turn_index = _next_turn_index(store, session_id)
+        ctx.step_index = 0
         ctx.meta["group_conversation_id"] = str(group_conversation_id or "").strip()
         ctx.meta["dm_conversation_id"] = str(dm_conversation_id or "").strip()
         # 下游 LLM 调用据此禁用回落链，不可用必须报错（配错模型 / Key / 余额 / 网关）
@@ -2639,8 +2680,6 @@ async def run_agent_turn(
                 reset_event_context(_ev_ctx_token)
                 _unregister_active_context(session_id)
                 _release_session_slot(session_id, store=store)
-        import time
-
         ctx.compress.last_active_ts = time.time()
         from bandi.observability.write_failures import get_registry
 
@@ -2788,6 +2827,8 @@ async def run_agent_turn(
         total_tokens=ctx.total_tokens,
         turn_index=ctx.turn_index,
         session_id=session_id,
+        duration_ms=(time.monotonic() - _turn_started_at) * 1000.0,
+        steps=int(getattr(ctx, "step_index", 0) or 0),
         approval_tool_call_id=str(ctx.meta.get("approval_pending_tool_call_id") or ""),
         approval_tool_name=str(ctx.meta.get("approval_pending_tool_name") or ""),
     )

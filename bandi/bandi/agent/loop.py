@@ -641,7 +641,7 @@ class AgentLoop:  # 功能：Agent 主循环（状态机驱动的思考→工具
         """功能：checkpoint 写入体（常规/强制两点共用）——快照序列化 + 落库
         + session_entries 标记 + C2b command_id（事件溯源对齐）。
         屏障：先 flush 未落库消息（flush 屏障语义），再写 checkpoint。"""
-        from bandi.agent.checkpoint import Checkpoint
+        from bandi.agent.checkpoint import Checkpoint, checkpoint_key
 
         self._flush_messages_before_checkpoint(ctx)
         command_id = get_query_deps(ctx).new_id()
@@ -654,9 +654,9 @@ class AgentLoop:  # 功能：Agent 主循环（状态机驱动的思考→工具
                 Checkpoint(
                     id=get_query_deps(ctx).new_id(),
                     session_id=ctx.meta.get("session_id", ""),
-                    # 排序键用会话累计 turn_index（与 state_json 一致）——保证
-                    # 恢复点总是会话内最新状态
-                    turn_index=ctx.turn_index,
+                    # 排序键 = 用户轮 × 1000 + 轮内步——同一次请求里的每次工具往返
+                    # 各有独立恢复点，恢复链仍按该键取会话内最新状态
+                    turn_index=checkpoint_key(ctx.turn_index, ctx.step_index),
                     state_json=state_str,
                     # session store，恢复链只读 state_json；列保留兼容旧库 schema
                     messages_json="",

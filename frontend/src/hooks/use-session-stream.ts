@@ -197,7 +197,13 @@ export function useSessionStream(): void {
           }
           if (active) {
             const turnIndex = Number(data.turn_index ?? 0);
-            useChatStore.getState().finalizeStream(active, turnIndex > 0 ? { turnIndex } : {});
+            const turnDurationMs = Number(data.duration_ms ?? 0);
+            const turnSteps = Number(data.steps ?? 0);
+            useChatStore.getState().finalizeStream(active, {
+              ...(turnIndex > 0 ? { turnIndex } : {}),
+              ...(turnDurationMs > 0 ? { turnDurationMs } : {}),
+              ...(turnSteps > 0 ? { turnSteps } : {}),
+            });
           }
           // 会话列表刷新（新建会话/标题/消息数；best-effort 不阻断）
           void sessionsApi

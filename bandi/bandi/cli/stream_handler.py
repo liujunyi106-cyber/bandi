@@ -107,7 +107,13 @@ class CLIStreamHandler:
         """功能：CLI 省略会话任务条渲染（前端消费）；协议完整性占位。"""
 
     async def on_done(
-        self, session_id: str, terminal_reason: str, total_tokens: int, turn_index: int
+        self,
+        session_id: str,
+        terminal_reason: str,
+        total_tokens: int,
+        turn_index: int,
+        duration_ms: float = 0.0,
+        steps: int = 0,
     ) -> None:
         if self._token_buffer:
             self._console.print("".join(self._token_buffer), end="")

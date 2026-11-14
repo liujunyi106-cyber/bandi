@@ -5,6 +5,7 @@
     "kernelStarting": "正在启动本地内核…",
     "kernelElapsed": "已等待 {n}s",
     "kernelTimeout": "本地内核启动超时",
+    "kernelUnavailable": "本地内核未能启动，界面功能不可用",
     "kernelRetry": "重试"
   },
   "nav": {
@@ -263,6 +264,7 @@
       "executing": "正在执行…",
       "waitingUser": "等待你的决策…",
       "completed": "已完成",
+      "steps": "步",
       "thought": "思考",
       "web": "联网搜索",
       "skills": "调用 Skills",

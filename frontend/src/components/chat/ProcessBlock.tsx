@@ -452,6 +452,7 @@ export function ProcessBlock({
   forceRunning = false,
   settled = false,
   totalMsOverride,
+  stepsOverride,
 }: {
   nodes: ProcessNode[];
   actions?: ProcessBlockActions;
@@ -460,9 +461,11 @@ export function ProcessBlock({
   forceRunning?: boolean;
   /** 功能：消息已定稿（done/error）——节点即使残留 running 也按完成态收口。 */
   settled?: boolean;
-  /** 功能：总行时长的消息级覆盖——回复卡片落后的总执行时长（user 消息到回复
-   *  落卡的墙钟差；缺省回退过程节点累计时长）。 */
+  /** 功能：总行时长的消息级覆盖——后端 done 帧的真实执行耗时
+   *  （缺省回退过程节点累计时长）。 */
   totalMsOverride?: number;
+  /** 功能：总行步数覆盖——本轮内部跑了几轮模型（工具往返各算一步）。 */
+  stepsOverride?: number;
 }) {
   const t = useT();
   // 终态注记（用户中断 / 链路断开）必须**折叠后仍可见** ——
@@ -523,9 +526,10 @@ export function ProcessBlock({
         }}
       >
         <ItemStatus status={running ? "running" : "success"} />
-        {/* 总行不显示「过程消息」字段名，完成态只留「已完成 · 时间」；时长口径：
-            优先消息级总执行时长（totalMsOverride——回复卡片落后的墙钟差），
-            回退过程节点累计；为 0/缺失时不显示「· 时间」 */}
+        {/* 总行不显示「过程消息」字段名，完成态留「已完成 · 时间」；时长口径：
+            优先后端 done 帧的真实执行耗时（totalMsOverride），
+            回退过程节点累计；为 0/缺失时不显示「· 时间」。
+            步数（stepsOverride）是一次用户请求内部跑了几轮模型，工具往返各算一步。 */}
         <span className="text-chat-muted">
           {running
             ? t("chat.process.executing")
@@ -541,6 +545,11 @@ export function ProcessBlock({
                   ? ""
                   : formatDurationMs(totalMs)}
           </span>
+          {!running && stepsOverride !== undefined && stepsOverride > 1 ? (
+            <span data-testid="process-total-steps" className="tabular-nums">
+              {` · ${stepsOverride} ${t("chat.process.steps")}`}
+            </span>
+          ) : null}
         </span>
         <ChevronRight className={cn("size-3 shrink-0 transition-transform", open && "rotate-90")} />
       </button>

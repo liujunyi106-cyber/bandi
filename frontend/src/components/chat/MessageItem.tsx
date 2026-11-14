@@ -330,9 +330,10 @@ function MessageItemComponent({
             <ProcessBlock
               nodes={message.process}
               settled={message.done === true || Boolean(message.error)}
-              // 消息级总时长（上一条 user 消息 → 本条落卡：
-              // 「已完成 · 时间」算卡片落后的总执行时长，而非过程节点累计）
+              // 消息级总时长：后端 done 帧的真实执行耗时
+              // （「已完成 · 时间」按真实跨度显示，不用墙钟差）
               totalMsOverride={turnDurationMs}
+              stepsOverride={message.turnSteps}
               actions={
                 interactive
                   ? {

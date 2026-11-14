@@ -129,3 +129,33 @@ async def test_dispatch_pass_marks_group_pass_and_gate_approves(tmp_path: Path) 
     stored = store.get(card.id)
     assert stored is not None
     assert stored.phase.value == "approved"
+
+
+@pytest.mark.asyncio
+async def test_next_speaker_card_wakes_dispatcher_immediately(tmp_path: Path) -> None:
+    """下一位发言人的卡建好后必须立刻唤醒调度器。
+
+    群聊卡是「上一位完成才建下一位」的懒创建；若建卡不唤醒，新卡要等调度主
+    循环的空闲轮询（最长 30s）才执行，多位成员连续发言会被显著拉长，表现为
+    一轮只回了第一位。
+    """
+    wakes: list[str] = []
+    store = WorkItemStore(str(tmp_path / "wi.db"))
+    org = OrgEngine()
+    for role_id in ("lead", "worker"):
+        org.register_role(role_id, role_id)
+    service = GroupRoundService(
+        GroupRoundStore(str(tmp_path / "rounds.db")),
+        store,
+        org,
+        wake=lambda: wakes.append("wake"),
+    )
+
+    created = _submit(service, store, org, ["lead", "worker"])
+    # 首位建卡本身也要唤醒（用户发言后立即开跑）
+    assert wakes, "首位发言人建卡后未唤醒调度器"
+    first_wakes = len(wakes)
+
+    # 首位完成后会懒建第二位发言人卡，此时必须再次唤醒
+    service.on_slot_finished(created[0], SeatResult(success=True, output="我先看需求"))
+    assert len(wakes) > first_wakes, "下一位发言人建卡后未唤醒调度器"

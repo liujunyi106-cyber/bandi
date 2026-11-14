@@ -5,6 +5,7 @@
     "kernelStarting": "Starting the local kernel…",
     "kernelElapsed": "Waiting {n}s",
     "kernelTimeout": "Local kernel startup timed out",
+    "kernelUnavailable": "The local kernel failed to start; the UI is unavailable",
     "kernelRetry": "Retry"
   },
   "nav": {
@@ -263,6 +264,7 @@
       "executing": "Running…",
       "waitingUser": "Waiting for your decision…",
       "completed": "Done",
+      "steps": "steps",
       "thought": "Thinking",
       "web": "Web search",
       "skills": "Skills",
