@@ -96,8 +96,8 @@ async def test_e2e_prefetch_second_turn_injects_and_emits(tmp_path: Any) -> None
         )
         assert first_injected is False, "第一轮不得注入 prefetch"
 
-        # 第二轮：注入 + 事件
-        ctx.turn.turn_index = 1
+        # 第二轮：注入 + 事件（轮次由 agent_runner 在新请求时推进，首轮=1、次轮=2）
+        ctx.turn.turn_index = 2
         await on_thinking(ctx)
         second_injected = [
             m

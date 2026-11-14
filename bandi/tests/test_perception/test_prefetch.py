@@ -290,8 +290,8 @@ class TestOnThinkingWiring:
 
         provider = self.RecordingProvider()
         ctx = self._make_ctx(provider, PrefetchConfig(enabled=True))
-        # 构造第 2 轮 thinking：turn_index 起于 1，on_thinking 内先自增到 2
-        ctx.turn.turn_index = 1
+        # 轮次由 agent_runner 在新用户请求时推进（首轮=1），第二轮即 turn_index=2
+        ctx.turn.turn_index = 2
         await on_thinking(ctx)
         injected = [
             m for m in provider.last_messages if "## Runtime Prefetch" in str(m.get("content", ""))
@@ -307,7 +307,8 @@ class TestOnThinkingWiring:
 
         provider = self.RecordingProvider()
         ctx = self._make_ctx(provider, PrefetchConfig(enabled=False))
-        ctx.turn.turn_index = 1
+        # 用第二轮，确保断言的是「开关关闭」而非「首轮不注入」
+        ctx.turn.turn_index = 2
         await on_thinking(ctx)
         injected = any(
             "## Runtime Prefetch" in str(m.get("content", "")) for m in provider.last_messages
