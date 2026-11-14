@@ -95,12 +95,15 @@ describe("actionsOf", () => {
 
 describe("formatTime 时区口径", () => {
   it("带时区偏移：按偏移换算（与同一时刻的时间对象结果一致）", () => {
-    const moment = new Date(2026, 9, 27, 23, 35, 12);
+    // 用具名时刻而非本地构造：`new Date(y, m, d, ...)` 按 runner 时区解释，
+    // 在 UTC runner 上与 +00:00 字面量同值却与本地 runner 不同，断言会随时区漂移。
+    const moment = new Date("2026-10-27T15:35:12+00:00");
     expect(formatTime(moment.toISOString())).toBe(formatTime(moment));
     expect(formatTime("2026-10-27 15:35:12+00:00")).toBe(formatTime(moment));
   });
 
   it("破坏者：缺时区偏移（历史本地 naive / 空格分隔）按本地读，不得当成 UTC", () => {
+    // 本地构造只与同一种本地构造比较，两端同时区偏移，不依赖 runner 时区
     const moment = new Date(2026, 9, 27, 23, 35, 12);
     expect(formatTime("2026-10-27 23:35:12")).toBe(formatTime(moment));
     expect(formatTime("2026-10-27T23:35:12")).toBe(formatTime(moment));

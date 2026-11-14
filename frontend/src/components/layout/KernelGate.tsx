@@ -106,25 +106,27 @@ export function KernelGate({ children }: { children: ReactNode }) {
 
   if (failed) {
     return (
-      <div className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center gap-4">
-        <img src={bootPending} alt="" aria-hidden="true" className="size-20 opacity-40 grayscale" />
-        <p className="text-muted-foreground text-xs">
-          {state === "unavailable" ? t("app.kernelUnavailable") : t("app.kernelTimeout")}
-        </p>
-        <Button size="sm" variant="outline" onClick={() => setState("checking")}>
-          {t("app.kernelRetry")}
-        </Button>
+      <div className="bg-background text-foreground fixed inset-0 grid place-items-center overflow-hidden">
+        <div className="flex w-[min(46vw,13rem)] flex-col items-center gap-3">
+          <img src={bootPending} alt="" aria-hidden="true" className="w-full opacity-40 grayscale" />
+          <p className="text-muted-foreground text-center text-[11px]">
+            {state === "unavailable" ? t("app.kernelUnavailable") : t("app.kernelTimeout")}
+          </p>
+          <Button size="sm" variant="outline" onClick={() => setState("checking")}>
+            {t("app.kernelRetry")}
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
     <div
-      className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center"
+      className="bg-background text-foreground fixed inset-0 grid place-items-center overflow-hidden"
       data-testid="kernel-gate"
     >
-      {/* 动画与进度条同宽：容器宽度即两者共同基准 */}
-      <div className="flex w-[min(72vw,22rem)] flex-col items-center gap-6">
+      {/* 动画、进度条、文案视为一个整体：整列在视口居中，列内三段共用同一宽度基准 */}
+      <div className="flex w-[min(46vw,13rem)] flex-col items-center gap-3">
         <img
           src={state === "ready" ? bootDone : bootPending}
           alt=""
@@ -132,9 +134,9 @@ export function KernelGate({ children }: { children: ReactNode }) {
           className="w-full select-none"
           data-testid="boot-animation"
         />
-        <div className="flex w-full flex-col gap-2">
+        <div className="flex w-full flex-col gap-1.5">
           <div
-            className="border-primary/25 h-2 w-full overflow-hidden rounded-full border"
+            className="border-primary/25 h-1 w-full overflow-hidden rounded-full border"
             role="progressbar"
             aria-valuenow={percent}
             aria-valuemin={0}
@@ -147,7 +149,7 @@ export function KernelGate({ children }: { children: ReactNode }) {
               style={{ width: `${percent}%` }}
             />
           </div>
-          <p className="text-muted-foreground text-center text-xs" data-testid="boot-caption">
+          <p className="text-muted-foreground text-center text-[11px]" data-testid="boot-caption">
             {t("app.bootLoading")}
           </p>
         </div>

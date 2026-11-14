@@ -45,7 +45,9 @@ def _dispatcher(service: Any) -> Any:
 
 
 def test_goal_api_returns_null_without_goal():
-    with patch("bandi.api.app._get_company_dispatcher", return_value=_dispatcher(_FakeService(None))):
+    with patch(
+        "bandi.api.app._get_company_dispatcher", return_value=_dispatcher(_FakeService(None))
+    ):
         response = client.get("/api/company/goals?session_id=s1")
     assert response.status_code == 200
     assert response.json() == {"goal": None}

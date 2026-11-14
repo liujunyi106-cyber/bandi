@@ -2056,12 +2056,7 @@ class TestCompactService:
         assert result.has_summary is True
         assert result.stage and result.stage != "none"
 
-        from bandi.core.message import message_from_entry
-
         new_entries = r6xday137b2_store.get_branch("s1")
-        new_messages = [
-            message_from_entry(e) for e in new_entries if e.get("entry_type") == "message"
-        ]
         assert any("[上下文摘要]" in (str(e.get("content") or "")) for e in new_entries)
 
         original = [
