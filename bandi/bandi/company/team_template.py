@@ -65,6 +65,20 @@ class TeamTemplate(BaseModel):
     created_at: str = ""  # 功能：首次落盘时刻（store 维护）
     updated_at: str = ""  # 功能：最近落盘时刻（store 维护）
 
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_legacy_work_item_graph(cls, data: Any) -> Any:
+        """功能：丢弃历史模板遗留的任务图字段。
+
+        模板不再携带任务图（应用模板只建组织），但磁盘上仍存着旧格式文件；
+        不丢弃会让整份模板因多余字段被判非法而静默跳过。
+        """
+        if isinstance(data, dict) and "work_item_templates" in data:
+            cleaned = dict(data)
+            cleaned.pop("work_item_templates", None)
+            return cleaned
+        return data
+
     @field_validator("template_id")
     @classmethod
     def _validate_template_id(cls, value: str) -> str:

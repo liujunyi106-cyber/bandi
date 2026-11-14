@@ -259,6 +259,8 @@ def _dependency_settlement_snapshot(
     metadata: dict[str, Any],
     dependency_phases: dict[str, Any],
     doomed_ids: set[str],
+    *,
+    abandoned_ids: set[str] | None = None,
 ) -> dict[str, Any]:
     """Single truth for the failure-triage gate over one card's deps.
 
@@ -268,25 +270,38 @@ def _dependency_settlement_snapshot(
     is stuck behind a FAILED card elsewhere), so the trigger counts stuck
     deps too. Info-class deps never gate claiming, so they do not gate
     settlement either. Missing deps (phase None) stay unsettled.
+
+    ``abandoned_ids`` 是长期停在 needs_attention 的依赖：它们既不推进也不
+    失败，若不计入失败侧，下游会永久等待。按失败口径结算，让下游带病推进
+    而不是无声停摆。
     """
+    abandoned = set(abandoned_ids or ())
     dependency_class_map = dict(metadata.get(DEPENDENCY_CLASSES_KEY, {}) or {})
 
     def _dep_is_info(dep_id: str) -> bool:
         return _dependency_class(dependency_class_map, dep_id) == "info"
 
     all_approved = all(p == Phase.APPROVED for p in dependency_phases.values())
-    failed = [d for d, p in dependency_phases.items() if p == Phase.FAILED]
+    failed = [
+        d
+        for d, p in dependency_phases.items()
+        if p == Phase.FAILED or (d in abandoned and p == Phase.NEEDS_ATTENTION)
+    ]
     cancelled = [d for d, p in dependency_phases.items() if p == Phase.CANCELLED]
     stuck = [
         d
         for d, p in dependency_phases.items()
-        if d in doomed_ids and p not in (Phase.FAILED, Phase.CANCELLED)
+        if (d in doomed_ids or d in abandoned)
+        and p not in (Phase.FAILED, Phase.CANCELLED, Phase.APPROVED)
     ]
     settled_with_failures = (
         not all_approved
         and bool(failed or cancelled or stuck)
         and all(
-            (p is not None and is_terminal(p)) or dep_id in doomed_ids or _dep_is_info(dep_id)
+            (p is not None and is_terminal(p))
+            or dep_id in doomed_ids
+            or dep_id in abandoned
+            or _dep_is_info(dep_id)
             for dep_id, p in dependency_phases.items()
         )
     )
@@ -299,17 +314,24 @@ def _dependency_settlement_snapshot(
     }
 
 
-def _is_settlement_release_candidate(item: Any, metadata: dict[str, Any]) -> bool:
+def _is_settlement_release_candidate(
+    item: Any, metadata: dict[str, Any], *, abandoned_ids: set[str] | None = None
+) -> bool:
     """Cards a failure-triage release may wake: the delegating parent, a
-    roll-up card, or an already-released (stamped) in-flight triage card."""
+    roll-up card, or an already-released (stamped) in-flight triage card.
+
+    前置真实失败时普通卡仍停在等待态（由人工分诊决定去向）；只有当前置被判定
+    「久置放弃」——它既不会推进也不会计入失败——普通卡才跟着释放，否则那条链
+    永远等不到任何事件。
+    """
     phase = getattr(item, "phase", None)
     if phase == Phase.WAITING_FOR_CHILDREN:
         return True
-    if (
-        phase == Phase.WAITING_DEPENDENCIES
-        and _work_item_kind(item, metadata) in _SETTLEMENT_ROLLUP_KINDS
-    ):
-        return True
+    if phase == Phase.WAITING_DEPENDENCIES:
+        if _work_item_kind(item, metadata) in _SETTLEMENT_ROLLUP_KINDS:
+            return True
+        dep_ids = _clean_ids(metadata.get(DEPENDENCY_WORK_ITEM_IDS_KEY, []))
+        return bool(abandoned_ids) and any(dep in abandoned_ids for dep in dep_ids)
     return phase in (Phase.READY, Phase.READY_FOR_REWORK, Phase.RUNNING) and bool(
         dict(metadata.get(DEPENDENCY_SETTLEMENT_KEY, {}) or {})
     )
@@ -356,7 +378,12 @@ def has_pending_settlement_release(work_item_by_id: dict[str, Any]) -> bool:
             raw_ids, work_item_by_id, owner_work_item_id=item_id
         )
         dependency_phases = _dependency_phase_snapshot(work_item_by_id, dependency_ids)
-        snapshot = _dependency_settlement_snapshot(metadata, dependency_phases, doomed_ids)
+        snapshot = _dependency_settlement_snapshot(
+            metadata,
+            dependency_phases,
+            doomed_ids,
+            abandoned_ids=compute_abandoned_work_item_ids(list(work_item_by_id.values())),
+        )
         if snapshot["settled_with_failures"]:
             return True
     return False
@@ -419,6 +446,10 @@ def settlement_cascade_cancel_ids(
 
 # Default staleness threshold (minutes) for dependency-deadlock detection.
 STAGNATION_MINUTES = 30
+
+# A card parked in needs_attention longer than this is treated as abandoned:
+# it neither progresses nor fails, so its dependents would wait forever.
+ABANDONED_ATTENTION_MINUTES = 120
 
 # Re-entrancy guard: refresh_dependents writes to work items, which fires
 # phase-transition hooks, which can re-call refresh. The outer call already
@@ -630,6 +661,12 @@ def refresh_dependents(
             ]
         work_item_by_id = {work_item_id(item): item for item in work_items}
         doomed_ids = compute_doomed_work_item_ids(work_item_by_id)
+        abandoned_ids = compute_abandoned_work_item_ids(work_items)
+        if abandoned_ids:
+            logger.warning(
+                "abandoned needs_attention dependencies released as failures: %s",
+                sorted(abandoned_ids),
+            )
         changed = False
         pending_writes: list[tuple[Any, int, str, str, dict[str, Any], Any]] = []
         for work_item in work_items:
@@ -656,6 +693,8 @@ def refresh_dependents(
                 # 仅在 item 实际迁移 phase 后重算（doomed 只依赖 phase）
                 # 无迁移的 item 复用当前缓存，避免每 item 一次 O(N) 全图扫描。
                 doomed_ids,
+                # 久置 needs_attention 的依赖按失败口径结算，否则下游永等
+                abandoned_ids=abandoned_ids,
             )
             all_approved = snapshot["all_approved"]
             failed_dep_ids = snapshot["failed"]
@@ -703,7 +742,9 @@ def refresh_dependents(
                     and not entered_synthesis_turn
                 ):
                     metadata_updates[FRONTIER_KEY] = RESUMED_FRONTIER
-            elif settled_with_failures and _is_settlement_release_candidate(work_item, metadata):
+            elif settled_with_failures and _is_settlement_release_candidate(
+                work_item, metadata, abandoned_ids=abandoned_ids
+            ):
                 if phase in (Phase.READY, Phase.READY_FOR_REWORK, Phase.RUNNING):
                     stamp_record = dict(metadata.get(DEPENDENCY_SETTLEMENT_KEY, {}) or {})
                     known_failures = set(_clean_ids(stamp_record.get("failed", [])))
@@ -928,6 +969,30 @@ def refresh_dependents(
         return changed
     finally:
         _REFRESH_IN_FLIGHT.reset(token)
+
+
+def compute_abandoned_work_item_ids(
+    work_items: list[Any],
+    *,
+    stale_minutes: int = ABANDONED_ATTENTION_MINUTES,
+) -> set[str]:
+    """功能：长期停在 needs_attention 的卡——既不推进也不失败，视为已放弃。
+
+    这类卡是依赖死锁的源头：它不属终态，下游拿到 settled 判定永远是 False，
+    只能无限等待。超过阈值后按「失败」口径让下游结算，避免整条链静默停摆。
+    未带 updated_at 的卡不参与判定（无法证明它久置）。
+    """
+    now = datetime.now(UTC)
+    abandoned: set[str] = set()
+    for item in work_items:
+        if getattr(item, "phase", None) != Phase.NEEDS_ATTENTION:
+            continue
+        updated_at = getattr(item, "updated_at", None)
+        if updated_at is None or updated_at.tzinfo is None:
+            continue
+        if (now - updated_at).total_seconds() / 60.0 >= stale_minutes:
+            abandoned.add(work_item_id(item))
+    return abandoned
 
 
 def detect_stagnant_work_items(
