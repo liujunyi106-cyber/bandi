@@ -164,6 +164,12 @@ export interface SidecarHandle {
 
 type GiveUpListener = (reason: "spawn-failed" | "restart-exhausted" | "start-timeout") => void;
 
+/** 功能：启动阶段，顺序即真实推进顺序（spawn → 端口 → 依赖探针 → 就绪）。 */
+export type SidecarStage = "spawn" | "listening" | "probing" | "ready";
+
+/** 功能：阶段回调，主进程用它把真实进度推给启动占位页。 */
+type StageListener = (stage: SidecarStage) => void;
+
 /**
  * 功能：sidecar 生命周期管理器。
  *
@@ -177,10 +183,25 @@ export class SidecarManager {
   private stopping = false;
   private restarts = 0;
   private onGiveUp: GiveUpListener | null = null;
+  private onStage: StageListener | null = null;
   private port: number | null = null;
 
   setGiveUpListener(listener: GiveUpListener): void {
     this.onGiveUp = listener;
+  }
+
+  /** 功能：登记阶段监听器（窗口未创建时的上报会被丢弃，不影响启动）。 */
+  setStageListener(listener: StageListener | null): void {
+    this.onStage = listener;
+  }
+
+  /** 功能：安全上报阶段——监听器抛错不得拖垮启动链路。 */
+  private reportStage(stage: SidecarStage): void {
+    try {
+      this.onStage?.(stage);
+    } catch {
+      // 上报失败只影响进度条观感，不影响 sidecar 启动
+    }
   }
 
   isRunning(): boolean {
@@ -209,6 +230,7 @@ export class SidecarManager {
 
   private spawnAndWait(cmd: SidecarCommand): Promise<SidecarHandle | null> {
     return new Promise((resolve) => {
+      this.reportStage("spawn");
       const child = spawn(cmd.command, cmd.args, {
         cwd: cmd.cwd,
         env: { ...process.env, BANDI_HOME: bandiHome(), ...packagedWebDistEnv() },
@@ -228,6 +250,7 @@ export class SidecarManager {
         clearInterval(probeTimer);
         clearInterval(fileTimer);
         this.port = handle?.port ?? null;
+        if (handle) this.reportStage("ready");
         resolve(handle);
       };
 
@@ -242,6 +265,7 @@ export class SidecarManager {
             const match = /^port=(\d+)\s+pid=(\d+)$/.exec(line.slice(SIDECAR_READY_PREFIX.length).trim());
             if (match && Number(match[1]) > 0) {
               port = Number(match[1]);
+              this.reportStage("listening");
               break;
             }
           }
@@ -260,12 +284,22 @@ export class SidecarManager {
 
       // 通道 ②：端口文件轮询兜底（stdout 丢失/缓冲被劫持时仍能拿到端口）
       const fileTimer = setInterval(() => {
-        if (port === null) port = readPortFile(child, child.pid);
+        if (port !== null) return;
+        const found = readPortFile(child, child.pid);
+        if (found !== null) {
+          port = found;
+          this.reportStage("listening");
+        }
       }, PROBE_INTERVAL_MS);
 
       // /ready 就绪探针轮询
+      let probing = false;
       const probeTimer = setInterval(() => {
         if (port === null) return;
+        if (!probing) {
+          probing = true;
+          this.reportStage("probing");
+        }
         void probeReady(port).then((ok) => {
           if (ok && child.pid) finish({ port: port as number, pid: child.pid });
         });

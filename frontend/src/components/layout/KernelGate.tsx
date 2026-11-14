@@ -1,11 +1,14 @@
-import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import bootDone from "@/assets/boot/boot-done.webp";
+import bootPending from "@/assets/boot/boot-pending.webp";
+import { BOOT_STAGE_PROGRESS, bootProgressOf, type BootStage } from "@/components/layout/boot-progress";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n";
 
 const POLL_INTERVAL_MS = 300;
 const TIMEOUT_SEC = 60;
+const DONE_ANIMATION_MS = 2200;
 
 /** 功能：读壳在主进程决定的启动阶段（`file:` 降级壳用 ?boot=starting|failed 传入）。 */
 function bootPhaseFromLocation(): "starting" | "failed" | null {
@@ -13,15 +16,25 @@ function bootPhaseFromLocation(): "starting" | "failed" | null {
   return value === "starting" || value === "failed" ? value : null;
 }
 
-/** 功能：本地内核就绪门——启动期显示进度，避免页面先发请求导致「卡死」观感。 */
+/** 功能：订阅主进程上报的真实启动阶段；非桌面壳（浏览器调试）时返回 null。 */
+function subscribeBootStage(listener: (stage: BootStage) => void): (() => void) | null {
+  const api = (window as unknown as { bandi?: { onBootStage?: unknown } }).bandi;
+  const subscribe = api?.onBootStage;
+  if (typeof subscribe !== "function") return null;
+  return (subscribe as (cb: (stage: string) => void) => () => void)((stage) => {
+    if (stage in BOOT_STAGE_PROGRESS) listener(stage as BootStage);
+  });
+}
+
+/** 功能：本地内核就绪门——启动期显示动画与真实进度，连上后播放完成动画再进桌面端。 */
 export function KernelGate({ children }: { children: ReactNode }) {
   const t = useT();
   const bootPhase = bootPhaseFromLocation();
   const [state, setState] = useState<"checking" | "ready" | "timeout" | "unavailable">(
     bootPhase === "failed" ? "unavailable" : "checking",
   );
-  const [elapsed, setElapsed] = useState(0);
-  const [attempt, setAttempt] = useState(0);
+  const [stage, setStage] = useState<BootStage>("spawn");
+  const [done, setDone] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -39,23 +52,23 @@ export function KernelGate({ children }: { children: ReactNode }) {
     let cancelled = false;
     const startedAt = Date.now();
     setState("checking");
-    setElapsed(0);
 
     const poll = async () => {
       try {
         const response = await fetch("/health", { cache: "no-store" });
         const contentType = response.headers.get("content-type") ?? "";
         if (response.ok && contentType.includes("application/json")) {
-          if (!cancelled) setState("ready");
+          if (!cancelled) {
+            setStage("ready");
+            setState("ready");
+          }
           return;
         }
       } catch {
         // 内核尚未监听：继续轮询
       }
       if (cancelled) return;
-      const seconds = Math.floor((Date.now() - startedAt) / 1000);
-      setElapsed(seconds);
-      if (seconds >= TIMEOUT_SEC) {
+      if (Math.floor((Date.now() - startedAt) / 1000) >= TIMEOUT_SEC) {
         setState("timeout");
         return;
       }
@@ -67,36 +80,78 @@ export function KernelGate({ children }: { children: ReactNode }) {
       cancelled = true;
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [attempt]);
+  }, [bootPhase]);
 
-  if (state === "ready") return <>{children}</>;
+  // 真实阶段订阅：优先于轮询驱动进度（阶段来自主进程实测信号）
+  useEffect(() => {
+    if (import.meta.env.MODE === "test") return;
+    const unsubscribe = subscribeBootStage((next) => {
+      setStage(next);
+      if (next === "ready") setState("ready");
+    });
+    return () => unsubscribe?.();
+  }, []);
+
+  // 就绪后先播完成动画，播完再放行业务界面
+  useEffect(() => {
+    if (state !== "ready") return;
+    const timer = setTimeout(() => setDone(true), DONE_ANIMATION_MS);
+    return () => clearTimeout(timer);
+  }, [state]);
+
+  if (state === "ready" && done) return <>{children}</>;
 
   const failed = state === "timeout" || state === "unavailable";
-  const message =
-    state === "unavailable"
-      ? t("app.kernelUnavailable")
-      : state === "timeout"
-        ? t("app.kernelTimeout")
-        : t("app.kernelStarting");
+  const percent = failed ? BOOT_STAGE_PROGRESS.spawn : bootProgressOf(stage);
 
-  return (
-    <div className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center gap-3">
-      <div className="flex items-center gap-2 text-sm font-medium">
-        {state === "checking" ? (
-          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-        ) : null}
-        <span>{message}</span>
-      </div>
-      {state === "checking" ? (
+  if (failed) {
+    return (
+      <div className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center gap-4">
+        <img src={bootPending} alt="" aria-hidden="true" className="size-20 opacity-40 grayscale" />
         <p className="text-muted-foreground text-xs">
-          {t("app.kernelElapsed").replace("{n}", String(elapsed))}
+          {state === "unavailable" ? t("app.kernelUnavailable") : t("app.kernelTimeout")}
         </p>
-      ) : null}
-      {failed ? (
-        <Button size="sm" variant="outline" onClick={() => setAttempt((value) => value + 1)}>
+        <Button size="sm" variant="outline" onClick={() => setState("checking")}>
           {t("app.kernelRetry")}
         </Button>
-      ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center"
+      data-testid="kernel-gate"
+    >
+      {/* 动画与进度条同宽：容器宽度即两者共同基准 */}
+      <div className="flex w-[min(72vw,22rem)] flex-col items-center gap-6">
+        <img
+          src={state === "ready" ? bootDone : bootPending}
+          alt=""
+          aria-hidden="true"
+          className="w-full select-none"
+          data-testid="boot-animation"
+        />
+        <div className="flex w-full flex-col gap-2">
+          <div
+            className="border-primary/25 h-2 w-full overflow-hidden rounded-full border"
+            role="progressbar"
+            aria-valuenow={percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={t("app.bootProgressLabel")}
+            data-testid="boot-progress"
+          >
+            <div
+              className="bg-primary h-full rounded-full transition-[width] duration-500 ease-out"
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+          <p className="text-muted-foreground text-center text-xs" data-testid="boot-caption">
+            {t("app.bootLoading")}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

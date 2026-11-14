@@ -1,12 +1,11 @@
 {
   "app": {
+    "bootLoading": "Loading...",
+    "kernelRetry": "Retry",
+    "kernelTimeout": "Startup timed out. Please retry.",
+    "kernelUnavailable": "Startup failed. Please retry.",
     "name": "bandi",
-    "tagline": "Your AI workforce",
-    "kernelStarting": "Starting the local kernel…",
-    "kernelElapsed": "Waiting {n}s",
-    "kernelTimeout": "Local kernel startup timed out",
-    "kernelUnavailable": "The local kernel failed to start; the UI is unavailable",
-    "kernelRetry": "Retry"
+    "tagline": "Your AI workforce"
   },
   "nav": {
     "newTask": "New session",

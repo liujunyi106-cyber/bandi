@@ -1,12 +1,11 @@
 {
   "app": {
+    "bootLoading": "正在加载当中...",
+    "kernelRetry": "重试",
+    "kernelTimeout": "启动超时，请重试",
+    "kernelUnavailable": "启动失败，请重试",
     "name": "bandi",
-    "tagline": "你的 AI 员工组织",
-    "kernelStarting": "正在启动本地内核…",
-    "kernelElapsed": "已等待 {n}s",
-    "kernelTimeout": "本地内核启动超时",
-    "kernelUnavailable": "本地内核未能启动，界面功能不可用",
-    "kernelRetry": "重试"
+    "tagline": "你的 AI 员工组织"
   },
   "nav": {
     "newTask": "新建会话",

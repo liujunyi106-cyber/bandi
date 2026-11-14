@@ -16,6 +16,9 @@ import { loadWindowState, saveWindowState } from "./window-state";
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 const APP_USER_MODEL_ID = "com.bandi.desktop";
 
+/** 功能：启动阶段广播通道名（与 preload / 渲染层共用同一常量）。 */
+const BOOT_STAGE_CHANNEL = "bandi:boot-stage";
+
 /** sidecar 生命周期管理器（生产模式唯一实例；dev 模式不用）。 */
 const sidecar = new SidecarManager();
 const settings = loadSettings();
@@ -98,6 +101,13 @@ function createWindow(): void {
     },
   });
   mainWindow = win;
+
+  // 启动阶段广播：占位页（file: 静态壳）在 ready-to-show 前就开始等，
+  // 所以订阅时机要早于 loadFile，且窗口重建时重新挂载。
+  sidecar.setStageListener((stage) => {
+    if (win.isDestroyed()) return;
+    win.webContents.send(BOOT_STAGE_CHANNEL, stage);
+  });
 
   win.once("ready-to-show", () => {
     if (state.maximized) win.maximize();
