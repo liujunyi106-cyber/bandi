@@ -56,8 +56,8 @@ class EffectLog:
     def _connect(self) -> Iterator[sqlite3.Connection]:
         """功能：短连接上下文——退出时提交并关闭。
 
-        裸 `with sqlite3.connect(...)` 只管理事务不关闭连接，每次写日志都会泄漏
-        一个句柄；长驻进程里句柄累积，Windows 上还会锁住 -wal/-shm 让日志目录删不掉。
+        进入连接的上下文只管理事务、不关闭句柄，每次写日志都会泄漏一个；
+        长驻进程里句柄累积，Windows 上还会锁住 -wal/-shm 让日志目录删不掉。
         """
         from bandi.utils.db import connect
 

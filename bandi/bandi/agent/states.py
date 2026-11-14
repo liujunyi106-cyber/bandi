@@ -1584,7 +1584,8 @@ async def _do_llm_call_inner(
             )
             ctx.provider_name = used_model
             # 先定稿再补发流帧：reasoning-only 会被守卫换模型重问，若先补发
-            # 原响应，用户会先收到一段注定被替换的文本。
+            # 原响应，用户会先收到一段注定被替换的文本。守卫内的重试路径自己
+            # 补发换回的答案，所以这里只补发「没被替换过」的那份。
             guarded = await _guard_reasoning_only(
                 ctx,
                 response,
@@ -1594,9 +1595,7 @@ async def _do_llm_call_inner(
                 bandi_config=bandi_config,
                 **override_kwargs,
             )
-            if allow_stream and guarded is not response:
-                await _emit_aggregated_response_as_deltas(ctx, guarded)
-            elif allow_stream:
+            if allow_stream and guarded is response:
                 await _emit_aggregated_response_as_deltas(ctx, response)
             return guarded
         except Exception as e:
@@ -1662,8 +1661,10 @@ async def _do_llm_call_inner(
         bandi_config=bandi_config,
         **override_kwargs,
     )
-    if allow_stream:
-        await _emit_aggregated_response_as_deltas(ctx, guarded)
+    # 守卫换模型重问时，重试路径自己补发换回的答案；此处只补发原响应，
+    # 否则用户会收到两帧相同内容。
+    if allow_stream and guarded is response:
+        await _emit_aggregated_response_as_deltas(ctx, response)
     return guarded
 
 
@@ -1819,7 +1820,9 @@ async def _retry_reasoning_only(
             _call_with_provider,
         )
     except ProviderChainExhaustedError as exc:
-        last = exc.args[0] if exc.args else None
+        # 原始异常挂在 last_error 上；args[0] 是消息字符串，拿它做 isinstance
+        # 恒为假，「重试也是同形态」会被误记成 failed。
+        last = exc.last_error
         if isinstance(last, _ReasoningOnlyError):
             await _emit_reasoning_only_retry(
                 ctx, "same_shape", "retry also produced reasoning-only"
