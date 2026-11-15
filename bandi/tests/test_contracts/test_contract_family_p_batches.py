@@ -2090,6 +2090,19 @@ async def test_failure_payload_bounded_global_and_per_tool() -> None:
     )
 
 
+@pytest.mark.parametrize("budget", [0, 5, 20, 60, 100, 200])
+@pytest.mark.asyncio
+async def test_failure_payload_respects_tiny_per_tool_budget(budget: int) -> None:
+    """契约（破坏者）：per-tool 预算小于「全文已落盘」提示语长度时，
+    提示不得把输出顶出预算——追加前必须先确认提示本身装得下。"""
+    ex = r8xp1p2_mk_executor(_DictErrorTool(), per_tool={"dict_error": budget})
+    result = (await ex.execute([ToolCall(id="t1", name="dict_error", arguments={})]))[0]
+    assert result.success is False
+    assert len(result.output or "") <= budget + 64, (
+        f"预算 {budget} 时输出 {len(result.output or '')} 字符越界"
+    )
+
+
 class _EmptyErrorTool(BaseTool):
     name: str = "empty_error"
     description: str = "抛空消息异常（SelectorEventLoop 无参 NotImplementedError 形态）"

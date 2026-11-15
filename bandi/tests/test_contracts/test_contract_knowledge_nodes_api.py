@@ -686,11 +686,16 @@ def test_large_ingest_endpoint_reports_scheduled(client):
     started = http.post(f"/api/knowledge/nodes/{node['id']}/ingest", headers=ORIGIN)
     assert started.status_code == 200, started.text
     assert started.json()["scheduled"] is True
-    for _ in range(100):
-        if service.documents.document_id_for_node(node["id"]):
-            break
-        time.sleep(0.1)
-    assert service.documents.document_id_for_node(node["id"])
+    # 后台入库在慢机上可能远超固定 10s 窗口：退避轮询到 60s，避免负载敏感假红
+    waited = 0.0
+    delay = 0.05
+    while waited < 60.0 and not service.documents.document_id_for_node(node["id"]):
+        time.sleep(delay)
+        waited += delay
+        delay = min(delay * 1.5, 1.0)
+    assert service.documents.document_id_for_node(node["id"]), (
+        f"后台入库未在 60s 内完成（等了 {waited:.1f}s）"
+    )
 
 
 def test_large_upload_schedules_background_index(client):

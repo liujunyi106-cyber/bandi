@@ -212,62 +212,48 @@ class TestBashTool:
             ws.rmdir()
 
     @pytest.mark.asyncio
-    async def test_default_cwd_anchors_project_root_when_in_context(self) -> None:
+    async def test_default_cwd_anchors_project_root_when_in_context(self, tmp_path) -> None:
         """契约：会话绑定 project_root（context.extra）时 bash 缺省 cwd 必须锚定
         项目根——与 fs 系工具同基准（冒烟：模型 bash 探路落全局 workspace
         相对路径 read 失败/产物错位）。无 project_root 时回落 workspace root。"""
-        import tempfile
-        from pathlib import Path
-
         from bandi.tools.base import ToolPermissionContext
 
         tool = BashTool()
-        proj = Path(tempfile.gettempdir()) / "bandi_proj_cwd"
-        proj.mkdir(exist_ok=True)
-        ws = Path(tempfile.gettempdir()) / "bandi_ws_cwd_default"
-        ws.mkdir(exist_ok=True)
+        # 用 tmp_path 而非固定 tempdir 名：固定名并发跑会互相踩，清理也会失败
+        proj = tmp_path / "proj"
+        proj.mkdir()
+        ws = tmp_path / "ws"
+        ws.mkdir()
         mock_proc = _make_mock_proc()
-        try:
-            with (
-                patch.dict("os.environ", {"BANDI_WORKSPACE_ROOT": str(ws)}, clear=False),
-                patch("asyncio.create_subprocess_exec", return_value=mock_proc) as mocked,
-            ):
-                ctx = ToolPermissionContext(extra={"project_root": str(proj)})
-                await tool.execute({"command": "pwd"}, context=ctx)
-            assert mocked.call_args.kwargs.get("cwd") == str(proj), (
-                "project_root 会话缺省 cwd 必须锚定项目根（与 fs 工具一致）"
-            )
-        finally:
-            ws.rmdir()
-            proj.rmdir()
+        with (
+            patch.dict("os.environ", {"BANDI_WORKSPACE_ROOT": str(ws)}, clear=False),
+            patch("asyncio.create_subprocess_exec", return_value=mock_proc) as mocked,
+        ):
+            ctx = ToolPermissionContext(extra={"project_root": str(proj)})
+            await tool.execute({"command": "pwd"}, context=ctx)
+        assert mocked.call_args.kwargs.get("cwd") == str(proj), (
+            "project_root 会话缺省 cwd 必须锚定项目根（与 fs 工具一致）"
+        )
 
     @pytest.mark.asyncio
-    async def test_relative_cwd_resolved_against_project_root(self) -> None:
+    async def test_relative_cwd_resolved_against_project_root(self, tmp_path) -> None:
         """契约：project_root 会话中相对 cwd 以项目根为基解析（与 fs 相对路径同基准）。"""
-        import shutil
-        import tempfile
-        from pathlib import Path
-
         from bandi.tools.base import ToolPermissionContext
 
         tool = BashTool()
-        proj = Path(tempfile.gettempdir()) / "bandi_proj_relcwd"
-        proj.mkdir(exist_ok=True)
-        (proj / "sub").mkdir(exist_ok=True)
-        ws = Path(tempfile.gettempdir()) / "bandi_ws_projrel"
-        ws.mkdir(exist_ok=True)
+        proj = tmp_path / "proj"
+        proj.mkdir()
+        (proj / "sub").mkdir()
+        ws = tmp_path / "ws"
+        ws.mkdir()
         mock_proc = _make_mock_proc()
-        try:
-            with (
-                patch.dict("os.environ", {"BANDI_WORKSPACE_ROOT": str(ws)}, clear=False),
-                patch("asyncio.create_subprocess_exec", return_value=mock_proc) as mocked,
-            ):
-                ctx = ToolPermissionContext(extra={"project_root": str(proj)})
-                await tool.execute({"command": "pwd", "cwd": "sub"}, context=ctx)
-            assert mocked.call_args.kwargs.get("cwd") == str(proj / "sub")
-        finally:
-            ws.rmdir()
-            shutil.rmtree(proj)
+        with (
+            patch.dict("os.environ", {"BANDI_WORKSPACE_ROOT": str(ws)}, clear=False),
+            patch("asyncio.create_subprocess_exec", return_value=mock_proc) as mocked,
+        ):
+            ctx = ToolPermissionContext(extra={"project_root": str(proj)})
+            await tool.execute({"command": "pwd", "cwd": "sub"}, context=ctx)
+        assert mocked.call_args.kwargs.get("cwd") == str(proj / "sub")
 
     @pytest.mark.asyncio
     async def test_cwd_outside_project_and_workspace_rejected(self) -> None:

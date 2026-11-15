@@ -1986,10 +1986,15 @@ class ToolExecutor:  # 功能：工具执行引擎（并发/串行分区执行 +
             truncated_output, full_output = self._truncate_output(output, limit_chars)
             if truncated_output is not None:
                 persisted = self._persist_output(tc, full_output)
-                if persisted:
-                    hint = f"\n[full output persisted: {persisted} — use read with offset/limit]"
-                    # 提示计入输出预算：重截断体腾出提示空间，追加后总长仍 ≤ 预算
-                    body, _ = self._truncate_output(output, max(limit_chars - len(hint), 0))
+                # 提示本身必须放得进预算：per-tool 预算很小时（如 100 字符），
+                # 提示语比预算还长，追加后总长必然越界 → 此时不追加，只留截断体
+                hint = (
+                    f"\n[full output persisted: {persisted} — use read with offset/limit]"
+                    if persisted
+                    else ""
+                )
+                if hint and len(hint) < limit_chars:
+                    body, _ = self._truncate_output(output, limit_chars - len(hint))
                     output = (body if body is not None else truncated_output) + hint
                 else:
                     output = truncated_output
@@ -2060,8 +2065,9 @@ class ToolExecutor:  # 功能：工具执行引擎（并发/串行分区执行 +
         return segments
 
     def _resolve_max_output_tokens(self, tool_name: str, tool: BaseTool) -> int:
+        # 显式 0 是合法预算（只留省略标注），不得被真值判断吞掉回落全局
         override = self._per_tool_max_output_tokens.get(tool_name)
-        if override:
+        if override is not None:
             return override
         budget = getattr(tool, "output_budget", None)
         if isinstance(budget, int) and budget > 0:
