@@ -22,6 +22,9 @@ _MAX_LIMIT = 200
 
 
 class GrepTool(BaseTool):  # 功能：在文件内容中搜索正则表达式，支持文件过滤/上下文行数/结果数量限制
+    # 渲染意图：折叠态卡片形态 + 完成态动作短语
+    present_call: str = "search"
+    done_label: str = "已搜索代码"
     name: str = "grep"
     description: str = "Search file contents for a regex pattern (with context lines)"
     category: ToolCategory = ToolCategory.CODE

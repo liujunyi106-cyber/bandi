@@ -5202,6 +5202,7 @@ class _SSEStreamHandler:
         tool_name: str,
         tool_input: dict[str, Any] | None = None,
         tool_call_id: str = "",
+        present: dict[str, Any] | None = None,
     ) -> None:
         await self.put(
             "tool_call_start",
@@ -5210,6 +5211,8 @@ class _SSEStreamHandler:
                 "tool_name": tool_name,
                 "tool_input": tool_input or {},
                 "tool_call_id": tool_call_id,
+                # 工具自报的渲染意图（前端据此选卡片，未声明则按工具名回落）
+                **({"present": present} if present else {}),
             },
         )
 
@@ -5395,6 +5398,7 @@ class _WSStreamHandler:
         tool_name: str,
         tool_input: dict[str, Any] | None = None,
         tool_call_id: str = "",
+        present: dict[str, Any] | None = None,
     ) -> None:
         await self._send(
             {
@@ -5404,6 +5408,7 @@ class _WSStreamHandler:
                     "tool_name": tool_name,
                     "tool_input": tool_input or {},
                     "tool_call_id": tool_call_id,
+                    **({"present": present} if present else {}),
                 },
             }
         )

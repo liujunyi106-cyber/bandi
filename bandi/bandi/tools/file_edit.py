@@ -22,6 +22,8 @@ from bandi.tools.fs_write import (
 
 
 class FileEditTool(BaseTool):
+    present_call: str = "diff"
+    done_label: str = "修改了文件"
     # 功能：回退匹配链编辑文件（行尾/BOM 保真 + 外部修改检测 + 原子写 + 文件级锁）
     name: str = "edit"
     description: str = (

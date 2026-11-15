@@ -10,10 +10,13 @@ const POLL_INTERVAL_MS = 300;
 const TIMEOUT_SEC = 60;
 const DONE_ANIMATION_MS = 2200;
 
-/** 功能：读壳在主进程决定的启动阶段（`file:` 降级壳用 ?boot=starting|failed 传入）。 */
-function bootPhaseFromLocation(): "starting" | "failed" | null {
+/** 功能：读壳在主进程决定的启动阶段（`file:` 降级壳用 ?boot=waiting|failed 传入）。 */
+function bootPhaseFromLocation(): "waiting" | "failed" | null {
   const value = new URLSearchParams(window.location.search).get("boot");
-  return value === "starting" || value === "failed" ? value : null;
+  if (value === "failed") return "failed";
+  // waiting 与历史的 starting 等价：都是「壳在等 sidecar」，本页只做静态等待
+  if (value === "waiting" || value === "starting") return "waiting";
+  return null;
 }
 
 /** 功能：订阅主进程上报的真实启动阶段；非桌面壳（浏览器调试）时返回 null。 */
@@ -42,7 +45,7 @@ export function KernelGate({ children }: { children: ReactNode }) {
     // 否则用户看到的是完整界面却所有请求都失败。仅显式 boot=starting 视为就绪中。
     // 该判定先于测试短路：降级壳的可用性由壳决定，与运行环境无关。
     if (window.location.protocol === "file:") {
-      setState(bootPhase === "starting" ? "checking" : "unavailable");
+      setState(bootPhase === "waiting" ? "checking" : "unavailable");
       return;
     }
     if (import.meta.env.MODE === "test") {
@@ -134,25 +137,29 @@ export function KernelGate({ children }: { children: ReactNode }) {
           className="w-full select-none"
           data-testid="boot-animation"
         />
-        <div className="flex w-full flex-col gap-1.5">
-          <div
-            className="border-primary/25 h-2 w-full overflow-hidden rounded-full border"
-            role="progressbar"
-            aria-valuenow={percent}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={t("app.bootProgressLabel")}
-            data-testid="boot-progress"
-          >
+        {/* 壳等 sidecar 的占位页只做静态等待：真实进度属于它随后加载的 SPA，
+            这里再画一条进度条会让用户连着看到两次启动进度 */}
+        {bootPhase === "waiting" ? null : (
+          <div className="flex w-full flex-col gap-1.5">
             <div
-              className="bg-primary h-full rounded-full transition-[width] duration-500 ease-out"
-              style={{ width: `${percent}%` }}
-            />
+              className="border-primary/25 h-2 w-full overflow-hidden rounded-full border"
+              role="progressbar"
+              aria-valuenow={percent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={t("app.bootProgressLabel")}
+              data-testid="boot-progress"
+            >
+              <div
+                className="bg-primary h-full rounded-full transition-[width] duration-500 ease-out"
+                style={{ width: `${percent}%` }}
+              />
+            </div>
+            <p className="text-muted-foreground text-center text-[11px]" data-testid="boot-caption">
+              {t("app.bootLoading")}
+            </p>
           </div>
-          <p className="text-muted-foreground text-center text-[11px]" data-testid="boot-caption">
-            {t("app.bootLoading")}
-          </p>
-        </div>
+        )}
       </div>
     </div>
   );

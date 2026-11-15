@@ -1719,6 +1719,8 @@ class ToolExecutor:  # 功能：工具执行引擎（并发/串行分区执行 +
                 "tool_call_id": tc.id,
                 "is_concurrent": tool.is_concurrency_safe,
                 "tool_input": tc.arguments or {},
+                # 渲染意图随调用下发：前端据此选卡片形态，不必按工具名硬编码
+                "present": tool.present() if hasattr(tool, "present") else {},
             },
         )
 

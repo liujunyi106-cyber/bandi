@@ -337,7 +337,9 @@ describe("DmChatView", () => {
     // 历史事件无真实时间戳：不得显示回放瞬间算出的假耗时（如「已完成 · 1ms」）
     expect(screen.getByTestId("process-total-ms").textContent).toBe("");
     fireEvent.click(screen.getByTestId("process-toggle"));
-    expect((await screen.findByTestId("process-item-text")).textContent).toContain("历史思考");
+    // 行首是固定动作名「思考」，思考内容进折叠态摘要（不展开也能看到）
+    expect((await screen.findByTestId("process-item-text")).textContent).toBe("思考");
+    expect(screen.getByTestId("process-item-summary")).toHaveTextContent("历史思考");
   });
 
   it("消息头与群聊同口径：头像 size-6、姓名 text-sm、底部对齐", async () => {

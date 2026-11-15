@@ -43,6 +43,11 @@ CORE_TOOL_NAMES: frozenset[str] = frozenset(
         "apply_patch",
         "bash",
         "python_exec",
+        # 文件探索三件套与 read 同属基础能力：裁掉后模型只能用 tool_search 反复找，
+        # 反而不止一轮就把省下的 token 花回去，且常卡在「找到名字但拿不到 schema」
+        "list_dir",
+        "grep",
+        "glob",
         "skill_invoke",
         "skill_discover",
         "tool_search",

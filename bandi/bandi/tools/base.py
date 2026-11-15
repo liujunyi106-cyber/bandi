@@ -209,6 +209,17 @@ class BaseTool(ABC):
     external_content: bool = False
     # -②：远端执行标记（MCP 注册产物）——参数中路径值经本地敏感路径把关
     mcp_remote: bool = False
+    # 功能：渲染意图——工具自己声明「这次调用该怎么呈现」，前端据此选卡片，
+    # 不再靠工具名猜（新工具接入零前端改动）。空 = 由前端按工具名回落。
+    #   call：调用形卡片（terminal / diff / read / search / write / generic）
+    #   result：结果形，terminal 表示输出走终端块
+    present_call: str = ""
+    present_result: str = ""
+    # 功能：结论摘要模板——`{action}` 由 done_label 填充，`{first_line}` 取输出首行。
+    # 空 = 走通用「动作短语 · 首行」。
+    present_summary: str = ""
+    # 功能：完成态动作短语（折叠态单行标题），如「执行了命令」。
+    done_label: str = ""
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
@@ -293,4 +304,17 @@ class BaseTool(ABC):
             "capability_tags": list(self.capability_tags),
             "risk_level": self.risk_level,
             "mcp": bool(self.mcp_remote),
+        }
+
+    def present(self) -> dict[str, str]:
+        # 功能：渲染意图声明（前端按此选卡片形态与折叠态结论短语；空字段不发送）
+        return {
+            key: value
+            for key, value in {
+                "call": self.present_call,
+                "result": self.present_result,
+                "summary": self.present_summary,
+                "done_label": self.done_label,
+            }.items()
+            if value
         }

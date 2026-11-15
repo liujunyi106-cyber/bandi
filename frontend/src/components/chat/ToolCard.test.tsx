@@ -45,6 +45,23 @@ describe("toolCardKindOf · 行级判定", () => {
   });
 });
 
+describe("toolCardKindOf · 后端声明优先于按名回落", () => {
+  it("声明为 terminal 时即使工具名陌生也走终端卡片", () => {
+    expect(toolCardKindOf("mcp_custom_runner", "terminal")).toBe("terminal");
+    expect(toolCardKindOf("weird_name", "diff")).toBe("diff");
+  });
+
+  it("无声明时按工具名回落（旧数据不受影响）", () => {
+    expect(toolCardKindOf("bash")).toBe("terminal");
+    expect(toolCardKindOf("bash", "")).toBe("terminal");
+  });
+
+  it("未知声明值被忽略，不产生空卡片", () => {
+    expect(toolCardKindOf("bash", "not-a-kind")).toBe("terminal");
+    expect(toolCardKindOf(undefined, "not-a-kind")).toBe("generic");
+  });
+});
+
 describe("ToolCard · 专属结构", () => {
   it("终端卡片渲染命令提示符与输出", () => {
     render(<ToolCard kind="terminal" input={{ command: "pytest -q" }} output="3 passed" />);

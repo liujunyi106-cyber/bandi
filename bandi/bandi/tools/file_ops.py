@@ -94,6 +94,9 @@ def _render_read_output(lines: list[str], *, offset: int, limit: int | None) -> 
 
 
 class FileReadTool(FsTool):  # 功能：读取文件（支持 offset/limit 分段读取 + 路径安全检查）
+    # 渲染意图：折叠态卡片形态 + 完成态动作短语
+    present_call: str = "read"
+    done_label: str = "已读取文件"
     name: str = "read"
     description: str = "Read file contents from disk"
     category: ToolCategory = ToolCategory.CODE

@@ -109,6 +109,7 @@ export function useSessionStream(): void {
               String(data.tool_name ?? ""),
               (data.tool_input as Record<string, unknown> | undefined) ?? {},
               String(data.tool_call_id ?? ""),
+              String((data.present as Record<string, unknown> | undefined)?.call ?? ""),
             );
           }
           break;

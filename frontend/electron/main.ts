@@ -186,8 +186,11 @@ function createWindow(): void {
   // 生产模式（ADR-42）：spawn sidecar → /ready → loadURL（SPA+API+WS 单端口）。
   // 就绪前先显示启动占位页，避免「内核未连接却已展示完整界面」造成误判；
   // sidecar 起不来/超时/崩溃耗尽 → 占位页转为带错误原因的重试页（不白屏、不假装可用）。
+  //
+  // 占位页只做静态等待（boot=waiting）：不跑进度动画。真实进度属于加载 sidecar
+  // 托管地址后的 SPA，若占位页也跑一遍，用户会连着看到两次启动动画。
   void win.loadFile(path.join(__dirname, "..", "dist", "index.html"), {
-    query: { boot: "starting" },
+    query: { boot: "waiting" },
   });
   void sidecar.start().then((handle) => {
     if (handle) {

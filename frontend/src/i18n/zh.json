@@ -297,7 +297,21 @@
       "emptyArtifacts": "暂无产物",
       "noteMemoryDurable": "长期记忆 x{n}",
       "noteMemoryScratch": "本轮草稿 x{n}",
-      "memory": "调用记忆"
+      "memory": "调用记忆",
+      "analyzing": "正在分析请求",
+      "analyzed": "已完成分析",
+      "thinkingRunning": "正在思考",
+      "thinkingDone": "已思考",
+      "doneCommand": "执行了命令",
+      "doneRead": "已读取文件",
+      "doneWrite": "已写入文件",
+      "doneEdit": "修改了文件",
+      "doneSearch": "已搜索代码",
+      "doneList": "已查看目录",
+      "doneWebSearch": "已搜索网页",
+      "doneWebFetch": "已访问网页",
+      "doneSkill": "已调用技能",
+      "doneTools": "已调用工具"
     },
     "contextUsage": {
       "open": "上下文用量",

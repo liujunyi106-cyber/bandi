@@ -49,7 +49,15 @@ class EmployeeProgressHandler:
 
     def _emit(self, event_type: str, data: dict[str, Any]) -> None:
         event = {"type": event_type, "data": data}
-        if len(self._events) < self._MAX_EVENTS:
+        # 文本增量就地合并到上一条同类事件：逐 token 追加会把有界队列挤满，
+        # 使后续工具事件一条都进不来（刷新后只剩思考、看不到工具行）。
+        mergeable = event_type in ("thinking_delta", "content_delta")
+        last = self._events[-1] if self._events else None
+        if mergeable and last is not None and last["type"] == event_type:
+            merged = dict(last["data"])
+            merged["text"] = f"{merged.get('text', '')}{data.get('text', '')}"
+            self._events[-1] = {"type": event_type, "data": merged}
+        elif len(self._events) < self._MAX_EVENTS:
             self._events.append(event)
         frame = {
             "type": "thread_progress",

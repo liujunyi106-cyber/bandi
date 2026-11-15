@@ -131,8 +131,19 @@ export function toolCardIcon(kind: ToolCardKind) {
   return KIND_ICON[kind];
 }
 
-/** 功能：工具行是否该用专属卡片——有 toolName 且能归类到具体形态。 */
-export function toolCardKindOf(toolName: string | undefined): ToolCardKind {
+/** 功能：工具行该用哪种卡片——后端声明优先，其次按工具名回落。
+ *
+ *  `declared` 是工具自报的渲染意图（presentCall）。新工具只要在后端声明一次，
+ *  前端零改动即可正确呈现；未声明时仍按名字归类，旧数据不受影响。
+ */
+export function toolCardKindOf(toolName: string | undefined, declared?: string): ToolCardKind {
+  const fromServer = (declared ?? "").trim().toLowerCase();
+  if (fromServer === "terminal" || fromServer === "diff" || fromServer === "read") {
+    return fromServer;
+  }
+  if (fromServer === "search" || fromServer === "write") {
+    return fromServer;
+  }
   if (!toolName) return "generic";
   return toolCardKind(toolName);
 }

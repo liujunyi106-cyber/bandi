@@ -21,6 +21,9 @@ _MAX_LIMIT = 500
 
 
 class GlobTool(BaseTool):  # 功能：按 glob 模式匹配文件路径，支持递归 ** 和路径限制
+    # 渲染意图：折叠态卡片形态 + 完成态动作短语
+    present_call: str = "search"
+    done_label: str = "已匹配文件"
     name: str = "glob"
     description: str = "Find files matching a glob pattern (e.g. '**/*.py')"
     category: ToolCategory = ToolCategory.CODE

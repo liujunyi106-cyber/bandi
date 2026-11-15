@@ -66,6 +66,75 @@ def register_write_artifact(
 # 与前端 settleThought 的口径一致（前端剥 startedAt，后端剥 _startedMono）。
 _STARTED_MONO = "_startedMono"
 
+# 功能：工具名 → 完成态结论短语（折叠态单行摘要的首段，与详情分开）。
+_TOOL_DONE_LABELS: dict[str, str] = {
+    "bash": "执行了命令",
+    "shell": "执行了命令",
+    "python_exec": "运行了代码",
+    "read": "已读取文件",
+    "file_read": "已读取文件",
+    "write": "已写入文件",
+    "file_write": "已写入文件",
+    "edit": "修改了文件",
+    "multi_edit": "修改了文件",
+    "apply_patch": "修改了文件",
+    "grep": "已搜索代码",
+    "glob": "已搜索代码",
+    "list_dir": "已查看目录",
+    "web_search": "已搜索网页",
+    "web_fetch": "已访问网页",
+    "knowledge_search": "已检索知识库",
+    "skill_discover": "已检索技能",
+    "skill_invoke": "已调用技能",
+}
+
+# 功能：结论摘要上限——折叠态是一行，超出截断由前端省略号处理。
+_SUMMARY_MAX = 160
+
+
+def _accepts_kwarg(func: Any, name: str) -> bool:
+    """功能：被装饰的 handler 是否接受该关键字（旧 handler 不接则不下发）。"""
+    try:
+        import inspect
+
+        params = inspect.signature(func).parameters
+    except (TypeError, ValueError):
+        return False
+    return name in params or any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values())
+
+
+def tool_result_summary(
+    tool_name: str,
+    success: bool,
+    output_preview: str,
+    tool_input: dict[str, Any] | None = None,
+    done_label: str = "",
+) -> str:
+    """功能：工具完成后的一行结论（「执行了命令 · 输出首行」形态）。
+
+    折叠态直接展示这一行，用户不展开也能知道这步做了什么、结果如何；
+    工具自己声明的 done_label 优先（新工具接入无需改此处映射），
+    失败时前置失败标记，空输出只留动作短语。
+    """
+    if not success:
+        action = "执行失败"
+    else:
+        action = (
+            done_label
+            or _TOOL_DONE_LABELS.get((tool_name or "").lower())
+            or (f"已调用 {tool_name}" if tool_name else "已执行")
+        )
+    first_line = ""
+    for raw in (output_preview or "").splitlines():
+        text = raw.strip()
+        if text:
+            first_line = text
+            break
+    if not first_line:
+        return action
+    summary = f"{action} · {first_line}"
+    return summary[:_SUMMARY_MAX]
+
 
 def _apply_child_progress(parent: dict[str, Any], kind: str, payload: dict[str, Any]) -> None:
     # 功能：子代理过程节点累积到 task 节点 children（与主列表节点同构，单层）
@@ -171,8 +240,19 @@ class ProcessRecorder:
         self._store = store
         self._session_id = session_id
         self._nodes: list[dict[str, Any]] = []
+        # 功能：全局递增序号与步号——渲染侧据此还原真实执行次序并把过程分到具体推理步
+        self._seq = 0
+        self._step = 1
 
     # ── 节点累积 ────────────────────────────────────────────────
+
+    def _next_seq(self) -> int:
+        self._seq += 1
+        return self._seq
+
+    def _begin_step(self) -> int:
+        """功能：新推理步——每次内容产出前的工具/思考段都归入同一步，内容产出后推进。"""
+        return self._step
 
     def _bind_session(self, session_id: str) -> None:
         # 功能：事件携带的真实会话 id 迟到绑定（新会话异常时构造侧尚为空）
@@ -225,6 +305,8 @@ class ProcessRecorder:
                     "kind": "thought",
                     "text": delta,
                     "status": "running",
+                    "seq": self._next_seq(),
+                    "step": self._begin_step(),
                     # 起点用单调钟：墙钟跳变（NTP/时区）不会算出负耗时
                     _STARTED_MONO: time.monotonic(),
                 }
@@ -237,20 +319,34 @@ class ProcessRecorder:
         tool_name: str,
         tool_input: dict[str, Any] | None = None,
         tool_call_id: str = "",
+        present: dict[str, Any] | None = None,
     ) -> None:
         self._bind_session(session_id)
         self._converge_running_thoughts()
-        self._nodes.append(
-            {
-                "id": f"pr:tool:{len(self._nodes) + 1}",
-                "kind": "tool",
-                "toolName": tool_name,
-                "input": tool_input or {},
-                "status": "running",
-                "toolCallId": tool_call_id or None,
-            }
+        node: dict[str, Any] = {
+            "id": f"pr:tool:{len(self._nodes) + 1}",
+            "kind": "tool",
+            "toolName": tool_name,
+            "input": tool_input or {},
+            "status": "running",
+            "toolCallId": tool_call_id or None,
+            "seq": self._next_seq(),
+            "step": self._begin_step(),
+        }
+        # 工具自报的渲染意图（卡片形态 + 完成态动作短语）；未声明时前端按工具名回落
+        if present:
+            if present.get("call"):
+                node["presentCall"] = str(present["call"])
+            if present.get("done_label"):
+                node["doneLabel"] = str(present["done_label"])
+        self._nodes.append(node)
+        # 继续向下转发渲染意图：WS/SSE 帧要靠它让前端选卡片
+        forward: dict[str, Any] = {}
+        if present and _accepts_kwarg(self._inner.on_tool_call_start, "present"):
+            forward["present"] = present
+        await self._inner.on_tool_call_start(
+            session_id, tool_name, tool_input, tool_call_id, **forward
         )
-        await self._inner.on_tool_call_start(session_id, tool_name, tool_input, tool_call_id)
 
     async def on_tool_progress(
         self, session_id: str, tool_name: str, progress_type: str, data: dict[str, Any]
@@ -275,6 +371,13 @@ class ProcessRecorder:
             node["status"] = "success" if success else "error"
             node["detail"] = output_preview
             node["durationMs"] = duration_ms
+            node["summary"] = tool_result_summary(
+                tool_name,
+                success,
+                output_preview,
+                node.get("input"),
+                done_label=str(node.get("doneLabel") or ""),
+            )
             if citations:
                 node["citations"] = citations
         if success and tool_name in _WRITE_TOOLS:
@@ -313,6 +416,8 @@ class ProcessRecorder:
                     "skills": list(skills),
                     "count": 1,
                     "status": "success",
+                    "seq": self._next_seq(),
+                    "step": self._begin_step(),
                 }
             )
         await self._inner.on_skill_injected(session_id, skills)

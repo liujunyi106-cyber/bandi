@@ -678,6 +678,31 @@ describe("Day137b-1 插队批（员工执行过程 thread_progress）", () => {
     expect(nodes).toHaveLength(before);
   });
 
+  it("applyProgressNode：工具完成后带结论摘要（员工链路与后端同口径）", () => {
+    let nodes = applyProgressNode([], {
+      type: "tool_call_start",
+      data: { tool_name: "list_dir", tool_input: { path: "." } },
+    });
+    nodes = applyProgressNode(nodes, {
+      type: "tool_result",
+      data: { tool_name: "list_dir", success: true, output_preview: "a.py\nb.py" },
+    });
+    const tool = nodes.find((n) => n.kind === "tool");
+    expect(tool).toBeTruthy();
+    expect(tool && tool.kind === "tool" ? tool.summary : "").toBe("已查看目录 · a.py");
+
+    let failed = applyProgressNode([], {
+      type: "tool_call_start",
+      data: { tool_name: "bash", tool_input: {} },
+    });
+    failed = applyProgressNode(failed, {
+      type: "tool_result",
+      data: { tool_name: "bash", success: false, output_preview: "boom" },
+    });
+    const bad = failed.find((n) => n.kind === "tool");
+    expect(bad && bad.kind === "tool" ? bad.summary : "").toBe("执行失败 · boom");
+  });
+
   it("applyEmployeeProgress：finish 收敛 running 并保留；新执行重置；clear 双清", () => {
     useChatStore.getState().applyEmployeeProgress("p1", "t1", "r1", {
       type: "thinking_delta",
@@ -1103,8 +1128,30 @@ describe("137b-3c 过程条目还原（detail 解析恢复）", () => {
     expect(assistant.process?.[1]).toMatchObject({ kind: "thought", text: "想一想" });
   });
 
-  it("entriesToMessages：process 条目缺失/空/坏 JSON → 不挂过程、不崩", () => {
-    const base = [
+  it("entriesToMessages：assistant 正文空白时过程节点仍保留（工具轮只有过程无正文）", () => {
+    const messages = entriesToMessages("s1", [
+      { id: "e1", entry_type: "message", turn_index: 1, role: "user", content: "看下目录" },
+      { id: "e2", entry_type: "message", turn_index: 1, role: "assistant", content: "\n\n" },
+      {
+        id: "e3",
+        entry_type: "process",
+        turn_index: 1,
+        role: "assistant",
+        content: "",
+        metadata: JSON.stringify({
+          process: [
+            { id: "pr:thought:1", kind: "thought", text: "先列目录", status: "success" },
+            { id: "pr:tool:1", kind: "tool", toolName: "list_dir", input: {}, status: "success" },
+          ],
+        }),
+      },
+    ]);
+    expect(messages).toHaveLength(2);
+    expect(messages[1].process).toHaveLength(2);
+    expect(messages[1].process?.map((n) => n.kind)).toEqual(["thought", "tool"]);
+  });
+
+  it("entriesToMessages：process 条目缺失/空/坏 JSON → 不挂过程、不崩", () => {    const base = [
       { id: "e1", entry_type: "message", turn_index: 1, role: "assistant", content: "回复" },
     ];
     const bare = entriesToMessages("s1", [

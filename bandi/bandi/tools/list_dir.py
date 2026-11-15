@@ -20,6 +20,9 @@ _KIB = 1024
 
 
 class ListDirTool(BaseTool):  # 功能：列出目录内容，支持深度限制和文件/目录过滤
+    # 渲染意图：折叠态卡片形态 + 完成态动作短语
+    present_call: str = "search"
+    done_label: str = "已查看目录"
     name: str = "list_dir"
     description: str = "List files and directories in a path"
     category: ToolCategory = ToolCategory.CODE

@@ -297,7 +297,21 @@
       "emptyArtifacts": "No artifacts yet",
       "noteMemoryDurable": "Long-term x{n}",
       "noteMemoryScratch": "Turn draft x{n}",
-      "memory": "Memory"
+      "memory": "Memory",
+      "analyzing": "Analyzing the request",
+      "analyzed": "Analyzed",
+      "thinkingRunning": "Thinking",
+      "thinkingDone": "Thought",
+      "doneCommand": "Ran a command",
+      "doneRead": "Read a file",
+      "doneWrite": "Wrote a file",
+      "doneEdit": "Edited a file",
+      "doneSearch": "Searched the code",
+      "doneList": "Listed a directory",
+      "doneWebSearch": "Searched the web",
+      "doneWebFetch": "Fetched a page",
+      "doneSkill": "Used a skill",
+      "doneTools": "Called a tool"
     },
     "contextUsage": {
       "open": "Context usage",

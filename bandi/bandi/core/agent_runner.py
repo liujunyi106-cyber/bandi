@@ -588,12 +588,26 @@ class _HandlerBindings:
         if event.data is None:
             return
         d = event.data
+        # 渲染意图只有支持它的 handler（过程记录器）消费；其余签名保持原样
+        present = d.get("present") or {}
+        extra = {"present": present} if present and self._accepts_present() else {}
         await self.handler.on_tool_call_start(
             self.session_id,
             d.get("tool_name", "?"),
             d.get("tool_input") or {},
             d.get("tool_call_id", ""),
+            **extra,
         )
+
+    def _accepts_present(self) -> bool:
+        """功能：handler 是否接受 present 关键字（旧 handler 不接则不下发）。"""
+        try:
+            import inspect
+
+            params = inspect.signature(self.handler.on_tool_call_start).parameters
+        except (TypeError, ValueError):
+            return False
+        return "present" in params
 
     async def _on_tool_completed(self, event: Event) -> None:
         if await self._forward_subagent(event):

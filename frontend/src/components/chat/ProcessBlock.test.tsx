@@ -227,12 +227,12 @@ describe("ProcessBlock 明细内容", () => {
     expect(block.className).toContain("min-w-0");
 
     fireEvent.click(screen.getByTestId("process-toggle"));
-    const text = screen.getByTestId("process-item-text");
-    expect(text.className).toContain("whitespace-pre-wrap");
-    expect(text.className).toContain("break-words");
+    // 折叠态单行：摘要走 truncate 截断，不换行、不封高——长文本不顶宽也不淹没对话
+    const text = screen.getByTestId("process-item-summary");
+    expect(text.className).toContain("truncate");
+    expect(text.className).toContain("min-w-0");
     expect(text.className).not.toContain("max-h-");
     expect(text.className).not.toContain("overflow-y-auto");
-    expect(text.className).not.toContain("truncate");
     expect(text).toHaveTextContent("The user just said hello.");
   });
 });
@@ -244,8 +244,10 @@ describe("ProcessBlock 思考摘要与展开", () => {
     ];
     render(<ProcessBlock nodes={nodes} />);
     fireEvent.click(screen.getByTestId("process-toggle"));
-    expect(screen.getByTestId("process-item-text")).toHaveTextContent("摘要标题");
-    expect(screen.getByTestId("process-item-text")).not.toHaveTextContent("完整正文内容");
+    // 行首是动作名，摘要标题进 summary，正文只在展开后出现
+    expect(screen.getByTestId("process-item-text")).toHaveTextContent("思考");
+    expect(screen.getByTestId("process-item-summary")).toHaveTextContent("摘要标题");
+    expect(screen.getByTestId("process-item-summary")).not.toHaveTextContent("完整正文内容");
   });
 
   it("展开后可见正文", () => {

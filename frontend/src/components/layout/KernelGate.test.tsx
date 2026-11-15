@@ -33,14 +33,15 @@ describe("KernelGate 内核就绪门", () => {
     expect(screen.getByText("启动失败，请重试")).toBeInTheDocument();
   });
 
-  it("启动中显示动画、进度条与加载文案，不再暴露内核字样与计时", () => {
-    stubLocation("file:", "?boot=starting");
+  it("壳等待 sidecar 时只做静态等待，不画进度条（避免两次启动进度）", () => {
+    stubLocation("file:", "?boot=waiting");
     render(<KernelGate>{CHILD}</KernelGate>);
 
     expect(screen.queryByText(CHILD)).not.toBeInTheDocument();
     expect(screen.getByTestId("boot-animation")).toBeInTheDocument();
-    expect(screen.getByTestId("boot-progress")).toBeInTheDocument();
-    expect(screen.getByTestId("boot-caption")).toHaveTextContent("正在加载当中...");
+    // 真实进度属于随后加载的 SPA；占位页再画一条会让用户连着看两次启动动画
+    expect(screen.queryByTestId("boot-progress")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("boot-caption")).not.toBeInTheDocument();
     // 删除项：不得再出现“内核”与“已等待 Ns”
     expect(screen.queryByText(/内核/)).not.toBeInTheDocument();
     expect(screen.queryByText(/已等待/)).not.toBeInTheDocument();
@@ -48,18 +49,16 @@ describe("KernelGate 内核就绪门", () => {
     expect(screen.queryByText("重试")).not.toBeInTheDocument();
   });
 
-  it("进度条初始停在最小可见进度，不假装已就绪", () => {
+  it("历史 boot=starting 参数按静态等待处理（向后兼容旧壳）", () => {
     stubLocation("file:", "?boot=starting");
     render(<KernelGate>{CHILD}</KernelGate>);
 
-    const bar = screen.getByTestId("boot-progress");
-    const value = Number(bar.getAttribute("aria-valuenow"));
-    expect(value).toBeGreaterThan(0);
-    expect(value).toBeLessThan(100);
+    expect(screen.getByTestId("boot-animation")).toBeInTheDocument();
+    expect(screen.queryByTestId("boot-progress")).not.toBeInTheDocument();
   });
 
-  it("主进程上报的每个阶段都推进进度且不越界", async () => {
-    stubLocation("file:", "?boot=starting");
+  it("主进程上报的每个阶段都推进进度且不越界（http 壳内 SPA 才是唯一进度条）", async () => {
+    stubLocation("http:", "");
     const bridge: { emit: ((stage: string) => void) | null } = { emit: null };
     vi.stubGlobal("bandi", {
       onBootStage: (cb: (stage: string) => void) => {

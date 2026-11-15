@@ -182,6 +182,9 @@ _INTERPRETER_PREFIXES = frozenset(
 
 
 class BashTool(BaseTool):  # 功能：执行 shell 命令（白名单+管道检测+超时上限+工作目录限制）
+    # 渲染意图：折叠态卡片形态 + 完成态动作短语
+    present_call: str = "terminal"
+    done_label: str = "执行了命令"
     name: str = "bash"
     description: str = "Execute a shell command (read/write — use with caution)"
     category: ToolCategory = ToolCategory.CODE

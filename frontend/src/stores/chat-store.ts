@@ -20,6 +20,8 @@ export interface ProcessThoughtNode {
   kind: "thought";
   /** 功能：全局执行序号——渲染按此升序平铺，决定「先读后改再跑」的真实顺序。 */
   seq?: number;
+  /** 功能：推理步号——同一轮内多次「思考→执行」循环各成一步。 */
+  step?: number;
   text: string;
   status: "running" | "success";
   /**
@@ -55,10 +57,16 @@ export interface ProcessToolNode {
   kind: "tool";
   /** 功能：全局执行序号——工具行定位在「开始执行」处，与结果到达次序无关。 */
   seq?: number;
+  /** 功能：推理步号——同一轮内多次「思考→执行」循环各成一步。 */
+  step?: number;
   toolName: string;
   input?: Record<string, unknown>;
   status: "running" | "success" | "error" | "skipped";
   detail?: string;
+  /** 功能：完成态结论短语（折叠态单行摘要，如「执行了命令 · hello」）。 */
+  summary?: string;
+  /** 功能：后端声明的卡片形态（terminal/diff/read/search/write）；空则前端按工具名回落。 */
+  presentCall?: string;
   /** 功能：知识库检索引用（回答下方 chips 数据源）。 */
   citations?: CitationRef[];
   /** 最近一条 tool_progress 帧（视图层格式化展示）。 */
@@ -186,9 +194,42 @@ export function nodesFromEvents(events: unknown[]): ProcessNode[] {
   return nodes;
 }
 
+/** 功能：工具完成态结论短语（与后端 `tool_result_summary` 同口径，供员工链路用）。 */
+const TOOL_DONE_LABELS: Record<string, string> = {
+  bash: "执行了命令",
+  shell: "执行了命令",
+  python_exec: "运行了代码",
+  read: "已读取文件",
+  file_read: "已读取文件",
+  write: "已写入文件",
+  file_write: "已写入文件",
+  edit: "修改了文件",
+  multi_edit: "修改了文件",
+  apply_patch: "修改了文件",
+  grep: "已搜索代码",
+  glob: "已搜索代码",
+  list_dir: "已查看目录",
+  web_search: "已搜索网页",
+  web_fetch: "已访问网页",
+  knowledge_search: "已检索知识库",
+  skill_discover: "已检索技能",
+  skill_invoke: "已调用技能",
+  tool_search: "已检索工具",
+};
+
+function toolResultSummary(toolName: string, success: boolean, outputPreview: string): string {
+  const action = success
+    ? (TOOL_DONE_LABELS[toolName.toLowerCase()] ?? (toolName ? `已调用 ${toolName}` : "已执行"))
+    : "执行失败";
+  const firstLine = outputPreview
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line.length > 0);
+  return firstLine ? `${action} · ${firstLine}`.slice(0, 160) : action;
+}
+
 /** 功能：员工过程事件 → 过程节点归并（thread_progress 帧；与消息级 reducer 同构语义）。 */
-export function applyProgressNode(
-  nodes: ProcessNode[],
+export function applyProgressNode(  nodes: ProcessNode[],
   event: EmployeeProgressEvent,
 ): ProcessNode[] {
   const next = [...nodes];
@@ -236,6 +277,9 @@ export function applyProgressNode(
         input: (data.tool_input as Record<string, unknown> | undefined) ?? {},
         status: "running",
         toolCallId: data.tool_call_id ? String(data.tool_call_id) : undefined,
+        ...(typeof data.present_call === "string" && data.present_call
+          ? { presentCall: data.present_call }
+          : {}),
       });
       return next;
     }
@@ -265,6 +309,12 @@ export function applyProgressNode(
             ...node,
             status: Boolean(data.success) ? ("success" as const) : ("error" as const),
             detail: String(data.output_preview ?? ""),
+            // 与后端同口径的完成态结论，折叠态直接可见（员工链路无落库 summary）
+            summary: toolResultSummary(
+              toolName,
+              Boolean(data.success),
+              String(data.output_preview ?? ""),
+            ),
             durationMs: Number(data.duration_ms ?? 0),
           };
           break;
@@ -642,6 +692,7 @@ interface ChatState {
     toolName: string,
     toolInput?: Record<string, unknown>,
     toolCallId?: string,
+    presentCall?: string,
   ) => void;
   applyToolProgress: (
     sessionId: string,
@@ -802,6 +853,14 @@ export function entriesToMessages(sessionId: string, entries: SessionEntry[]): C
     // 员工产出回写条目（后端 append_employee_reply）→ 带发送者身份渲染
     // （头像 tone 走 senderRole、名字优先 senderName 快照）——与 live thread_message 注入同构
     const employeeReply = parseEntryEmployeeReply(entry.metadata);
+    // 员工执行过程随回复一起落库（process_events）——刷新后按同构事件重建过程块
+    const entryMetaForProcess = parseEntryMetadata(entry.metadata);
+    const employeeEvents = Array.isArray(entryMetaForProcess.process_events)
+      ? (entryMetaForProcess.process_events as unknown[])
+      : [];
+    // 回写时机可能在轮中截断（无 done 帧）：重建后统一结算，避免刷新后永久「执行中」
+    const employeeProcess =
+      employeeEvents.length > 0 ? settleRunningNodes(nodesFromEvents(employeeEvents)) : [];
     messages.push({
       id: entry.id,
       sessionId,
@@ -813,6 +872,7 @@ export function entriesToMessages(sessionId: string, entries: SessionEntry[]): C
       entryId: entry.id,
       ...(employeeReply ?? {}),
       ...(attachments ? { attachments } : {}),
+      ...(employeeProcess.length > 0 ? { process: employeeProcess } : {}),
     });
   }
   return messages;
@@ -1141,6 +1201,7 @@ export function applyToolStart(
   toolName: string,
   toolInput: Record<string, unknown> = {},
   toolCallId = "",
+  presentCall = "",
 ): ChatMessage[] {
   return messages.map((message) => {
     if (message.id !== pendingId) return message;
@@ -1163,6 +1224,7 @@ export function applyToolStart(
           input: toolInput,
           status: settled ? ("success" as const) : ("running" as const),
           toolCallId: toolCallId || undefined,
+          ...(presentCall ? { presentCall } : {}),
         },
       ],
     };
@@ -2025,10 +2087,10 @@ export const useChatStore = create<ChatState>()(
           ),
         ),
 
-      applyToolStart: (sessionId, toolName, toolInput, toolCallId) =>
+      applyToolStart: (sessionId, toolName, toolInput, toolCallId, presentCall) =>
         set((state) =>
           updatePending(state, sessionId, (list, pendingId) =>
-            applyToolStart(list, pendingId, toolName, toolInput, toolCallId),
+            applyToolStart(list, pendingId, toolName, toolInput, toolCallId, presentCall),
           ),
         ),
 

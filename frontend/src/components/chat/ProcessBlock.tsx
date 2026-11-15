@@ -31,7 +31,6 @@ import {
   formatDurationMs,
   inputPreview,
   thinkingSummary,
-  toolSummary,
   totalDurationMs,
   type BucketKey,
 } from "./process-display";
@@ -48,6 +47,10 @@ interface BucketItem {
   detail?: string;
   /** 工具入参（工具专属卡片按 command/path/pattern 渲染正文）。 */
   input?: Record<string, unknown>;
+  /** 完成态结论短语（折叠态单行摘要，后端按工具语义生成）。 */
+  summary?: string;
+  /** 后端声明的卡片形态（presentCall），空则按工具名回落。 */
+  presentCall?: string;
   /**
    * 该行正文可折叠（思考节点「摘要 + 展开全文」两级）。
    * 折叠态只给摘要标题，正文进 max-h 封顶滚动区——长思考不淹没对话
@@ -93,7 +96,9 @@ function buildRows(nodes: ProcessNode[]): TimelineRow[] {
         category: "thought",
         item: {
           id: node.id,
-          text: title || body,
+          // 行首固定动作名「思考」，摘要放标题正文——两者不同源，不会同一句出现两遍
+          text: "",
+          summary: title || body,
           detail: title ? body : undefined,
           collapsible: Boolean(title && body),
           durationMs: node.durationMs,
@@ -126,10 +131,13 @@ function buildRows(nodes: ProcessNode[]): TimelineRow[] {
       category,
       item: {
         id: node.id,
-        text: `${toolSummary(node.toolName, node.input)}${scopeLabel ? `｜${scopeLabel}` : ""}`,
+        // 行首已是工具名，正文只留参数/范围（不再拼工具名，避免同一行重复两次）
+        text: `${inputPreview(node.input)}${scopeLabel ? `｜${scopeLabel}` : ""}`,
         toolName: node.toolName,
         input: node.input,
         detail: node.detail,
+        summary: node.summary,
+        presentCall: node.presentCall,
         durationMs: node.durationMs,
         status: node.status,
         toolCallId: node.toolCallId,
@@ -343,9 +351,10 @@ function subagentNodeText(node: ProcessNode): string {
 /** 功能：分类行（状态左置与字号一致 + 图标 + 名称 + ×N + 折叠贴字段（仅完成展示）；点击展开明细）。 */
 
 /**
- * 功能：时间线单行——一行一个执行节点（思考/工具/技能/知识），按真实顺序排列。
+ * 功能：时间线单行——一行一个执行节点（思考/工具/技能），按真实顺序排列。
  *
- * 行内前缀是该类别的图标，替代原先的分类行；明细直接可见，不再需要点开桶。
+ * 折叠态固定单行：左侧图标 + 动作名 + 圆点 + 结论摘要（右端省略号），
+ * 右侧箭头在悬浮或已展开时出现。点整行展开明细。
  */
 function TimelineItem({
   row,
@@ -361,110 +370,135 @@ function TimelineItem({
   if (category === "knowledge" || category === "memory") {
     return <KnowledgeItem item={item} />;
   }
-  // 工具行按工具语义渲染专属卡片（命令/差异/读取/检索）；其余类别保持通用行
-  const cardKind = toolCardKindOf(item.toolName);
-  if (cardKind !== "generic") {
-    const CardIcon = toolCardIcon(cardKind);
-    return (
-      <div data-testid="process-timeline-row" data-category={category}>
-        <div
-          data-testid="process-item"
-          data-tool-card={cardKind}
-          className={cn(
-            "group flex items-start gap-2 px-1 py-0.5 text-xs",
-            actions?.onShowDetail && item.toolCallId ? "cursor-pointer" : undefined,
-          )}
-          onClick={(event) => {
-            if (!actions?.onShowDetail || !item.toolCallId) return;
-            if ((event.target as HTMLElement).closest("button")) return;
-            actions.onShowDetail(item.id);
-          }}
-        >
-          <span data-testid="process-item-status" className="mt-[3px] flex shrink-0">
-            <ItemStatus status={item.status} />
-          </span>
-          <CardIcon className="mt-[3px] size-3 shrink-0 opacity-60" />
-          <div className="min-w-0 flex-1">
-            <span
-              data-testid="process-item-text"
-              className="text-chat-muted leading-relaxed break-words"
-            >
-              {item.toolName}
-            </span>
-            <ToolCard kind={cardKind} input={item.input} output={item.detail ?? ""} />
-          </div>
-          {item.status === "skipped" ? (
-            <span
-              data-testid="process-item-skipped"
-              className="text-chat-muted/60 mt-[3px] shrink-0 text-[11px]"
-            >
-              {t("chat.process.skipped")}
-            </span>
-          ) : null}
-        </div>
-        {item.children && item.children.length > 0 ? <SubagentTree nodes={item.children} /> : null}
-      </div>
-    );
-  }
+
+  const running = item.status === "running";
+  // 折叠态结论：后端完成态短语优先；未完成时用参数摘要（用户先看到「要做什么」）
+  const summary = (item.summary ?? firstLineOf(item.text ?? "")).trim();
+  const body = item.detail ?? "";
+  // 可展开条件：多行输出或有额外正文（单行输出不给箭头，与 DSH 同口径）
+  const expandable = body.includes("\n") || Boolean(item.collapsible && item.detail);
+  const cardKind = toolCardKindOf(item.toolName, item.presentCall);
+  const CardIcon = cardKind === "generic" ? Icon : toolCardIcon(cardKind);
+  // 工具行显示工具名；思考/技能等无工具名时显示所属类别的动作名
+  const label = item.toolName ?? item.text ?? "";
+
+  const openDetail = () => {
+    if (!actions?.onShowDetail || !item.toolCallId) return;
+    actions.onShowDetail(item.id);
+  };
+
   return (
     <div data-testid="process-timeline-row" data-category={category}>
       <div
         data-testid="process-item"
+        data-tool-card={cardKind !== "generic" ? cardKind : undefined}
+        data-state={running ? "running" : item.status === "error" ? "error" : "ok"}
+        data-expanded={expanded || undefined}
+        role={expandable ? "button" : undefined}
+        tabIndex={expandable ? 0 : undefined}
+        aria-expanded={expandable ? expanded : undefined}
         className={cn(
-          "group flex items-start gap-2 px-1 py-0.5 text-xs",
-          actions?.onShowDetail && item.toolCallId ? "cursor-pointer" : undefined,
+          // 单行固定 24px 高；图标列宽固定，标题与摘要都从同一列后开始（左缘对齐）
+          "group flex h-6 items-center gap-1.5 rounded-md px-1 text-xs",
+          "transition-colors duration-150",
+          expandable && "hover:bg-chat-rail/50 cursor-pointer",
+          item.status === "skipped" && "opacity-55",
         )}
         onClick={(event) => {
-          if (!actions?.onShowDetail || !item.toolCallId) return;
           if ((event.target as HTMLElement).closest("button")) return;
-          actions.onShowDetail(item.id);
+          if (expandable) {
+            setExpanded((value) => !value);
+            return;
+          }
+          openDetail();
+        }}
+        onKeyDown={(event) => {
+          if (!expandable) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setExpanded((value) => !value);
+          }
         }}
       >
-        <span data-testid="process-item-status" className="mt-[3px] flex shrink-0">
+        <span data-testid="process-item-status" className="flex shrink-0">
           <ItemStatus status={item.status} />
         </span>
-        <Icon className="mt-[3px] size-3 shrink-0 opacity-60" />
+        <CardIcon className="text-chat-muted size-3.5 shrink-0" />
         <span
           data-testid="process-item-text"
-          className="text-chat-muted min-w-0 flex-1 leading-relaxed whitespace-pre-wrap break-words"
+          className={cn(
+            // 固定标签列宽：不同工具名等长显示，后面的摘要起点才能纵向对齐
+            "w-[4.5rem] shrink-0 truncate font-normal",
+            running ? "text-chat-ink" : "text-chat-muted",
+          )}
         >
-          {item.text}
+          {label || t(`chat.process.${category}`)}
         </span>
-        {item.collapsible && item.detail ? (
-          <button
-            type="button"
-            data-testid="process-item-expand"
-            aria-expanded={expanded}
-            aria-label={t("chat.process.show")}
-            className="text-chat-muted hover:text-chat-ink mt-[1px] shrink-0 text-[11px]"
-            onClick={(event) => {
-              event.stopPropagation();
-              setExpanded((value) => !value);
-            }}
-          >
-            {expanded ? t("chat.process.hide") : t("chat.process.show")}
-          </button>
-        ) : null}
+        {summary ? (
+          <>
+            <span
+              aria-hidden="true"
+              data-testid="process-item-dot"
+              className="bg-chat-muted/45 size-0.5 shrink-0 rounded-full"
+            />
+            <span
+              data-testid="process-item-summary"
+              className={cn(
+                "text-chat-muted/75 min-w-0 flex-1 truncate",
+                item.status === "error" && "text-rose-600",
+              )}
+            >
+              {summary}
+            </span>
+          </>
+        ) : (
+          <span className="min-w-0 flex-1" />
+        )}
         {item.status === "skipped" ? (
           <span
             data-testid="process-item-skipped"
-            className="text-chat-muted/60 mt-[3px] shrink-0 text-[11px]"
+            className="text-chat-muted/60 shrink-0 text-[11px]"
           >
             {t("chat.process.skipped")}
           </span>
         ) : null}
+        {expandable ? (
+          <ChevronRight
+            aria-hidden="true"
+            data-testid="process-item-expand"
+            className={cn(
+              "text-chat-muted/60 size-3 shrink-0 transition-transform duration-150",
+              "opacity-0 group-hover:opacity-100",
+              expanded && "rotate-90 opacity-100",
+            )}
+          />
+        ) : null}
       </div>
-      {expanded && item.detail && item.collapsible ? (
+      {expanded ? (
         <div
           data-testid="process-item-body"
-          className="text-chat-muted/90 ml-[26px] px-1 pb-1 text-xs leading-relaxed whitespace-pre-wrap break-words"
+          className="ml-[22px] border-l border-black/5 py-1 pl-2"
         >
-          {item.detail}
+          <ToolCard kind={cardKind} input={item.input} output={body} />
+          {cardKind === "generic" && body ? (
+            <div className="text-chat-muted/90 text-xs leading-relaxed whitespace-pre-wrap break-words">
+              {body}
+            </div>
+          ) : null}
         </div>
       ) : null}
       {item.children && item.children.length > 0 ? <SubagentTree nodes={item.children} /> : null}
     </div>
   );
+}
+
+/** 功能：取文本首个非空行（折叠态摘要的回落来源）。 */
+function firstLineOf(text: string): string {
+  for (const raw of text.split("\n")) {
+    const line = raw.trim();
+    if (line) return line;
+  }
+  return "";
 }
 
 export function ProcessBlock({

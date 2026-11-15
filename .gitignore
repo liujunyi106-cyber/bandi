@@ -47,3 +47,34 @@ Thumbs.db
 
 # 交付文档只在本地留存，不进仓库（含索引 AGENTS.md）
 交付文档收集/
+
+# 本机私人数据：模型密钥、会话库、运行态——绝不进仓库
+*.db
+*.db-wal
+*.db-shm
+llm_profiles.json
+approvals.json
+.bandi/
+sessions/
+
+# 真机验证产物与一次性脚本（截图、asar 抽取、探针、打包输出）
+.shots/
+.dsh-src/
+.k.err
+.k.log
+.v.err
+.v.log
+.v2.py
+capture_win.py
+focus_win.py
+inspect_session.py
+probe_*.py
+setup_model.py
+trace_turn.py
+diag_turn.py
+verify_*.py
+release/
+_release-public/
+.isoh/
+.shotdir/
+作品集素材/
