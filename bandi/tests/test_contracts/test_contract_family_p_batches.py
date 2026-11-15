@@ -5726,10 +5726,16 @@ class TestWorkingTurnRowCap:
 class TestCliMaintenanceEntry:
     """CLI 必须暴露记忆维护入口（否则本地单机形态下永不执行）。"""
 
-    def test_maintain_command_registered_with_config_defaults(self) -> None:
-        """maintain 命令注册；参数默认 0 = 用配置值（与 API 装配同源，不硬编码第二份阈值）。"""
+    def test_maintain_command_registered_with_config_defaults(self, monkeypatch) -> None:
+        """maintain 命令注册；参数默认 0 = 用配置值（与 API 装配同源，不硬编码第二份阈值）。
+
+        关掉 rich 颜色：CI runner 上终端被判定为彩色且宽 200 列，选项名会被
+        换行/着色，子串断言会假红。
+        """
         from bandi.cli.app import app
 
+        monkeypatch.setenv("NO_COLOR", "1")
+        monkeypatch.delenv("FORCE_COLOR", raising=False)
         result = CliRunner().invoke(app, ["maintain", "--help"])
 
         assert result.exit_code == 0, f"maintain 命令未注册：{result.output}"
