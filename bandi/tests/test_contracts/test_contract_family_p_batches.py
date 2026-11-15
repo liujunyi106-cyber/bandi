@@ -5729,12 +5729,12 @@ class TestCliMaintenanceEntry:
     def test_maintain_command_registered_with_config_defaults(self, monkeypatch) -> None:
         """maintain 命令注册；参数默认 0 = 用配置值（与 API 装配同源，不硬编码第二份阈值）。
 
-        关掉 rich 颜色：CI runner 上终端被判定为彩色且宽 200 列，选项名会被
-        换行/着色，子串断言会假红。
+        rich 按 TERM 判定终端能力：CI runner 上被判定为彩色宽终端，选项名会被
+        着色并换行，子串断言假红。TERM=dumb 让它输出纯文本。
         """
         from bandi.cli.app import app
 
-        monkeypatch.setenv("NO_COLOR", "1")
+        monkeypatch.setenv("TERM", "dumb")
         monkeypatch.delenv("FORCE_COLOR", raising=False)
         result = CliRunner().invoke(app, ["maintain", "--help"])
 

@@ -81,14 +81,14 @@ def test_audit_help() -> None:
 def test_company_reorg_help(monkeypatch) -> None:
     """契约：reorg 命令注册且暴露 --replace。
 
-    关掉 rich 的颜色与强制宽度：CI runner 上终端被判定为彩色且宽 200 列，
-    选项名会被换行/着色，子串断言会假红。
+    rich 按 TERM 判定终端能力：CI runner 上被判定为彩色宽终端，
+    选项名会被着色并换行，子串断言假红。TERM=dumb 让它输出纯文本。
     """
     from typer.testing import CliRunner
 
     from bandi.cli.app import app
 
-    monkeypatch.setenv("NO_COLOR", "1")
+    monkeypatch.setenv("TERM", "dumb")
     monkeypatch.delenv("FORCE_COLOR", raising=False)
     runner = CliRunner()
     result = runner.invoke(app, ["company", "reorg", "--help"])
