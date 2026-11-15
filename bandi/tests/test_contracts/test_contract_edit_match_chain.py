@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 import codecs
 import hashlib
+import os
 from pathlib import Path
 
 import pytest
@@ -25,6 +26,7 @@ from bandi.tools.edit_match import (
 )
 from bandi.tools.file_edit import FileEditTool
 from bandi.tools.file_ops import FileReadTool
+from bandi.tools.fs_write import atomic_write
 
 
 @pytest.fixture
@@ -412,6 +414,26 @@ class TestEditToolConcurrencyAndAtomicity:
             tool.execute({"file_path": str(fp), "old_string": "BBB", "new_string": "YYY"}),
         )
         assert fp.read_bytes() == b"XXX\nYYY\n", "并发编辑必须串行化，不得丢失更新"
+
+    @pytest.mark.asyncio
+    async def test_atomic_write_survives_transient_permission_error(
+        self, workspace: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        fp = workspace / "retry.txt"
+        fp.write_bytes(b"before\n")
+        real_replace = os.replace
+        calls = {"n": 0}
+
+        def flaky(src: object, dst: object) -> None:
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise PermissionError(5, "Access is denied")
+            real_replace(src, dst)
+
+        monkeypatch.setattr("bandi.tools.fs_write.os.replace", flaky)
+        atomic_write(fp, b"after\n")
+        assert calls["n"] == 2, "首次瞬时占用后必须重试成功"
+        assert fp.read_bytes() == b"after\n"
 
     @pytest.mark.asyncio
     async def test_atomic_write_failure_cleans_tmp(

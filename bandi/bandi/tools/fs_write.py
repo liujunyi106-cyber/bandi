@@ -8,6 +8,7 @@ import asyncio
 import codecs
 import hashlib
 import os
+import time
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -91,16 +92,32 @@ def check_external_modification(
     raise ValueError(MODIFIED_SINCE_READ)
 
 
+def replace_with_retry(source: Path, target: Path, attempts: int = 6) -> None:
+    # 功能：替换重试——Windows 上目标可能被索引/扫描进程短暂占用（WinError 5/32）
+    delay = 0.02
+    for attempt in range(attempts):
+        try:
+            os.replace(source, target)
+            return
+        except PermissionError:
+            if attempt == attempts - 1:
+                raise
+        except OSError as exc:
+            if attempt == attempts - 1 or getattr(exc, "winerror", None) not in (5, 32):
+                raise
+        time.sleep(delay)
+        delay = min(delay * 2, 0.4)
+
+
 def atomic_write(target: Path, data: bytes) -> None:
-    # 功能：临时文件 + fsync + os.replace 原子替换（崩溃不留半截；
-    # 失败清理临时文件）
+    # 功能：临时文件 + fsync + 原子替换（崩溃不留半截；失败清理临时文件）。
     tmp = target.with_name(f".{target.name}.tmp-{os.getpid()}-{uuid4().hex[:8]}")
     try:
         with tmp.open("wb") as handle:
             handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(tmp, target)
+        replace_with_retry(tmp, target)
     except (OSError, ValueError):
         try:
             tmp.unlink(missing_ok=True)
