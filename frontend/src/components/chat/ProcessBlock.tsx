@@ -31,7 +31,6 @@ import {
   formatDurationMs,
   inputPreview,
   thinkingSummary,
-  toolLabel,
   toolSummary,
   totalDurationMs,
   type BucketKey,
@@ -60,58 +59,81 @@ interface BucketItem {
   children?: ProcessNode[];
 }
 
-interface Bucket {
-  key: BucketKey;
-  items: BucketItem[];
-}
 
 /** 功能：过程节点 → 分类桶列表（按首次出现顺序；skill 节点按技能拆条）。 */
-function buildBuckets(nodes: ProcessNode[]): Bucket[] {
-  const order: BucketKey[] = [];
-  const map = new Map<BucketKey, BucketItem[]>();
-  const push = (key: BucketKey, item: BucketItem) => {
-    if (!map.has(key)) {
-      map.set(key, []);
-      order.push(key);
-    }
-    map.get(key)?.push(item);
-  };
-  for (const node of nodes) {
+
+/** 功能：时间线一行——执行流里的单个节点，保留真实先后次序。 */
+interface TimelineRow {
+  id: string;
+  category: BucketKey;
+  item: BucketItem;
+  /** skill 节点会拆成多行，原节点 id + 技能名保证唯一。 */
+  key: string;
+}
+
+/**
+ * 功能：过程节点 → 按执行顺序平铺的时间线行。
+ *
+ * 排序口径是节点数组本身的下标（追加即执行顺序），`seq` 可选覆盖——
+ * 两者都没有时按出现次序。不按工具名重组，故「读 a.py → 改 a.py → 跑测试」
+ * 的内容与顺序都与真实执行一致。
+ */
+function buildRows(nodes: ProcessNode[]): TimelineRow[] {
+  const rows: TimelineRow[] = [];
+  nodes.forEach((node, index) => {
+    const order = node.seq ?? index;
     if (node.kind === "thought") {
-      // 分级：折叠态只给摘要标题（标本「思考完成 + 一句话转述」）
-      // 原始 CoT 进展开区——避免长思考淹没对话（cc-haha max-h-[300px] /
-      // LeAgent max-h-64 同思路）。摘要为规则提取，不调 LLM。
       const { title, body } = thinkingSummary(node.text);
-      push("thought", {
-        id: node.id,
-        text: title || body,
-        detail: title ? body : undefined,
-        collapsible: Boolean(title && body),
-        durationMs: node.durationMs,
-        status: node.status,
+      rows.push({
+        id: `${order}:thought`,
+        key: node.id,
+        category: "thought",
+        item: {
+          id: node.id,
+          text: title || body,
+          detail: title ? body : undefined,
+          collapsible: Boolean(title && body),
+          durationMs: node.durationMs,
+          status: node.status,
+        },
       });
-    } else if (node.kind === "skill") {
-      for (const skill of node.skills) {
-        push("skill", { id: `${node.id}:${skill}`, text: skill, status: "success" });
-      }
-    } else if (node.kind === "note") {
-      continue;
-    } else {
-      const key = bucketFor(node.toolName);
-      const scopeLabel = key === "knowledge" ? knowledgeScopeLabel(node.detail) : "";
-      push(key, {
+      return;
+    }
+    if (node.kind === "skill") {
+      node.skills.forEach((skill, at) => {
+        rows.push({
+          id: `${order}:skill:${at}`,
+          key: `${node.id}:${skill}`,
+          category: "skill",
+          item: {
+            id: `${node.id}:${skill}`,
+            text: skill,
+            status: "success",
+          },
+        });
+      });
+      return;
+    }
+    if (node.kind === "note") return;
+    const category = bucketFor(node.toolName);
+    const scopeLabel = category === "knowledge" ? knowledgeScopeLabel(node.detail) : "";
+    rows.push({
+      id: `${order}:tool`,
+      key: node.id,
+      category,
+      item: {
         id: node.id,
         text: `${toolSummary(node.toolName, node.input)}${scopeLabel ? `｜${scopeLabel}` : ""}`,
         toolName: node.toolName,
-        detail: key === "knowledge" || key === "memory" ? node.detail : undefined,
+        detail: category === "knowledge" || category === "memory" ? node.detail : undefined,
         durationMs: node.durationMs,
         status: node.status,
         toolCallId: node.toolCallId,
         children: node.children,
-      });
-    }
-  }
-  return order.map((key) => ({ key, items: map.get(key) ?? [] }));
+      },
+    });
+  });
+  return rows;
 }
 
 /** 功能：记忆写入注记按通道分档——每档一行，长期在上、草稿在下，各带图标。
@@ -315,133 +337,83 @@ function subagentNodeText(node: ProcessNode): string {
 }
 
 /** 功能：分类行（状态左置与字号一致 + 图标 + 名称 + ×N + 折叠贴字段（仅完成展示）；点击展开明细）。 */
-function BucketRow({ bucket, actions }: { bucket: Bucket; actions?: ProcessBlockActions }) {
+
+/**
+ * 功能：时间线单行——一行一个执行节点（思考/工具/技能/知识），按真实顺序排列。
+ *
+ * 行内前缀是该类别的图标，替代原先的分类行；明细直接可见，不再需要点开桶。
+ */
+function TimelineItem({
+  row,
+  actions,
+}: {
+  row: TimelineRow;
+  actions?: ProcessBlockActions;
+}) {
   const t = useT();
-  const [open, setOpen] = useState(false);
-  // 思考正文按行独立展开（摘要默认可见，原始 CoT 需手动展开）
-  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
-  const running = bucket.items.some((item) => item.status === "running");
-  // 按工具名聚合（桶内 items 是 BucketItem 而非 ProcessNode，直接就地聚合）
-  const toolBreakdown = useMemo(() => {
-    const out: { toolName: string; count: number }[] = [];
-    const index = new Map<string, number>();
-    for (const item of bucket.items) {
-      if (!item.toolName) continue;
-      const at = index.get(item.toolName);
-      if (at === undefined) {
-        index.set(item.toolName, out.length);
-        out.push({ toolName: item.toolName, count: 1 });
-      } else {
-        out[at].count += 1;
-      }
-    }
-    return out;
-  }, [bucket.items]);
-  const meta = BUCKET_META[bucket.key];
-  const Icon = meta.icon;
+  const [expanded, setExpanded] = useState(false);
+  const { item, category } = row;
+  const Icon = BUCKET_META[category].icon;
+  if (category === "knowledge" || category === "memory") {
+    return <KnowledgeItem item={item} />;
+  }
   return (
-    <div>
-      <button
-        type="button"
-        data-testid={`process-bucket-${bucket.key}`}
-        className="text-chat-muted flex w-full items-center gap-2 px-1 py-1 text-xs"
-        onClick={() => setOpen((value) => !value)}
+    <div data-testid="process-timeline-row" data-category={category}>
+      <div
+        data-testid="process-item"
+        className={cn(
+          "group flex items-start gap-2 px-1 py-0.5 text-xs",
+          actions?.onShowDetail && item.toolCallId ? "cursor-pointer" : undefined,
+        )}
+        onClick={(event) => {
+          if (!actions?.onShowDetail || !item.toolCallId) return;
+          if ((event.target as HTMLElement).closest("button")) return;
+          actions.onShowDetail(item.id);
+        }}
       >
-        <ItemStatus status={running ? "running" : "success"} />
-        <Icon className="size-3.5 shrink-0 opacity-75" />
-        <span className="text-chat-ink">{t(meta.labelKey)}</span>
-        {/* 2026-09-29：按工具名聚合（标本「资料搜索 ×7」「设计准则查阅 ×2」）。
-            规则计数，无 LLM 往返——opencode `contextToolSummary` 同口径。 */}
-        <span data-testid={`process-bucket-count-${bucket.key}`} className="text-chat-muted">
-          {toolBreakdown.length > 0 && bucket.items.length > 1
-            ? toolBreakdown.map((g) => `${toolLabel(g.toolName)} ×${g.count}`).join("  ")
-            : `x${bucket.items.length}`}
+        <span data-testid="process-item-status" className="mt-[3px] flex shrink-0">
+          <ItemStatus status={item.status} />
         </span>
-        {!running ? (
-          <ChevronRight
-            data-testid={`process-bucket-toggle-${bucket.key}`}
-            className={cn("size-3 shrink-0 transition-transform", open && "rotate-90")}
-          />
+        <Icon className="mt-[3px] size-3 shrink-0 opacity-60" />
+        <span
+          data-testid="process-item-text"
+          className="text-chat-muted min-w-0 flex-1 leading-relaxed whitespace-pre-wrap break-words"
+        >
+          {item.text}
+        </span>
+        {item.collapsible && item.detail ? (
+          <button
+            type="button"
+            data-testid="process-item-expand"
+            aria-expanded={expanded}
+            aria-label={t("chat.process.show")}
+            className="text-chat-muted hover:text-chat-ink mt-[1px] shrink-0 text-[11px]"
+            onClick={(event) => {
+              event.stopPropagation();
+              setExpanded((value) => !value);
+            }}
+          >
+            {expanded ? t("chat.process.hide") : t("chat.process.show")}
+          </button>
         ) : null}
-      </button>
-      {open ? (
-        <div className="ml-[18px] space-y-0.5">
-          {bucket.items.map((item) =>
-            bucket.key === "knowledge" || bucket.key === "memory" ? (
-              <KnowledgeItem key={item.id} item={item} />
-            ) : (
-              <div key={item.id}>
-                <div
-                  data-testid="process-item"
-                  // 明细文本最多 3 行高、超出纵向滚动（不再单行省略）；
-                  // 故行改顶部对齐，状态图标/耗时等元信息加 mt-[3px] 贴首行视觉居中
-                  className={cn(
-                    "group flex items-start gap-2 px-1 py-0.5 text-xs",
-                    actions?.onShowDetail && item.toolCallId ? "cursor-pointer" : undefined,
-                  )}
-                  onClick={(event) => {
-                    // v5：工具明细行点击 → 右栏详情视图（操作组按钮不触发）
-                    if (!actions?.onShowDetail || !item.toolCallId) return;
-                    if ((event.target as HTMLElement).closest("button")) return;
-                    actions.onShowDetail(item.id);
-                  }}
-                >
-                  <span data-testid="process-item-status" className="mt-[3px] flex shrink-0">
-                    <ItemStatus status={item.status} />
-                  </span>
-                  <span
-                    data-testid="process-item-text"
-                    // 高度上限 = 3 行 × 19.5px（text-xs 12px × leading-relaxed 1.625）
-                    className="text-chat-muted min-w-0 flex-1 leading-relaxed whitespace-pre-wrap break-words"
-                  >
-                    {item.text}
-                  </span>
-                  {item.collapsible && item.detail ? (
-                    <button
-                      type="button"
-                      data-testid="process-item-expand"
-                      aria-expanded={Boolean(expandedItems[item.id])}
-                      aria-label={t("chat.process.show")}
-                      className="text-chat-muted hover:text-chat-ink mt-[1px] shrink-0 text-[11px]"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setExpandedItems((prev) => ({ ...prev, [item.id]: !prev[item.id] }));
-                      }}
-                    >
-                      {expandedItems[item.id] ? t("chat.process.hide") : t("chat.process.show")}
-                    </button>
-                  ) : null}
-                  {item.status === "skipped" ? (
-                    <span
-                      data-testid="process-item-skipped"
-                      className="text-chat-muted/60 mt-[3px] shrink-0 text-[11px]"
-                    >
-                      {t("chat.process.skipped")}
-                    </span>
-                  ) : null}
-                  {/* 2026-10-12 用户拍板：行尾不再常驻耗时（如 12ms）——
-                      该位置本应承载「展开/收起」，但工具行的展开入口是点击行打开右侧详情
-                      （ProcessBlockActions.onShowDetail），与思考正文的行内展开并非同一机制；
-                      两种都做会给出两个含义相近的入口。故此处不显示，
-                      耗时统一由总行「已完成 · 1.2s」承载。 */}
-                </div>
-                {item.children && item.children.length > 0 ? (
-                  <SubagentTree nodes={item.children} />
-                ) : null}
-                {/* 思考正文二级展开：紧跟在本条之下（摘要默认可见，正文默认收起） */}
-                {item.collapsible && item.detail && expandedItems[item.id] ? (
-                  <div
-                    data-testid="process-item-body"
-                    className="text-chat-muted/90 ml-[26px] px-1 pb-1 text-xs leading-relaxed whitespace-pre-wrap break-words"
-                  >
-                    {item.detail}
-                  </div>
-                ) : null}
-              </div>
-            ),
-          )}
+        {item.status === "skipped" ? (
+          <span
+            data-testid="process-item-skipped"
+            className="text-chat-muted/60 mt-[3px] shrink-0 text-[11px]"
+          >
+            {t("chat.process.skipped")}
+          </span>
+        ) : null}
+      </div>
+      {expanded && item.detail && item.collapsible ? (
+        <div
+          data-testid="process-item-body"
+          className="text-chat-muted/90 ml-[26px] px-1 pb-1 text-xs leading-relaxed whitespace-pre-wrap break-words"
+        >
+          {item.detail}
         </div>
       ) : null}
+      {item.children && item.children.length > 0 ? <SubagentTree nodes={item.children} /> : null}
     </div>
   );
 }
@@ -483,7 +455,7 @@ export function ProcessBlock({
       terminalNotes: all.filter(isTerminal),
     };
   }, [nodes]);
-  const buckets = useMemo(() => buildBuckets(nodes), [nodes]);
+  const rows = useMemo(() => buildRows(nodes), [nodes]);
   const running = !settled && (forceRunning || nodes.some((node) => node.status === "running"));
   // 原先只累加 tool 节点 ⇒ 纯文本轮（无工具）恒显示「已完结 · 0.0s」
   // 。改为工具 + 思考两类累加，无任何度量时显示「—」而非假精度 0.0s。
@@ -657,8 +629,8 @@ export function ProcessBlock({
               </div>
             );
           })}
-          {buckets.map((bucket) => (
-            <BucketRow key={bucket.key} bucket={bucket} actions={actions} />
+          {rows.map((row) => (
+            <TimelineItem key={row.key} row={row} actions={actions} />
           ))}
         </div>
       ) : null}

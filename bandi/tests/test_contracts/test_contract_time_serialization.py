@@ -45,8 +45,17 @@ class TestIsoLocal:
         assert iso_local("not-a-timestamp") == "not-a-timestamp", "不可解析值原样返回，不吞数据"
 
     def test_breaker_naive_not_shifted_as_utc(self) -> None:
-        """破坏者：若把本地 naive 当 UTC，输出时钟读数会整体偏移（-8h）。"""
-        local_naive = iso_local(datetime(2026, 10, 27, 23, 35, 12))
-        as_utc = datetime(2026, 10, 27, 23, 35, 12, tzinfo=UTC).isoformat()
-        assert local_naive != as_utc
-        assert local_naive[:19] == "2026-10-27T23:35:12"
+        """破坏者：若把本地 naive 当 UTC，输出时钟读数会整体偏移（-8h）。
+
+        断言按「时钟读数不变」写，不依赖运行机时区与 UTC 存在偏移：
+        UTC runner 上本地即是 UTC，`local_naive != as_utc` 会假红。
+        """
+        naive = datetime(2026, 10, 27, 23, 35, 12)
+        local_naive = iso_local(naive)
+        assert local_naive[:19] == "2026-10-27T23:35:12", "时钟读数不得被改写"
+        # 同一时刻的两种写法必须等价：naive 按本地解释 vs 先 astimezone 再序列化
+        assert local_naive == iso_local(naive.astimezone()), "naive 必须按本地口径解释"
+        # 只有当本地确实偏离 UTC 时，才可能与被误当成 UTC 的结果相同
+        if naive.astimezone().utcoffset():
+            as_utc = datetime(2026, 10, 27, 23, 35, 12, tzinfo=UTC).isoformat()
+            assert local_naive != as_utc, "naive 不得被当成 UTC"

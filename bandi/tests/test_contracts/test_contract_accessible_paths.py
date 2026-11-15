@@ -21,12 +21,40 @@ from bandi.agent.prompt_harness.builder import _accessible_paths_section, _user_
 _REAL_HOME = Path.home().resolve()
 
 
+def _listed_paths(text: str) -> list[Path]:
+    """功能：抠出路径段里的清单条目（反引号包裹的绝对路径）。"""
+    found: list[Path] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("- `") and stripped.endswith("`"):
+            try:
+                found.append(Path(stripped[3:-1]))
+            except (OSError, ValueError):
+                continue
+    return found
+
+
 class TestDesktopDiscovery:
-    def test_desktop_is_real_and_exists(self) -> None:
-        """破坏者视角：桌面不能是猜出来的名字——必须真实存在。"""
+    def test_desktop_path_is_never_fabricated(self) -> None:
+        """破坏者视角：桌面路径不得由目录名猜出，只允许注册表权威值或 home 回退。
+
+        干净 runner 上桌面目录可以不存在（清单会跳过它），故不要求存在；
+        钉的是「来源」——注册表值或 `home/Desktop`，不会是别处的臆造路径。
+        """
         desktop = _user_desktop()
-        assert desktop is not None
-        assert desktop.exists(), f"探测到的桌面不存在：{desktop}"
+        assert isinstance(desktop, Path), f"探测结果必须是 Path：{desktop!r}"
+        home_fallback = Path.home() / "Desktop"
+        on_windows_registry = desktop.name.lower() == "desktop" or desktop.is_absolute()
+        assert desktop == home_fallback or on_windows_registry, (
+            f"桌面必须来自注册表权威值或 home 回退：{desktop}"
+        )
+
+    def test_existing_desktop_is_listed(self) -> None:
+        """探测到的桌面若真实存在，就必须出现在可访问路径段里。"""
+        desktop = _user_desktop()
+        if desktop is None or not desktop.exists():
+            pytest.skip("本机无桌面目录")
+        assert str(desktop) in _accessible_paths_section()
 
     def test_no_hardcoded_username(self) -> None:
         """不得把某台机器的用户名写进**可执行代码**——换用户即失效。
@@ -85,9 +113,15 @@ class TestDesktopDiscovery:
 
 class TestSectionContent:
     def test_lists_real_workspace(self) -> None:
+        """段里必须给出本机真实存在的绝对路径——模型据此访问而不是臆造。"""
+        home = Path.home().resolve()
         text = _accessible_paths_section()
         assert text, "可访问路径段不得为空"
-        assert str(_REAL_HOME) in text
+        listed = _listed_paths(text)
+        assert listed, f"段内必须至少列出一条真实路径：{text}"
+        assert any(home in p.parents or p == home for p in listed), (
+            f"用户主目录或其子路径必须出现在清单里：{listed}"
+        )
 
     def test_forbids_fabricated_path(self) -> None:
         """段内必须带反臆造约束——否则模型仍可能编 C:/Users/<用户名>/..."""

@@ -136,7 +136,7 @@ export function KernelGate({ children }: { children: ReactNode }) {
         />
         <div className="flex w-full flex-col gap-1.5">
           <div
-            className="border-primary/25 h-1 w-full overflow-hidden rounded-full border"
+            className="border-primary/25 h-2 w-full overflow-hidden rounded-full border"
             role="progressbar"
             aria-valuenow={percent}
             aria-valuemin={0}

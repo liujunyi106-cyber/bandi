@@ -18,6 +18,8 @@ import type { InteractionFrame, SessionEntry, SessionSummary } from "@/services/
 export interface ProcessThoughtNode {
   id: string;
   kind: "thought";
+  /** 功能：全局执行序号——渲染按此升序平铺，决定「先读后改再跑」的真实顺序。 */
+  seq?: number;
   text: string;
   status: "running" | "success";
   /**
@@ -51,6 +53,8 @@ export interface CitationRef {
 export interface ProcessToolNode {
   id: string;
   kind: "tool";
+  /** 功能：全局执行序号——工具行定位在「开始执行」处，与结果到达次序无关。 */
+  seq?: number;
   toolName: string;
   input?: Record<string, unknown>;
   status: "running" | "success" | "error" | "skipped";
@@ -70,6 +74,8 @@ export interface ProcessToolNode {
 export interface ProcessSkillNode {
   id: string;
   kind: "skill";
+  /** 功能：全局执行序号——技能激活行按真实注入时机插入时间线。 */
+  seq?: number;
   /** 已激活技能名（跨事件去重合并）。 */
   skills: string[];
   /** 注入次数（按事件累计）。 */
@@ -89,6 +95,8 @@ export interface ProcessCompaction {
 export interface ProcessNoteNode {
   id: string;
   kind: "note";
+  /** 功能：全局执行序号——注记按发生时机插入时间线。 */
+  seq?: number;
   /** 注记类型：compaction（已压缩）/ interrupt（用户中断了）/ memory_written（记忆写入）。 */
   noteType: string;
   /** 压缩完成统计与保留摘要（noteType=compaction 时）。 */

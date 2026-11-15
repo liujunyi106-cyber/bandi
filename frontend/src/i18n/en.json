@@ -1,6 +1,7 @@
 {
   "app": {
     "bootLoading": "Loading...",
+    "bootProgressLabel": "Startup progress",
     "kernelRetry": "Retry",
     "kernelTimeout": "Startup timed out. Please retry.",
     "kernelUnavailable": "Startup failed. Please retry.",

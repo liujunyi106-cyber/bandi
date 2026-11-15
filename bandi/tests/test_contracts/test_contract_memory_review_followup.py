@@ -190,9 +190,14 @@ def test_contract_session_leaf_skips_checkpoint(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.timing
 async def test_contract_llm_duration_attribution_concurrent() -> None:
     """契约（计时归属·破坏者）：并发 LLM 请求 duration 不得串扰——修复前单标量
-    _llm_start 使先发起（耗时更长）的请求采用后发起者的起点。"""
+    _llm_start 使先发起（耗时更长）的请求采用后发起者的起点。
+
+    断言区间依赖真实墙钟 sleep，全量并发跑时会被拉长，故归 timing 分组
+    （verify.ps1 以独立低并发分组承载，仍必跑）。
+    """
     import asyncio
     from types import SimpleNamespace
 

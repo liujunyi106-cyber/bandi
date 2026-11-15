@@ -17,6 +17,14 @@ try:
 except ImportError:
     pass
 
+# 功能：权重目录名——PaddleOCR 首次推理才下载模型，缺权重时底层报错不可读
+_PADDLE_MODEL_DIRS = ("whl", "official_models", "ocr_models")
+
+_MODEL_HINT = (
+    "PaddleOCR 模型权重未就绪：首次运行需联网下载检测/识别模型。"
+    "请在可联网环境执行一次 OCR，或预先放置权重到 ~/.paddleocr 后重试。"
+)
+
 _SUPPORTED_FORMATS = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"}
 
 _LANG_ALIASES = {"ch_en": "ch"}
@@ -29,6 +37,41 @@ _INSTALL_HINT = (
 
 def _normalize_lang(lang: str) -> str:
     return _LANG_ALIASES.get(lang, lang)
+
+
+def _model_weights_ready() -> bool:
+    """功能：PaddleOCR 模型权重是否已在本地缓存（缺权重时首次推理才报错）。"""
+    home = Path.home()
+    for base in (home / ".paddleocr", home / ".paddlex"):
+        try:
+            if not base.is_dir():
+                continue
+            for entry in base.iterdir():
+                if entry.is_dir() and entry.name in _PADDLE_MODEL_DIRS:
+                    if any(entry.iterdir()):
+                        return True
+        except OSError:
+            continue
+    return False
+
+
+def _describe_ocr_error(exc: Exception) -> str:
+    """功能：把 PaddleOCR 底层异常翻成可行动错误（权重缺失占绝大多数）。"""
+    text = str(exc)
+    looks_like_missing_weights = any(
+        marker in text
+        for marker in (
+            "parse_error",
+            "empty input",
+            "No such file or directory",
+            "Model",
+            "model",
+            "download",
+        )
+    )
+    if looks_like_missing_weights and not _model_weights_ready():
+        return f"OCR processing failed: {_MODEL_HINT}（底层：{text[:200]}）"
+    return f"OCR processing failed: {text}"
 
 
 _ocr_cache: dict[tuple[str, bool], object] = {}
@@ -147,7 +190,7 @@ class ImageOCRTool(FsTool):
             ocr = get_ocr_instance(lang=language, use_gpu=use_gpu)
             result = ocr.predict(str(path))
         except Exception as e:  # noqa: BLE001
-            return {"success": False, "error": f"OCR processing failed: {e}"}
+            return {"success": False, "error": _describe_ocr_error(e)}
 
         if not result:
             return {

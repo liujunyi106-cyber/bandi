@@ -337,7 +337,6 @@ describe("DmChatView", () => {
     // 历史事件无真实时间戳：不得显示回放瞬间算出的假耗时（如「已完成 · 1ms」）
     expect(screen.getByTestId("process-total-ms").textContent).toBe("");
     fireEvent.click(screen.getByTestId("process-toggle"));
-    fireEvent.click(await screen.findByTestId("process-bucket-thought"));
     expect((await screen.findByTestId("process-item-text")).textContent).toContain("历史思考");
   });
 

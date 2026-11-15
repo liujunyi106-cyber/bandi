@@ -1,6 +1,7 @@
 {
   "app": {
     "bootLoading": "正在加载当中...",
+    "bootProgressLabel": "启动进度",
     "kernelRetry": "重试",
     "kernelTimeout": "启动超时，请重试",
     "kernelUnavailable": "启动失败，请重试",

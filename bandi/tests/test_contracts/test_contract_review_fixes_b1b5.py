@@ -10,6 +10,7 @@ GlobalMemoryStore / repair_tool_arguments / subagent 装配 / google_stream。
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -233,20 +234,30 @@ async def test_rf9_recovery_syncs_seen_window(tmp_path: Any) -> None:
 
 def test_rf10_search_normalizes_mixed_timestamps(tmp_path: Any) -> None:
     """契约（RF-10 破坏者）：旧本地 naive 与新 UTC ISO 混排时按真实时间
-    DESC（字符串序会颠倒：本地 10:00 = UTC 02:00 应排 UTC 04:00 之后）。"""
+    DESC——字符串序会把两者按字面比较而颠倒。
+
+    两条时间戳按「本地当前偏移」构造，使 naive 那条的真实时刻恒早于 UTC 那条，
+    不依赖运行机恰为 UTC+8：naive 按本地解释后 = UTC(10:00 - offset)。
+    """
+    offset = datetime.now().astimezone().utcoffset() or timedelta()
+    naive_local = datetime(2026, 9, 12, 10, 0, 0)
+    # UTC 那条比 naive 的真实时刻晚 1 小时，故必然排在前面
+    newer_utc = naive_local - offset + timedelta(hours=1)
     store = GlobalMemoryStore(tmp_path / "g.db")
     try:
         store.put_global_memory("k_old", "旧条目")
         store.put_global_memory("k_new", "新条目")
         store._conn.execute(
-            "UPDATE global_memory SET updated_at = '2026-09-12T10:00:00' WHERE key = 'k_old'"
+            "UPDATE global_memory SET updated_at = ? WHERE key = 'k_old'",
+            (naive_local.isoformat(),),
         )
         store._conn.execute(
-            "UPDATE global_memory SET updated_at = '2026-09-12T04:00:00+00:00' WHERE key = 'k_new'"
+            "UPDATE global_memory SET updated_at = ? WHERE key = 'k_new'",
+            (newer_utc.replace(tzinfo=UTC).isoformat(),),
         )
         store._conn.commit()
         keys = [r["key"] for r in store.search("条目")]
-        assert keys[0] == "k_new", f"UTC 04:00 必须排在本地 10:00 之前（实际 {keys}）"
+        assert keys[0] == "k_new", f"较新的 UTC 条目必须排在较旧的本地 naive 之前（实际 {keys}）"
     finally:
         store.close()
 

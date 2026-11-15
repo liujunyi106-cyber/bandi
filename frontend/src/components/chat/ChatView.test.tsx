@@ -667,7 +667,6 @@ describe("ChatView 137b-3b 失败工具节点级操作", () => {
     );
     await waitFor(() => expect(screen.getByTestId("process-toggle")).toBeInTheDocument());
     fireEvent.click(screen.getByTestId("process-toggle"));
-    fireEvent.click(screen.getByTestId("process-bucket-tool"));
     expect(screen.queryByTestId("process-item-retry")).not.toBeInTheDocument();
     expect(screen.queryByTestId("process-item-skip")).not.toBeInTheDocument();
     expect(sessionsApi.retryTool).not.toHaveBeenCalled();

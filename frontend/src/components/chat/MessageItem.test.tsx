@@ -236,7 +236,6 @@ describe("MessageItem", () => {
     expect(screen.getByTestId("process-block")).toBeInTheDocument();
     // 完成后自动收起（延迟收起 timer 未到，初始为收起态）——展开总行 → 展开分类后可见明细
     fireEvent.click(screen.getByTestId("process-toggle"));
-    fireEvent.click(screen.getByTestId("process-bucket-tool"));
     expect(screen.getByText("bash")).toBeInTheDocument();
     expect(screen.getAllByText("5ms")[0]).toBeInTheDocument();
   });
@@ -539,7 +538,6 @@ describe("MessageItem", () => {
       />,
     );
     fireEvent.click(screen.getByTestId("process-toggle"));
-    fireEvent.click(screen.getByTestId("process-bucket-tool"));
     fireEvent.click(screen.getByTestId("process-item"));
     expect(onToolDetail).toHaveBeenCalledWith("m1", "n1");
     expect(screen.queryByTestId("process-item-retry")).not.toBeInTheDocument();

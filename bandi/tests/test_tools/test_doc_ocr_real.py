@@ -8,7 +8,10 @@ import pytest
 import bandi.tools.doc.image_ocr as mod
 from bandi.tools.doc.image_ocr import ImageOCRTool
 
-pytestmark = pytest.mark.skipif(not mod.PADDLEOCR_AVAILABLE, reason="paddleocr not installed")
+pytestmark = pytest.mark.skipif(
+    not mod.PADDLEOCR_AVAILABLE or not mod._model_weights_ready(),
+    reason="paddleocr 或模型权重未就绪（权重需联网首下）",
+)
 
 
 @pytest.fixture
