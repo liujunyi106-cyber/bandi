@@ -51,9 +51,9 @@ jobs:
       - name: Tests (fast track)
         shell: pwsh
         run: |
-          # 不显式传 tests：路径交给 pyproject 的 testpaths，避免 working-directory
-          # 叠加后解析成 bandi/bandi/tests
-          pytest -q -m "not heavy and not external_tool and not timing" --timeout=120 --timeout-method=thread
+          # 显式锚定到本目录再跑：pytest 在 -e 安装形态下会把 testpaths 的 tests
+          # 解析成 bandi/tests（多叠一层），用基于当前目录的绝对路径避免歧义
+          pytest (Join-Path $PWD "tests") -q -m "not heavy and not external_tool and not timing" --timeout=120 --timeout-method=thread
           exit $LASTEXITCODE
 
   frontend:
