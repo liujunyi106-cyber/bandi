@@ -44,3 +44,6 @@ pytest-of-*/
 .idea/
 .DS_Store
 Thumbs.db
+
+# 交付文档只在本地留存，不进仓库（含索引 AGENTS.md）
+交付文档收集/
