@@ -51,10 +51,13 @@ jobs:
       - name: Tests (fast track)
         shell: pwsh
         run: |
-          # 显式锚定到本目录再跑：pytest 在 -e 安装形态下会把 testpaths 的 tests
-          # 解析成 bandi/tests（多叠一层），用基于当前目录的绝对路径避免歧义
-          pytest (Join-Path $PWD "tests") -q -m "not heavy and not external_tool and not timing" --timeout=120 --timeout-method=thread
-          exit $LASTEXITCODE
+          # 诊断：打印真实布局，确定 tests 到底在哪一层
+          Write-Host "workspace = $env:GITHUB_WORKSPACE"
+          Write-Host "PWD       = $PWD"
+          Get-ChildItem $env:GITHUB_WORKSPACE | Select-Object -First 20 Name, Mode | Format-Table -AutoSize
+          Write-Host "--- 找 tests 目录 ---"
+          Get-ChildItem $env:GITHUB_WORKSPACE -Directory -Recurse -Depth 2 -Filter tests -ErrorAction SilentlyContinue | Select-Object FullName
+          exit 1
 
   frontend:
     name: Frontend
