@@ -349,6 +349,25 @@ def test_route_bias_matrix_and_zero_behavior() -> None:
     assert route_bias("execute") == {} and route_bias("") == {} and route_bias(None) == {}
 
 
+def test_recency_factor_accepts_epoch_and_iso_alike() -> None:
+    """契约：同一时刻的 epoch 秒（含数字字符串）与 ISO 串给出相同衰减因子。
+
+    只按 ISO 解析会把 epoch 形态一律当成「无时间」，衰减恒为中性 0.5，
+    导致按时间戳存储的记忆排序结果随存储形态漂移。
+    """
+    from bandi.memory.memory_provider import _recency_factor
+
+    moment = datetime.now(UTC)
+    by_iso = _recency_factor(moment.isoformat())
+    by_epoch_number = _recency_factor(moment.timestamp())
+    by_epoch_string = _recency_factor(str(moment.timestamp()))
+    assert by_iso == pytest.approx(by_epoch_number, abs=1e-9)
+    assert by_iso == pytest.approx(by_epoch_string, abs=1e-9)
+    # 解析不了的时间仍回中性值，不得压成 0
+    assert _recency_factor(None) == 0.5
+    assert _recency_factor("not-a-time") == 0.5
+
+
 def test_search_unified_question_hint_reranks_category(tmp_path: Any) -> None:
     """契约：question_hint 命中四问时按分类倍率重排；None/未知 hint 与缺省完全一致。"""
     moment = datetime.now(UTC)

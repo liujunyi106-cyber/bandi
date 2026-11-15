@@ -138,13 +138,27 @@ def _long_term_metadata(item: Any) -> dict[str, Any]:
 
 def _recency_factor(ts: str | None, now: datetime | None = None) -> float:
     """功能：时间衰减因子（exp(-age_days/半衰期)）——缺时间/解析失败给 0.5 中性
-    值，不得降级为 0（无时间戳记忆不应被彻底压底）。"""
-    if not ts:
+    值，不得降级为 0（无时间戳记忆不应被彻底压底）。
+
+    时间戳既可能是 ISO 串，也可能是 epoch 秒（含数字字符串）；
+    只按 ISO 解析会把后者一律当成「无时间」拉到中性值。
+    """
+    if ts is None or ts == "":
         return 0.5
-    try:
-        born = datetime.fromisoformat(ts)
-    except (TypeError, ValueError):
-        return 0.5
+    born: datetime | None = None
+    if isinstance(ts, (int, float)):
+        born = datetime.fromtimestamp(float(ts), UTC)
+    else:
+        text = str(ts).strip()
+        if not text:
+            return 0.5
+        try:
+            born = datetime.fromisoformat(text)
+        except (TypeError, ValueError):
+            try:
+                born = datetime.fromtimestamp(float(text), UTC)
+            except (TypeError, ValueError, OSError, OverflowError):
+                return 0.5
     if born.tzinfo is None:
         born = born.replace(tzinfo=UTC)
     age_days = ((now or datetime.now(UTC)) - born).total_seconds() / 86400.0
