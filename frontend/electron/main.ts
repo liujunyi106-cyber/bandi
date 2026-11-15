@@ -23,6 +23,16 @@ const BOOT_STAGE_CHANNEL = "bandi:boot-stage";
 const sidecar = new SidecarManager();
 const settings = loadSettings();
 
+/**
+ * 功能：摘掉从父进程继承的 ELECTRON_RUN_AS_NODE，避免它继续传给 sidecar 子进程。
+ *
+ * 子进程带上该变量会以纯 Node 模式启动而拿不到 Electron API；
+ * 启动入口本身的防护在 electron-runner.cjs（dev）与启动快捷方式（打包版）。
+ */
+if (process.env.ELECTRON_RUN_AS_NODE) {
+  delete process.env.ELECTRON_RUN_AS_NODE;
+}
+
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let quitting = false;

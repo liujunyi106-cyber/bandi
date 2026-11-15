@@ -35,6 +35,7 @@ import {
   totalDurationMs,
   type BucketKey,
 } from "./process-display";
+import { ToolCard, toolCardIcon, toolCardKindOf } from "./ToolCard";
 
 const AUTO_COLLAPSE_MS = 1500;
 
@@ -45,6 +46,8 @@ interface BucketItem {
   toolName?: string;
   /** 知识全文（仅知识条目的「展示」按钮消费）。 */
   detail?: string;
+  /** 工具入参（工具专属卡片按 command/path/pattern 渲染正文）。 */
+  input?: Record<string, unknown>;
   /**
    * 该行正文可折叠（思考节点「摘要 + 展开全文」两级）。
    * 折叠态只给摘要标题，正文进 max-h 封顶滚动区——长思考不淹没对话
@@ -125,7 +128,8 @@ function buildRows(nodes: ProcessNode[]): TimelineRow[] {
         id: node.id,
         text: `${toolSummary(node.toolName, node.input)}${scopeLabel ? `｜${scopeLabel}` : ""}`,
         toolName: node.toolName,
-        detail: category === "knowledge" || category === "memory" ? node.detail : undefined,
+        input: node.input,
+        detail: node.detail,
         durationMs: node.durationMs,
         status: node.status,
         toolCallId: node.toolCallId,
@@ -356,6 +360,51 @@ function TimelineItem({
   const Icon = BUCKET_META[category].icon;
   if (category === "knowledge" || category === "memory") {
     return <KnowledgeItem item={item} />;
+  }
+  // 工具行按工具语义渲染专属卡片（命令/差异/读取/检索）；其余类别保持通用行
+  const cardKind = toolCardKindOf(item.toolName);
+  if (cardKind !== "generic") {
+    const CardIcon = toolCardIcon(cardKind);
+    return (
+      <div data-testid="process-timeline-row" data-category={category}>
+        <div
+          data-testid="process-item"
+          data-tool-card={cardKind}
+          className={cn(
+            "group flex items-start gap-2 px-1 py-0.5 text-xs",
+            actions?.onShowDetail && item.toolCallId ? "cursor-pointer" : undefined,
+          )}
+          onClick={(event) => {
+            if (!actions?.onShowDetail || !item.toolCallId) return;
+            if ((event.target as HTMLElement).closest("button")) return;
+            actions.onShowDetail(item.id);
+          }}
+        >
+          <span data-testid="process-item-status" className="mt-[3px] flex shrink-0">
+            <ItemStatus status={item.status} />
+          </span>
+          <CardIcon className="mt-[3px] size-3 shrink-0 opacity-60" />
+          <div className="min-w-0 flex-1">
+            <span
+              data-testid="process-item-text"
+              className="text-chat-muted leading-relaxed break-words"
+            >
+              {item.toolName}
+            </span>
+            <ToolCard kind={cardKind} input={item.input} output={item.detail ?? ""} />
+          </div>
+          {item.status === "skipped" ? (
+            <span
+              data-testid="process-item-skipped"
+              className="text-chat-muted/60 mt-[3px] shrink-0 text-[11px]"
+            >
+              {t("chat.process.skipped")}
+            </span>
+          ) : null}
+        </div>
+        {item.children && item.children.length > 0 ? <SubagentTree nodes={item.children} /> : null}
+      </div>
+    );
   }
   return (
     <div data-testid="process-timeline-row" data-category={category}>

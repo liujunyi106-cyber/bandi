@@ -35,9 +35,11 @@ function toolNode(
   };
 }
 
-/** 功能：读出过程块展开区的行文本序列（按 DOM 次序）。 */
+/** 功能：读出过程块展开区的行文本序列（按 DOM 次序；含工具卡片主体）。 */
 function rowTexts(): string[] {
-  return screen.getAllByTestId("process-item-text").map((node) => node.textContent ?? "");
+  return screen
+    .getAllByTestId("process-timeline-row")
+    .map((node) => node.textContent ?? "");
 }
 
 describe("ProcessBlock 执行顺序", () => {
@@ -153,13 +155,15 @@ describe("ProcessBlock 状态与总行", () => {
 });
 
 describe("ProcessBlock 明细内容", () => {
-  it("工具行展示调用参数摘要", () => {
+  it("工具行以专属卡片呈现调用主体", () => {
     const nodes: ProcessNode[] = [
       toolNode("t1", "web_search", { input: { query: "竞品价格" }, durationMs: 800 }),
     ];
     render(<ProcessBlock nodes={nodes} />);
     fireEvent.click(screen.getByTestId("process-toggle"));
-    expect(screen.getByTestId("process-item")).toHaveTextContent('query="竞品价格"');
+    // 检索类卡片展示查询词本身，而不是 key=value 摘要
+    expect(screen.getByTestId("process-item")).toHaveAttribute("data-tool-card", "search");
+    expect(screen.getByTestId("process-item")).toHaveTextContent("竞品价格");
     // 耗时由总行承载，行内不常驻
     expect(screen.getByTestId("process-item")).not.toHaveTextContent("800ms");
     expect(screen.getByTestId("process-toggle")).toHaveTextContent("800ms");

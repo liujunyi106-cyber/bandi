@@ -93,7 +93,8 @@ describe("真机验证：执行流按真实顺序呈现", () => {
       "explore", // 读 chat-store.ts（失败）
     ]);
 
-    const texts = screen.getAllByTestId("process-item-text").map((n) => n.textContent ?? "");
+    // 工具行的正文在卡片主体里（命令/路径/检索词），整行文本合起来断言
+    const texts = rows.map((row) => row.textContent ?? "");
     expect(texts[0]).toContain("先确认现有实现");
     expect(texts[1]).toContain("ProcessBlock.tsx");
     expect(texts[2]).toContain("buildBuckets");

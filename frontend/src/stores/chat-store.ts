@@ -764,11 +764,26 @@ export function entriesToMessages(sessionId: string, entries: SessionEntry[]): C
     }
     if (entry.entry_type === "summary") continue;
     if (entry.entry_type === "process") {
-      // -3c：过程条目挂到前一条 assistant 消息（轮末落库序与对话序一致）
+      // 过程条目挂到前一条 assistant 消息（轮末落库序与对话序一致）
       const nodes = parseEntryProcessNodes(entry.metadata);
       const target = [...messages].reverse().find((item) => item.role === "assistant");
       // 落库过程可能来自中断/异常轮：重建时统一结算，避免刷新后永久「正在执行」
-      if (target && nodes) target.process = target.process ?? settleRunningNodes(nodes);
+      if (target && nodes) {
+        target.process = target.process ?? settleRunningNodes(nodes);
+      } else if (nodes) {
+        // 工具轮正文为空时上一条 assistant 被空白过滤丢弃，过程据此独立成条
+        messages.push({
+          id: entry.id,
+          sessionId,
+          role: "assistant",
+          content: "",
+          done: true,
+          turnIndex: entry.turn_index,
+          createdAt: entry.created_at,
+          entryId: entry.id,
+          process: settleRunningNodes(nodes),
+        });
+      }
       continue;
     }
     if (!["user", "assistant", "system"].includes(role)) continue;
@@ -2212,5 +2227,13 @@ export const useChatStore = create<ChatState>()(
 // is_concurrency_safe=false，同一时刻只会有一张卡），该路径需向真实
 // store 注入第二张交互帧。生产代码无 window 暴露，故在此开 dev 口子。
 if (import.meta.env.DEV && typeof window !== "undefined") {
-  (window as unknown as { __bandiChatStore?: typeof useChatStore }).__bandiChatStore = useChatStore;
+  (
+    window as unknown as {
+      __bandiChatStore?: typeof useChatStore;
+      __bandiChatHelpers?: { entriesToMessages: typeof entriesToMessages };
+    }
+  ).__bandiChatStore = useChatStore;
+  (window as unknown as { __bandiChatHelpers?: object }).__bandiChatHelpers = {
+    entriesToMessages,
+  };
 }
