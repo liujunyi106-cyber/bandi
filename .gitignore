@@ -64,6 +64,13 @@ sessions/
 .k.log
 .v.err
 .v.log
+.sc.err
+.sc.log
+.sc2.err
+.sc2.log
+.sc3.err
+.sc3.log
+release129.py
 .v2.py
 capture_win.py
 focus_win.py
