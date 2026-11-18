@@ -606,6 +606,37 @@ _TASK_IMPERATIVES = (
     "整理成",
     "做成",
     "做成一份",
+    "创建一个",
+    "创建个",
+    "带我做",
+    "帮我做",
+    "做一个",
+    "写个",
+    "写一份",
+    "给我写",
+    "帮我写",
+    "生成个",
+)
+
+# 功能：强指令动词——即使没有文件路径，也足以判定为一次性任务。
+_STRONG_IMPERATIVES = (
+    "创建一个",
+    "创建个",
+    "带我做",
+    "帮我创建",
+    "帮我生成",
+    "帮我做",
+    "给我写",
+    "帮我写",
+    "写一份",
+    "生成一个",
+    "生成一份",
+)
+
+# 功能：疑问式任务——问的是「环境里有没有/该怎么做」，答案随环境变化，不是稳定事实。
+_QUESTION_TASK_RE = re.compile(
+    r"(?:吗[？?]|呢[？?])"  # 疑问收尾
+    r"|(?:装了|安装了|有没有|能不能|可不可以)[^。；\n]{0,30}(?:吗|呢|\?)"
 )
 
 # 功能：以「把…」起头的处置句——中文里这类句式绝大多数是在指令如何加工数据。
@@ -632,11 +663,24 @@ def _looks_task_instruction(text: str) -> bool:
     condensed = body.strip(_MARKS)
     if not condensed:
         return False
+    if any(word in condensed for word in _STRONG_IMPERATIVES):
+        return True
+    has_artifact = bool(_ARTIFACT_HINT.search(condensed))
     imperative = any(word in condensed for word in _TASK_IMPERATIVES) or bool(
         _DISPOSAL_RE.search(condensed)
     )
-    if not imperative:
-        return False
+    if imperative and has_artifact:
+        return True
+    # 疑问式任务：问的是「环境里有没有 / 该怎么做」，答案换台机器就变。
+    # 这类问句常与「没装的话给我…」连写，所以整段出现疑问或命令式都算。
+    # 问环境现状的句子（装了 X 吗 / 有没有 X）答案随机器变化，无需路径线索也能判。
+    if _QUESTION_TASK_RE.search(condensed):
+        return True
+    # 「帮我」一类措辞本身不够：「帮我看下报错」是真实排查经历，值得记；
+    # 只有它与产物/路径线索同时出现，才是一次性交办。
+    return bool(
+        re.search(r"(?:给我写|帮我写|给我生成|提供一个|写个|装个)", condensed)
+    ) and has_artifact
     # 有明确产物/路径线索时更确定是一次性操作；纯动词也可能是偏好表达，
     # 因此要求两者同时出现，避免把「帮我记住我喜欢简短回答」误拦。
     return bool(_ARTIFACT_HINT.search(condensed))

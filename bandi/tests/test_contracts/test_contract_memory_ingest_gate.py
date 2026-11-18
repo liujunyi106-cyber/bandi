@@ -55,7 +55,8 @@ def test_rule_stage_saves_llm_call() -> None:
 
 def test_llm_rejects_ambiguous_text() -> None:
     """功能：规则放行但语义模糊的内容，交给模型精判拒掉。"""
-    verdict = review_with_judge("帮我想想这个小工具该怎么做比较好，随便聊聊", lambda _p: "REJECT")
+    # 规则层看不出的语义噪音（无指令动词、无路径），只能靠模型判
+    verdict = review_with_judge("今天天气不错，随便聊了几句关于效率的话题", lambda _p: "REJECT")
     assert verdict.decision == "reject"
     assert verdict.reason == "llm_judged"
 

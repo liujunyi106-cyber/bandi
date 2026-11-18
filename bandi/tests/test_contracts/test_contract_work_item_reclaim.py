@@ -95,3 +95,41 @@ def test_session_delete_cascades_work_items() -> None:
     source = inspect.getsource(app_module._interrupt_session_work_items)
     assert "cancel_work_item" in source or "interrupt_work_item" in source
     assert "delete" in source, "只中断不删除会让工作项永久残留"
+
+
+def test_abandoned_attention_items_reach_terminal_state(tmp_path) -> None:
+    """功能：超时的 needs_attention 必须真正进入终态，不能只记日志。
+
+    真机缺陷：29 张卡长期停在 needs_attention，每轮 tick 都被重新判为「已放弃」
+    并刷一条告警，但状态从未推进——于是永久自我重复。
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from bandi.company.store import WorkItemStore
+    from bandi.company.work_item import Phase, WorkItem, WorkItemTurnType
+    from bandi.company.work_item_transition import refresh_dependents
+
+    store = WorkItemStore(str(tmp_path / "company.db"))
+    stale_at = datetime.now(UTC) - timedelta(days=30)
+    item = WorkItem(
+        id="stale-1",
+        title="长期停留的卡",
+        description="d",
+        phase=Phase.NEEDS_ATTENTION,
+        turn_type=WorkItemTurnType.EXECUTE,
+        assignee_role=None,
+        parent_id=None,
+        children_ids=[],
+        links={},
+        metadata={},
+        runtime_metadata={},
+        updated_at=stale_at,
+    )
+    store.save(item)
+
+    refresh_dependents(store)
+
+    saved = store.get("stale-1")
+    assert saved is not None
+    assert saved.phase == Phase.FAILED, "超时卡必须进入终态，否则下轮又被重判一次"
+    assert saved.metadata.get("abandoned_reason") == "stale_needs_attention"

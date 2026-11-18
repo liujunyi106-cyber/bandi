@@ -298,17 +298,30 @@ export class SidecarManager {
 
       // 通道 ②：端口文件轮询兜底（stdout 丢失/缓冲被劫持时仍能拿到端口）
       const fileTimer = setInterval(() => {
-        if (port !== null) return;
+        if (settled) {
+          clearInterval(fileTimer);
+          return;
+        }
+        if (port !== null) {
+          // 端口已从通道 ① 拿到：本轮使命结束，自己关掉，否则会每 250ms 空转到进程退出
+          clearInterval(fileTimer);
+          return;
+        }
         const found = readPortFile(child, child.pid);
         if (found !== null) {
           port = found;
           this.reportStage("listening");
+          clearInterval(fileTimer);
         }
       }, PROBE_INTERVAL_MS);
 
       // /ready 就绪探针轮询
       let probing = false;
       const probeTimer = setInterval(() => {
+        if (settled) {
+          clearInterval(probeTimer);
+          return;
+        }
         if (port === null) return;
         if (!probing) {
           probing = true;

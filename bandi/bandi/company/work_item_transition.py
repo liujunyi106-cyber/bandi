@@ -662,6 +662,10 @@ def refresh_dependents(
         work_item_by_id = {work_item_id(item): item for item in work_items}
         doomed_ids = compute_doomed_work_item_ids(work_item_by_id)
         abandoned_ids = compute_abandoned_work_item_ids(work_items)
+        # 超时未推进的 needs_attention 必须真正进入终态：只记日志不推状态，
+        # 下一轮它们仍然是 needs_attention，于是每 tick 都被重新判一次并刷一条告警，
+        # 永久不会自愈。
+        abandoned_now: set[str] = set(abandoned_ids)
         if abandoned_ids:
             # 只在中止发生的那一轮打一条汇总：这些项一旦标成失败就不会再进这个分支，
             # 但历史遗留可能长期驻留，逐条刷 UUID 会把日志和 tick 都拖慢。
@@ -678,6 +682,36 @@ def refresh_dependents(
         for work_item in work_items:
             item_id = work_item_id(work_item)
             metadata = _metadata(work_item)
+            phase = getattr(work_item, "phase", None)
+            # 超时未推进的 needs_attention 直接进终态——这一步必须在依赖分支之前：
+            # 无依赖的卡会走下面的 continue，永远到不了依赖处理逻辑，于是它们
+            # 每轮都被重新判成「已放弃」并刷一条告警，却从不真正改变状态。
+            if item_id in abandoned_now and phase == Phase.NEEDS_ATTENTION:
+                original_updated_at = getattr(work_item, "updated_at", None)
+                try:
+                    validate_transition(phase, Phase.FAILED)
+                    work_item.phase = Phase.FAILED
+                    work_item.metadata = {
+                        **metadata,
+                        "abandoned_reason": "stale_needs_attention",
+                    }
+                    work_item.updated_at = stamp
+                    pending_writes.append(
+                        (
+                            work_item,
+                            getattr(work_item, "revision", 0),
+                            phase.value,
+                            Phase.FAILED.value,
+                            metadata,
+                            original_updated_at,
+                        )
+                    )
+                    changed = True
+                except Exception:
+                    logger.warning(
+                        "abandoned work item %s failed to transition", item_id, exc_info=True
+                    )
+                continue
             raw_dependency_ids = _clean_ids(metadata.get(DEPENDENCY_WORK_ITEM_IDS_KEY, []))
             if not raw_dependency_ids:
                 continue
