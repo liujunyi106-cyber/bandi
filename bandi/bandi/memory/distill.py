@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import re
 from collections.abc import Callable
@@ -259,6 +260,9 @@ def distill_for_episode(
         if isinstance(result, DistilledMemory):
             return result
         logger.warning("distiller returned invalid result, rule fallback")
+    except DistillerSkippedError:
+        # 模型明确说不值得记：直接丢弃，不能让规则把它变成一条事实
+        return DistilledMemory(kind="discard", key="", content="", distilled_by="llm_skip")
     except Exception as e:  # noqa: BLE001 — 提炼失败不得丢失提名
         logger.warning("distiller failed, rule fallback: %s", e)
     return rule_distill(
@@ -277,3 +281,111 @@ __all__ = [
     "rule_distill",
     "strip_wrapper",
 ]
+
+# 功能：LLM 提炼提示词——只要结构化三件套，不要自由发挥。
+_LLM_DISTILL_PROMPT = """你在把一次对话历程提炼成一条可复用的长期记忆。
+
+历程：
+{episode}
+
+只输出 JSON，不要解释：
+{{"kind": "事实|偏好|约定|经验",
+  "key": "一个短标题，不超过 30 字",
+  "content": "一句话说清的结论，不超过 120 字",
+  "importance": 0.0到1.0,
+  "subject": "主语（可空）",
+  "predicate": "谓语（可空）",
+  "object_value": "宾语（可空）"}}
+
+硬性要求：
+- 只输出一个 JSON 对象，不要任何前后说明、不要代码块标记。
+- key 必须是中文短语（不超过 20 字），写人能看懂的主题；
+  禁止抄用源文本里的字段名、英文标识、代码符号。
+- content 必须是一句可直接读的中文断言，不能是任务原文照抄。
+- 任务指令、操作步骤、寒暄、算数结果、一次性翻译——一律不记，输出 {{"skip": true}}。
+"""
+
+
+class DistillerSkippedError(Exception):
+    """功能：模型判定这段历程不值得记——上层应丢弃，不能退回规则提炼。"""
+
+
+def build_llm_distiller(complete: Callable[[str], Any]) -> Callable[[Episode], DistilledMemory]:
+    """功能：用注入的模型调用构造提炼器；输出不合法时交给上层降级。
+
+    只负责把模型原文变成 `DistilledMemory`；调用失败、超时、JSON
+    不合法一律抛异常，由 `distill_for_episode` 的 try/except 退回规则提炼——
+    模型不可用不能让提名丢失。
+    """
+
+    def _distill(episode: Episode) -> DistilledMemory:
+        summary = str(getattr(episode, "summary", "") or "").strip()
+        if not summary:
+            raise ValueError("episode summary empty")
+        raw = complete(_LLM_DISTILL_PROMPT.format(episode=summary[:1500]))
+        payload = _extract_json_object(raw)
+        if payload is None:
+            raise ValueError("distiller output not JSON")
+        if payload.get("skip"):
+            raise DistillerSkippedError("model says not worth remembering")
+        kind = str(payload.get("kind") or "事实").strip()
+        key = str(payload.get("key") or "").strip()
+        content = str(payload.get("content") or "").strip()
+        if not key or not content:
+            raise ValueError("distiller missing key/content")
+        if not _looks_like_natural_key(key):
+            raise ValueError(f"distiller key not natural language: {key!r}")
+        try:
+            importance = max(0.0, min(1.0, float(payload.get("importance") or 0.5)))
+        except (TypeError, ValueError):
+            importance = 0.5
+        return DistilledMemory(
+            kind=kind,
+            key=key[:60],
+            content=content[:240],
+            importance=importance,
+            subject=str(payload.get("subject") or "").strip(),
+            predicate=str(payload.get("predicate") or "").strip(),
+            object_value=str(payload.get("object_value") or "").strip(),
+            distilled_by="llm",
+        )
+
+    return _distill
+
+
+def _extract_json_object(text: Any) -> dict[str, Any] | None:
+    """功能：从模型输出里抠出第一段 JSON 对象。"""
+    body = str(text or "")
+    start = body.find("{")
+    while start >= 0:
+        depth = 0
+        for index in range(start, len(body)):
+            if body[index] == "{":
+                depth += 1
+            elif body[index] == "}":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        parsed = json.loads(body[start : index + 1])
+                    except json.JSONDecodeError:
+                        break
+                    return parsed if isinstance(parsed, dict) else None
+        start = body.find("{", start + 1)
+    return None
+
+
+# 功能：合法 key 必须含中文且不带代码符号——防模型抄源文字段名。
+_KEY_ALLOWED_RE = re.compile(r"^[\u4e00-\u9fff0-9A-Za-z\s\-_/.\u3001\uff0c\uff1a()（）]+$")
+_KEY_CJK_RE = re.compile(r"[\u4e00-\u9fff]")
+
+
+def _looks_like_natural_key(key: str) -> bool:
+    """功能：判断 key 是否为人读中文短语（非字段名/代码符号）。"""
+    body = (key or "").strip()
+    if not body or len(body) > 40:
+        return False
+    if not _KEY_CJK_RE.search(body):
+        return False
+    if ":" in body or "=" in body or "{" in body or '"' in body:
+        return False
+    return bool(_KEY_ALLOWED_RE.match(body))

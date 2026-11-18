@@ -147,7 +147,21 @@ export function UsageCachePanel({
         </div>
       </div>
 
-      {total.requests === 0 ? (
+      {loading && total.requests === 0 ? (
+        // 首次加载：请求还没回来时不能显示「没有记录」——那会把「正在取数」
+        // 读成「一条数据都没有」。
+        <div className="space-y-2" data-testid="usage-loading">
+          <div className="grid grid-cols-3 gap-2">
+            {[0, 1, 2].map((index) => (
+              <div
+                key={index}
+                className="border-chat-hairline bg-muted/40 h-14 animate-pulse rounded-md border"
+              />
+            ))}
+          </div>
+          <div className="border-chat-hairline bg-muted/30 h-24 animate-pulse rounded-md border" />
+        </div>
+      ) : total.requests === 0 ? (
         <p className="text-chat-muted text-xs" data-testid="usage-empty">
           {t("settings.usage.empty")}
         </p>

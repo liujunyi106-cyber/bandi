@@ -116,6 +116,9 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      // 功能：窗口隐藏/最小化时不冻结渲染——默认节流会把整个页面挂起，
+      // 切回时要重新唤醒并重绘，表现为长时间白屏与首下点击无响应。
+      backgroundThrottling: false,
     },
   });
   mainWindow = win;
@@ -259,6 +262,12 @@ if (!app.requestSingleInstanceLock()) {
   });
   // 功能：移除 Electron 默认应用菜单（应用/编辑），桌面端只用自绘标题栏与托盘菜单。
   Menu.setApplicationMenu(null);
+
+  // 功能：不让渲染进程因窗口隐藏而被降级为后台优先级。
+  // 默认策略会把隐藏页归入低优先级队列，切回时需重新唤醒、
+  // 重建合成层，表现为白屏与首下点击无响应。
+  app.commandLine.appendSwitch("disable-renderer-backgrounding");
+  app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
 
   app.on("second-instance", showMainWindow);
 

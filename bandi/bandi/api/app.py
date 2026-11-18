@@ -3738,10 +3738,32 @@ def _get_task_scheduler() -> Any:
                 if maintenance.enabled and interval_hours > 0:
                     scheduler_config.maintenance_enabled = True
                     scheduler_config.maintenance_interval_sec = interval_hours * 3600.0
+                    # 判官模型：用户在模型配置里标了 judge 就用它，
+                    # 否则回退到活跃档案；两者都没有就保持规则提炼。
+                    _distiller = None
+                    try:
+                        from bandi.memory.distill import build_llm_distiller
+                        from bandi.memory.judge_model import build_judge_complete
+
+                        _judge_complete = build_judge_complete()
+                        if _judge_complete is not None:
+                            _distiller = build_llm_distiller(_judge_complete)
+                            logger.info(
+                                "memory distiller wired to judge model: %s",
+                                getattr(_judge_complete, "__name__", "judge"),
+                            )
+                        else:
+                            logger.info(
+                                "no judge model configured, memory promotion uses rules"
+                            )
+                    except Exception as exc:  # noqa: BLE001 - 装配失败不阻断启动
+                        logger.warning("memory distiller wiring failed: %s", exc)
+
                     base_maintenance = default_maintenance_callable(
                         ttl_days=maintenance.session_ttl_days,
                         forget_older_than_days=maintenance.forget_older_than_days,
                         promote_limit=maintenance.promote_limit,
+                        distiller=_distiller,
                     )
 
                     def _maintenance_with_reclaim() -> Any:

@@ -123,7 +123,7 @@ export function SessionPanel({ scope }: { scope: PanelScope }) {
       ) : null}
 
       {/* 顶部条（h-14 与 AppHeader 同高——2026-09-26 用户真机拍板：右栏顶部与对话面板顶部对齐） */}
-      <div className="border-chat-hairline flex h-14 shrink-0 items-center gap-1 border-b px-2">
+      <div className="flex h-14 shrink-0 items-center gap-1 px-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button

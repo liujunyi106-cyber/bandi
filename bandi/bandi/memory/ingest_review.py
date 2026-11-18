@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from collections.abc import Callable
-
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from bandi.memory.extraction import extract_memory_fields
 
@@ -640,7 +640,10 @@ _QUESTION_TASK_RE = re.compile(
 )
 
 # 功能：以「把…」起头的处置句——中文里这类句式绝大多数是在指令如何加工数据。
-_DISPOSAL_RE = re.compile(r"(?:^|[。；\n])\s*把[^。；\n]{2,60}?(?:输出|写到|写入|保存|另存|生成|改成|转成|合并|整理)", re.M)
+_DISPOSAL_RE = re.compile(
+    r"(?:^|[。；\n])\s*把[^。；\n]{2,60}?(?:输出|写到|写入|保存|另存|生成|改成|转成|合并|整理)",
+    re.M,
+)
 
 # 功能：产物/路径线索——带具体文件路径的指令多半是一次性操作。
 _ARTIFACT_HINT = re.compile(
@@ -678,9 +681,10 @@ def _looks_task_instruction(text: str) -> bool:
         return True
     # 「帮我」一类措辞本身不够：「帮我看下报错」是真实排查经历，值得记；
     # 只有它与产物/路径线索同时出现，才是一次性交办。
-    return bool(
-        re.search(r"(?:给我写|帮我写|给我生成|提供一个|写个|装个)", condensed)
-    ) and has_artifact
+    return (
+        bool(re.search(r"(?:给我写|帮我写|给我生成|提供一个|写个|装个)", condensed))
+        and has_artifact
+    )
     # 有明确产物/路径线索时更确定是一次性操作；纯动词也可能是偏好表达，
     # 因此要求两者同时出现，避免把「帮我记住我喜欢简短回答」误拦。
     return bool(_ARTIFACT_HINT.search(condensed))

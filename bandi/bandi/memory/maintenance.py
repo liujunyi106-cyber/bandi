@@ -366,13 +366,16 @@ def run_memory_maintenance(
     forget_older_than_days: int = FORGET_OLDER_THAN_DAYS,
     promote_limit: int = PROMOTE_LIMIT,
     decay_long_term: bool = True,
+    distiller: Callable[[Any], Any] | None = None,
 ) -> dict[str, Any]:
     """功能：一次完整生命周期维护（遗忘 → 晋升 → 长期层衰减/遗忘 → 会话 TTL/归档）。
 
     长期层衰减排在晋升**之后**：晋升本轮刚写入的条目不该立刻被衰减打折
     （晋升是刚沉淀下来的高价值事实），下一轮周期起才参与衰减。
     """
-    promotion = promote_notable_episodes(episodic, long_term, limit=promote_limit)
+    promotion = promote_notable_episodes(
+        episodic, long_term, limit=promote_limit, distiller=distiller
+    )
     report: dict[str, Any] = {
         "forgotten": forget_low_value_episodes(
             episodic, older_than_days=forget_older_than_days, now=now
@@ -403,8 +406,12 @@ def default_maintenance_callable(
     ttl_days: int = SESSION_TTL_DAYS,
     forget_older_than_days: int = FORGET_OLDER_THAN_DAYS,
     promote_limit: int = PROMOTE_LIMIT,
+    distiller: Callable[[Any], Any] | None = None,
 ) -> Callable[[], dict[str, Any]]:
-    """功能：默认数据目录上的维护入口（API scheduler 装配用，测试不触发）。"""
+    """功能：默认数据目录上的维护入口（API scheduler 装配用，测试不触发）。
+
+    `distiller` 为提名时的提炼器：传 None 就只走规则提炼，提炼质量会差很多
+    （命中了一次性任务指令都不容易被识别）；装配时应把判官模型注入进来。"""
 
     def _run() -> dict[str, Any]:
         data_dir = Path.home() / ".bandi" / "data"
@@ -431,6 +438,7 @@ def default_maintenance_callable(
                 ttl_days=ttl_days,
                 forget_older_than_days=forget_older_than_days,
                 promote_limit=promote_limit,
+                distiller=distiller,
             )
             from bandi.memory.staging import MemoryPendingStore, default_memory_store_dir
 
