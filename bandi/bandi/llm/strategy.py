@@ -102,7 +102,11 @@ class FallbackEngine:
                             if self._classify(e2).action != "backoff":
                                 break
                     continue
-                logger.warning("fallback %s -> %s", provider_name, str(e))
+                # 带上异常类型：部分异常（如超时/连接类）str() 为空串，只打消息
+                # 会得到「fallback X -> 」这种无线索日志，事后无法定位。
+                logger.warning(
+                    "fallback %s -> %s: %s", provider_name, type(e).__name__, str(e) or "(空消息)"
+                )
                 continue
         raise ProviderChainExhaustedError(str(last_error), last_error=last_error)
 

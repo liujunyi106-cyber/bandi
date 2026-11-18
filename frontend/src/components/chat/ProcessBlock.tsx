@@ -19,7 +19,6 @@ import {
   NotebookPen,
   Puzzle,
   Wrench,
-  X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -30,10 +29,12 @@ import {
   bucketFor,
   formatDurationMs,
   inputPreview,
+  latestParagraphFirstLine,
   thinkingSummary,
   totalDurationMs,
   type BucketKey,
 } from "./process-display";
+import { MarkdownRenderer } from "./MarkdownRenderer";
 import { ToolCard, toolCardIcon, toolCardKindOf } from "./ToolCard";
 
 const AUTO_COLLAPSE_MS = 1500;
@@ -90,17 +91,20 @@ function buildRows(nodes: ProcessNode[]): TimelineRow[] {
     const order = node.seq ?? index;
     if (node.kind === "thought") {
       const { title, body } = thinkingSummary(node.text);
+      // 运行中跟随最新一段的结论（DSH 同口径），结束后回到首个要点作为标题
+      const live = node.status === "running" ? latestParagraphFirstLine(node.text) : "";
       rows.push({
         id: `${order}:thought`,
         key: node.id,
         category: "thought",
         item: {
           id: node.id,
-          // 行首固定动作名「思考」，摘要放标题正文——两者不同源，不会同一句出现两遍
+          // 行首固定动作名「思考」；摘要取首个要点，展开后看完整正文
           text: "",
-          summary: title || body,
-          detail: title ? body : undefined,
-          collapsible: Boolean(title && body),
+          summary: live || title || body,
+          // 正文始终可展开：思考里的中间结论、判断与代码块都在这里
+          detail: node.text,
+          collapsible: Boolean(node.text),
           durationMs: node.durationMs,
           status: node.status,
         },
@@ -220,10 +224,11 @@ const BUCKET_META: Record<BucketKey, { icon: typeof Brain; labelKey: string }> =
 
 /** 功能：明细行状态图标（执行中 spinner / 失败红 X / 已跳过灰 ⊘；成功不显示图标）。 */
 function ItemStatus({ status }: { status: BucketItem["status"] }) {
+  // 状态靠图标格上的箭头/图标与文字颜色表达：失败由「执行失败」文案 + 玫瑰色承载，
+  // 不再额外插一个叉号把左侧图标位挤歪（图标位只放一类图标）。
   if (status === "running") {
     return <Loader2 className="text-primary size-3 shrink-0 animate-spin" />;
   }
-  if (status === "error") return <X className="text-destructive size-3 shrink-0" />;
   if (status === "skipped") return <CircleSlash className="text-chat-muted/60 size-3 shrink-0" />;
   return null;
 }
@@ -375,8 +380,9 @@ function TimelineItem({
   // 折叠态结论：后端完成态短语优先；未完成时用参数摘要（用户先看到「要做什么」）
   const summary = (item.summary ?? firstLineOf(item.text ?? "")).trim();
   const body = item.detail ?? "";
-  // 可展开条件：多行输出或有额外正文（单行输出不给箭头，与 DSH 同口径）
-  const expandable = body.includes("\n") || Boolean(item.collapsible && item.detail);
+  // 可展开条件：工具行一律可展开（能回看这次调用的参数与输出），
+  // 思考行仅在有正文分段时可展开——不再用「输出是否多行」这种偶然属性决定能不能点。
+  const expandable = Boolean(item.toolName) || Boolean(item.collapsible && item.detail);
   const cardKind = toolCardKindOf(item.toolName, item.presentCall);
   const CardIcon = cardKind === "generic" ? Icon : toolCardIcon(cardKind);
   // 工具行显示工具名；思考/技能等无工具名时显示所属类别的动作名
@@ -398,19 +404,17 @@ function TimelineItem({
         tabIndex={expandable ? 0 : undefined}
         aria-expanded={expandable ? expanded : undefined}
         className={cn(
-          // 单行固定 24px 高；图标列宽固定，标题与摘要都从同一列后开始（左缘对齐）
-          "group flex h-6 items-center gap-1.5 rounded-md px-1 text-xs",
-          "transition-colors duration-150",
-          expandable && "hover:bg-chat-rail/50 cursor-pointer",
+          // 单行固定 24px：图标列 + 标题 + 摘要，三段都从同一基线排布
+          "group/row flex h-6 min-w-0 items-center gap-1.5 px-1 text-xs",
+          "transition-colors duration-100",
+          // 悬浮只改文字色（与 DSH 一致），不加整行灰底块
+          expandable && "cursor-pointer",
           item.status === "skipped" && "opacity-55",
         )}
         onClick={(event) => {
           if ((event.target as HTMLElement).closest("button")) return;
-          if (expandable) {
-            setExpanded((value) => !value);
-            return;
-          }
-          openDetail();
+          // 行本身就是展开开关（与 DSH 一致）；右栏详情入口在展开后的明细里，不抢行的点击
+          if (expandable) setExpanded((value) => !value);
         }}
         onKeyDown={(event) => {
           if (!expandable) return;
@@ -420,31 +424,57 @@ function TimelineItem({
           }
         }}
       >
-        <span data-testid="process-item-status" className="flex shrink-0">
-          <ItemStatus status={item.status} />
+        {/* 图标与箭头同格叠放：常态显示图标，悬浮/展开时换成箭头 */}
+        <span
+          data-testid="process-item-lead"
+          className="text-chat-muted relative inline-flex size-4 shrink-0 items-center justify-center"
+        >
+          <CardIcon
+            aria-hidden="true"
+            data-testid="process-item-icon"
+            className={cn(
+              "size-3.5 transition-opacity duration-100",
+              expandable &&
+                (expanded
+                  ? "opacity-0"
+                  : "opacity-100 group-hover/row:opacity-0 group-focus-within/row:opacity-0"),
+            )}
+          />
+          {expandable ? (
+            <ChevronRight
+              aria-hidden="true"
+              data-testid="process-item-expand"
+              className={cn(
+                "absolute inset-0 m-auto size-3.5 transition-[opacity,transform] duration-100",
+                expanded
+                  ? "rotate-90 opacity-100"
+                  : "opacity-0 group-hover/row:opacity-100 group-focus-within/row:opacity-100",
+              )}
+            />
+          ) : null}
         </span>
-        <CardIcon className="text-chat-muted size-3.5 shrink-0" />
         <span
           data-testid="process-item-text"
           className={cn(
-            // 固定标签列宽：不同工具名等长显示，后面的摘要起点才能纵向对齐
-            "w-[4.5rem] shrink-0 truncate font-normal",
+            "shrink-0 truncate font-normal transition-colors duration-100",
             running ? "text-chat-ink" : "text-chat-muted",
+            expandable && "group-hover/row:text-chat-ink",
           )}
         >
           {label || t(`chat.process.${category}`)}
         </span>
-        {summary ? (
+        {/* 摘要与标题之间用 2px 圆点分隔（左右各 8px，与参考实现同距），展开后让位给正文 */}
+        {summary && !expanded ? (
           <>
             <span
               aria-hidden="true"
               data-testid="process-item-dot"
-              className="bg-chat-muted/45 size-0.5 shrink-0 rounded-full"
+              className="bg-chat-muted/50 mx-2 size-0.5 shrink-0 rounded-full"
             />
             <span
               data-testid="process-item-summary"
               className={cn(
-                "text-chat-muted/75 min-w-0 flex-1 truncate",
+                "text-chat-muted/80 min-w-0 flex-1 truncate",
                 item.status === "error" && "text-rose-600",
               )}
             >
@@ -462,29 +492,37 @@ function TimelineItem({
             {t("chat.process.skipped")}
           </span>
         ) : null}
-        {expandable ? (
-          <ChevronRight
-            aria-hidden="true"
-            data-testid="process-item-expand"
-            className={cn(
-              "text-chat-muted/60 size-3 shrink-0 transition-transform duration-150",
-              "opacity-0 group-hover:opacity-100",
-              expanded && "rotate-90 opacity-100",
-            )}
-          />
-        ) : null}
       </div>
       {expanded ? (
         <div
           data-testid="process-item-body"
           className="ml-[22px] border-l border-black/5 py-1 pl-2"
         >
-          <ToolCard kind={cardKind} input={item.input} output={body} />
-          {cardKind === "generic" && body ? (
-            <div className="text-chat-muted/90 text-xs leading-relaxed whitespace-pre-wrap break-words">
-              {body}
+          {item.toolName ? (
+            <>
+              <ToolCard kind={cardKind} input={item.input} output={body} />
+              {cardKind === "generic" && body ? (
+                <div className="text-chat-muted/90 text-xs leading-relaxed whitespace-pre-wrap break-words">
+                  {body}
+                </div>
+              ) : null}
+              {actions?.onShowDetail && item.toolCallId ? (
+                <button
+                  type="button"
+                  data-testid="process-item-detail"
+                  onClick={openDetail}
+                  className="text-chat-muted/70 hover:text-chat-ink mt-1 text-[11px] underline-offset-2 hover:underline"
+                >
+                  {t("chat.process.openDetail")}
+                </button>
+              ) : null}
+            </>
+          ) : (
+            // 思考正文按 Markdown 渲染：中间的判断结论、列出的要点、代码块都保留排版
+            <div className="text-chat-muted/90 text-xs leading-relaxed">
+              <MarkdownRenderer text={body} />
             </div>
-          ) : null}
+          )}
         </div>
       ) : null}
       {item.children && item.children.length > 0 ? <SubagentTree nodes={item.children} /> : null}

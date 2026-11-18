@@ -110,30 +110,25 @@ def tool_result_summary(
     tool_input: dict[str, Any] | None = None,
     done_label: str = "",
 ) -> str:
-    """功能：工具完成后的一行结论（「执行了命令 · 输出首行」形态）。
+    """功能：工具完成后的一行结论——直接是输出首行，无输出时给完成态短语。
 
-    折叠态直接展示这一行，用户不展开也能知道这步做了什么、结果如何；
-    工具自己声明的 done_label 优先（新工具接入无需改此处映射），
-    失败时前置失败标记，空输出只留动作短语。
+    参考实现里工具行右侧就是这次调用的产出本身（成功时是输出首行，无输出时是
+    「已完成」），不拼「已搜索代码 · 」这类动作前缀：动作名已经在行首，重复一遍
+    只会把摘要推远。失败同样只写输出内容，标红交给渲染侧。
     """
-    if not success:
-        action = "执行失败"
-    else:
-        action = (
-            done_label
-            or _TOOL_DONE_LABELS.get((tool_name or "").lower())
-            or (f"已调用 {tool_name}" if tool_name else "已执行")
-        )
     first_line = ""
     for raw in (output_preview or "").splitlines():
         text = raw.strip()
         if text:
             first_line = text
             break
-    if not first_line:
-        return action
-    summary = f"{action} · {first_line}"
-    return summary[:_SUMMARY_MAX]
+    if first_line:
+        return first_line[:_SUMMARY_MAX]
+    if not success:
+        return "执行失败"
+    return (done_label or _TOOL_DONE_LABELS.get((tool_name or "").lower()) or "已完成")[
+        :_SUMMARY_MAX
+    ]
 
 
 def _apply_child_progress(parent: dict[str, Any], kind: str, payload: dict[str, Any]) -> None:
@@ -251,7 +246,16 @@ class ProcessRecorder:
         return self._seq
 
     def _begin_step(self) -> int:
-        """功能：新推理步——每次内容产出前的工具/思考段都归入同一步，内容产出后推进。"""
+        """功能：当前推理步号——一段思考开启新的一步，其后执行都归入该步。
+
+        一次「想 → 做」就是一个推理步：思考节点负责开步，工具节点跟随。
+        这样渲染侧能把「执行完之后的再思考」识别成下一步，而不是并进同一步。
+        """
+        return self._step
+
+    def _open_step(self) -> int:
+        """功能：开启新推理步（思考到达时调用），返回推进后的步号。"""
+        self._step += 1
         return self._step
 
     def _bind_session(self, session_id: str) -> None:
@@ -306,7 +310,8 @@ class ProcessRecorder:
                     "text": delta,
                     "status": "running",
                     "seq": self._next_seq(),
-                    "step": self._begin_step(),
+                    # 新一段思考开启新步：它既是上一批执行的结论，也是下一批执行的依据
+                    "step": self._open_step(),
                     # 起点用单调钟：墙钟跳变（NTP/时区）不会算出负耗时
                     _STARTED_MONO: time.monotonic(),
                 }

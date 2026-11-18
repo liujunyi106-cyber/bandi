@@ -14,8 +14,10 @@ _T = TypeVar("_T")
 
 logger = logging.getLogger(__name__)
 
-# 功能：4xx 中仍值得重试的状态——限流与请求超时是「等一会就好」，不是请求本身错。
-_RETRYABLE_STATUS = frozenset({408, 409, 429})
+# 功能：值得重试的状态——限流与请求超时是「等一会就好」；5xx 是网关/上游瞬时故障，
+# 同样不该直接判成模型错误结束整轮（长会话里 500/502/503 会让正常任务以 MODEL_ERROR
+# 终止，而同一请求立刻重发通常就成功）。
+_RETRYABLE_STATUS = frozenset({408, 409, 429, 500, 502, 503, 504})
 
 
 class CircuitState(Enum):  # 功能：熔断器状态枚举（CLOSED/OPEN/HALF_OPEN）

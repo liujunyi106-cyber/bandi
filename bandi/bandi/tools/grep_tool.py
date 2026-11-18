@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any
 
 from bandi.tools.base import BaseTool, ToolCategory, ToolPermissionContext
@@ -9,6 +10,7 @@ from bandi.tools.fs_tool import (
     _MAX_FILE_SIZE,
     _SENSITIVE_DIRS_LOWER,
     _SENSITIVE_EXTENSIONS,
+    is_pruned_dir,
     project_base,
     project_extra_roots,
     resolve_within_workspace,
@@ -17,8 +19,70 @@ from bandi.tools.fs_tool import (
     workspace_root,
 )
 
+# 功能：按扩展名直接跳过——二进制/数据库/图片读成文本既无意义又费时
+_SKIP_EXTENSIONS = frozenset(
+    {
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".webp",
+        ".ico",
+        ".bmp",
+        ".svgz",
+        ".db",
+        ".db-shm",
+        ".db-wal",
+        ".sqlite",
+        ".sqlite3",
+        ".exe",
+        ".dll",
+        ".so",
+        ".dylib",
+        ".bin",
+        ".pyd",
+        ".pyc",
+        ".pyo",
+        ".zip",
+        ".tar",
+        ".gz",
+        ".7z",
+        ".rar",
+        ".whl",
+        ".egg",
+        ".pdf",
+        ".docx",
+        ".xlsx",
+        ".pptx",
+        ".doc",
+        ".xls",
+        ".mp4",
+        ".mp3",
+        ".wav",
+        ".webm",
+        ".ttf",
+        ".otf",
+        ".woff",
+        ".woff2",
+    }
+)
+
 _DEFAULT_LIMIT = 50
 _MAX_LIMIT = 200
+
+
+def _walk_pruned(root: Any) -> Any:
+    """功能：遍历目录并在下行时剪掉重目录（依赖/构建产物/版本库）。
+
+    纯 `rglob("*")` 会走进 node_modules、release、.git 等目录，一次文本搜索
+    可能耗时数分钟；这里在进入前把整棵子树跳过。
+    """
+    import os
+
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if not is_pruned_dir(d)]
+        for name in filenames:
+            yield Path(dirpath) / name
 
 
 class GrepTool(BaseTool):  # 功能：在文件内容中搜索正则表达式，支持文件过滤/上下文行数/结果数量限制
@@ -85,8 +149,19 @@ class GrepTool(BaseTool):  # 功能：在文件内容中搜索正则表达式，
         reason = sensitive_path_reason(root)
         if reason:
             raise ValueError(reason)
-        if not root.is_dir():
-            raise NotADirectoryError(f"not a directory: {root}")
+
+        # 功能：path 指向文件时就搜这一个文件（与 ripgrep 一致）——
+        # 模型常把「在这份文件里找」表达成 path=file，硬报错会让整步失败。
+        single_file = root.is_file()
+        # 出界判定基准：单文件时用它本身，目录时用目录（相对路径展示也据此）
+        _search_root = root
+        root = root if root.is_dir() else root.parent
+        if single_file:
+            files: Any = [_search_root]
+        elif root.is_dir():
+            files = _walk_pruned(root)
+        else:
+            raise FileNotFoundError(f"path not found: {_search_root}")
 
         max_regex_len = 500
         if len(raw_pattern) > max_regex_len:
@@ -99,11 +174,11 @@ class GrepTool(BaseTool):  # 功能：在文件内容中搜索正则表达式，
         include = params.get("include")
         matches: list[tuple[str, int, str]] = []
 
-        for fpath in root.rglob("*"):
+        for fpath in files:
             # 后校验真实路径在工作区内，出界即跳过（is_symlink 对 junction
             # 返回 False，不能作为判据）
             try:
-                if not fpath.resolve().is_relative_to(root):
+                if not fpath.resolve().is_relative_to(_search_root):
                     continue
             except OSError:
                 continue
@@ -114,6 +189,8 @@ class GrepTool(BaseTool):  # 功能：在文件内容中搜索正则表达式，
             if any(part.lower() in _SENSITIVE_DIRS_LOWER for part in fpath.parts):
                 continue
             if fpath.suffix.lower() in _SENSITIVE_EXTENSIONS:
+                continue
+            if fpath.suffix.lower() in _SKIP_EXTENSIONS:
                 continue
             if include:
                 # `[`/`]` → 字面转义（未转义时 `[ab]` 被当字符类

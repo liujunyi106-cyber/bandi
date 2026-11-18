@@ -4,7 +4,7 @@
  * 生产：spawn FastAPI sidecar → /ready → loadURL（SPA + API + WS 单端口）；失败降级 loadFile。
  * 桌面体验：托盘、窗口状态记忆、开机自启、通知权限。
  */
-import { BrowserWindow, Menu, Tray, app, session, shell } from "electron";
+import { BrowserWindow, Menu, Tray, app, ipcMain, session, shell } from "electron";
 import path from "node:path";
 
 import { loadSettings, saveSettings } from "./app-settings";
@@ -18,6 +18,8 @@ const APP_USER_MODEL_ID = "com.bandi.desktop";
 
 /** 功能：启动阶段广播通道名（与 preload / 渲染层共用同一常量）。 */
 const BOOT_STAGE_CHANNEL = "bandi:boot-stage";
+/** 占位页播完成动画后的握手频道：主进程收到才导航进 SPA（保证启动只演一次）。 */
+const BOOT_DONE_CHANNEL = "bandi:boot-done";
 
 /** sidecar 生命周期管理器（生产模式唯一实例；dev 模式不用）。 */
 const sidecar = new SidecarManager();
@@ -34,6 +36,9 @@ if (process.env.ELECTRON_RUN_AS_NODE) {
 }
 
 let mainWindow: BrowserWindow | null = null;
+/** 启动导航状态：sidecar 端口；两件事都就绪（端口 + 完成动画播完）才进 SPA。 */
+let readyPort = 0;
+let bootDoneAcknowledged = false;
 let tray: Tray | null = null;
 let quitting = false;
 
@@ -83,6 +88,9 @@ const trayHandlers = {
 
 /** 功能：创建主窗口（尺寸与位置取自上次退出时的记忆）。 */
 function createWindow(): void {
+  // 启动导航状态：sidecar 端口与「完成动画已播完」标记（两者就绪才进 SPA）
+  readyPort = 0;
+  bootDoneAcknowledged = false;
   const state = loadWindowState();
   const win = new BrowserWindow({
     width: state.width,
@@ -183,18 +191,32 @@ function createWindow(): void {
     return;
   }
 
-  // 生产模式（ADR-42）：spawn sidecar → /ready → loadURL（SPA+API+WS 单端口）。
-  // 就绪前先显示启动占位页，避免「内核未连接却已展示完整界面」造成误判；
-  // sidecar 起不来/超时/崩溃耗尽 → 占位页转为带错误原因的重试页（不白屏、不假装可用）。
+  // 生产模式（ADR-42）：spawn sidecar → /ready → 进入 SPA（SPA+API+WS 单端口）。
   //
-  // 占位页只做静态等待（boot=waiting）：不跑进度动画。真实进度属于加载 sidecar
-  // 托管地址后的 SPA，若占位页也跑一遍，用户会连着看到两次启动动画。
+  // 启动画面**只播一次**，载体是占位页：三黑点等待 → 真实进度 → 连接成功的完成动画，
+  // 播完由渲染进程通过 `boot:done` 通知主进程。主进程收到后再把窗口导航到 SPA，
+  // 并带上 `?boot=ready`——SPA 看到它就直接进内容，不再起第二个启动画面。
+  // 之所以不让 SPA 自己演：它是另一个页面，再演一遍就是用户看到的「两次加载」。
   void win.loadFile(path.join(__dirname, "..", "dist", "index.html"), {
-    query: { boot: "waiting" },
+    query: { boot: "starting" },
+  });
+  let navigated = false;
+  const enterApp = () => {
+    if (navigated || win.isDestroyed()) return;
+    if (!readyPort) return;
+    navigated = true;
+    void win.loadURL(`http://127.0.0.1:${readyPort}/?boot=ready`);
+  };
+  // 渲染进程播完成动画 → 立刻进桌面端；sidecar 没就绪则等就绪后补导航
+  ipcMain.removeAllListeners(BOOT_DONE_CHANNEL);
+  ipcMain.once(BOOT_DONE_CHANNEL, () => {
+    bootDoneAcknowledged = true;
+    enterApp();
   });
   void sidecar.start().then((handle) => {
     if (handle) {
-      void win.loadURL(`http://127.0.0.1:${handle.port}/`);
+      readyPort = handle.port;
+      if (bootDoneAcknowledged) enterApp();
       return;
     }
     console.warn("[main] sidecar 不可用，占位页转为错误重试页（不假装载入）");

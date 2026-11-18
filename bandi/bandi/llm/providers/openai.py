@@ -16,6 +16,10 @@ from bandi.llm.streaming import StreamEvent, StreamEventType
 
 logger = logging.getLogger(__name__)
 
+# 功能：默认 UA——部分网关（Cloudflare 前置的第三方推理服务）会拦截 httpx 默认标识并
+# 返回 403（错误码 1010），统一用产品标识通过；档案 extra_headers 可覆盖。
+_DEFAULT_USER_AGENT = "bandi-desktop/1.2"
+
 
 class OpenAICompatProvider(
     BaseProvider
@@ -33,9 +37,15 @@ class OpenAICompatProvider(
         return {}
 
     def _extra_headers(self) -> dict[str, str]:
-        # 功能：附加请求头翻译钩子——config.extra_headers 透传（空 = 不发任何自定义头）
-        headers = getattr(self.config, "extra_headers", None) or {}
-        return {str(k): str(v) for k, v in headers.items()}
+        # 功能：附加请求头翻译钩子——档案自定义头覆盖默认 UA（空 = 只带默认 UA）
+        headers = {
+            "User-Agent": _DEFAULT_USER_AGENT,
+            "Accept": "application/json",
+        }
+        headers.update(
+            {str(k): str(v) for k, v in (getattr(self.config, "extra_headers", None) or {}).items()}
+        )
+        return headers
 
     def _max_tokens_field(self) -> str:
         # 功能：输出上限字段名钩子——通用兼容端点用 max_tokens

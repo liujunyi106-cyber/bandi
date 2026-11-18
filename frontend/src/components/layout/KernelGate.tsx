@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import bootDone from "@/assets/boot/boot-done.webp";
 import bootPending from "@/assets/boot/boot-pending.webp";
 import { BOOT_STAGE_PROGRESS, bootProgressOf, type BootStage } from "@/components/layout/boot-progress";
+import { warmupFirstScreen } from "@/components/layout/boot-warmup";
 import { Button } from "@/components/ui/button";
 import { useT } from "@/i18n";
 
@@ -10,12 +11,18 @@ const POLL_INTERVAL_MS = 300;
 const TIMEOUT_SEC = 60;
 const DONE_ANIMATION_MS = 2200;
 
-/** 功能：读壳在主进程决定的启动阶段（`file:` 降级壳用 ?boot=waiting|failed 传入）。 */
-function bootPhaseFromLocation(): "waiting" | "failed" | null {
+/** 功能：读壳在主进程决定的启动阶段。
+ *
+ *  `starting` = 占位页，负责把「三黑点等待 → 进度条 → 完成动画」一次演完；
+ *  `ready` = sidecar 已就绪后加载的 SPA，启动画面已经在占位页播过，直接进内容；
+ *  `failed` = 壳判定 sidecar 起不来，显示重试页而不是假装可用。
+ */
+function bootPhaseFromLocation(): "starting" | "ready" | "failed" | null {
   const value = new URLSearchParams(window.location.search).get("boot");
   if (value === "failed") return "failed";
-  // waiting 与历史的 starting 等价：都是「壳在等 sidecar」，本页只做静态等待
-  if (value === "waiting" || value === "starting") return "waiting";
+  if (value === "ready") return "ready";
+  // starting/waiting 都表示「壳正在拉起 sidecar」，本页负责把这段加载完整演完
+  if (value === "starting" || value === "waiting") return "starting";
   return null;
 }
 
@@ -29,7 +36,7 @@ function subscribeBootStage(listener: (stage: BootStage) => void): (() => void) 
   });
 }
 
-/** 功能：本地内核就绪门——启动期显示动画与真实进度，连上后播放完成动画再进桌面端。 */
+/** 功能：本地内核就绪门——启动期显示动画与真实进度，连上并备好首屏数据后进桌面端。 */
 export function KernelGate({ children }: { children: ReactNode }) {
   const t = useT();
   const bootPhase = bootPhaseFromLocation();
@@ -37,15 +44,29 @@ export function KernelGate({ children }: { children: ReactNode }) {
     bootPhase === "failed" ? "unavailable" : "checking",
   );
   const [stage, setStage] = useState<BootStage>("spawn");
+  // 首屏数据是否已备好——后端就绪后还要等这一项，避免「进桌面端先白屏」。
+  const [warmed, setWarmed] = useState(bootPhase !== "ready");
   const [done, setDone] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    // 启动画面已经在占位页完整播过（三黑点等待 → 进度 → 完成动画），
+    // 这里是它加载出来的落地页：不再探活、不再演第二遍，备好数据就交出去。
+    if (bootPhase === "ready") {
+      setState("ready");
+      let cancelled = false;
+      void warmupFirstScreen().finally(() => {
+        if (!cancelled) setWarmed(true);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
     // file: 静态降级壳没有同源后端可探——壳已判定 sidecar 起不来时不得假装就绪，
     // 否则用户看到的是完整界面却所有请求都失败。仅显式 boot=starting 视为就绪中。
     // 该判定先于测试短路：降级壳的可用性由壳决定，与运行环境无关。
     if (window.location.protocol === "file:") {
-      setState(bootPhase === "waiting" ? "checking" : "unavailable");
+      setState(bootPhase === "starting" ? "checking" : "unavailable");
       return;
     }
     if (import.meta.env.MODE === "test") {
@@ -95,12 +116,19 @@ export function KernelGate({ children }: { children: ReactNode }) {
     return () => unsubscribe?.();
   }, []);
 
-  // 就绪后先播完成动画，播完再放行业务界面
+  // 就绪后先播完成动画，播完再通知壳「启动画面演完了」——壳随后导航进 SPA，
+  // 这一段就是整个启动过程的收尾（三黑点等待 → 进度 → 完成动画 → 桌面端）。
+  // 必须等到首屏数据备好（warmed）才开始计时：动画盖住的是真实加载时间，
+  // 而不是动画放完再让用户干看一个白屏。
   useEffect(() => {
-    if (state !== "ready") return;
-    const timer = setTimeout(() => setDone(true), DONE_ANIMATION_MS);
+    if (state !== "ready" || !warmed) return;
+    const timer = setTimeout(() => {
+      setDone(true);
+      const api = (window as unknown as { bandi?: { notifyBootDone?: () => void } }).bandi;
+      api?.notifyBootDone?.();
+    }, DONE_ANIMATION_MS);
     return () => clearTimeout(timer);
-  }, [state]);
+  }, [state, warmed]);
 
   if (state === "ready" && done) return <>{children}</>;
 
@@ -137,29 +165,25 @@ export function KernelGate({ children }: { children: ReactNode }) {
           className="w-full select-none"
           data-testid="boot-animation"
         />
-        {/* 壳等 sidecar 的占位页只做静态等待：真实进度属于它随后加载的 SPA，
-            这里再画一条进度条会让用户连着看到两次启动进度 */}
-        {bootPhase === "waiting" ? null : (
-          <div className="flex w-full flex-col gap-1.5">
+        <div className="flex w-full flex-col gap-1.5">
+          <div
+            className="border-primary/25 h-2 w-full overflow-hidden rounded-full border"
+            role="progressbar"
+            aria-valuenow={percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={t("app.bootProgressLabel")}
+            data-testid="boot-progress"
+          >
             <div
-              className="border-primary/25 h-2 w-full overflow-hidden rounded-full border"
-              role="progressbar"
-              aria-valuenow={percent}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={t("app.bootProgressLabel")}
-              data-testid="boot-progress"
-            >
-              <div
-                className="bg-primary h-full rounded-full transition-[width] duration-500 ease-out"
-                style={{ width: `${percent}%` }}
-              />
-            </div>
-            <p className="text-muted-foreground text-center text-[11px]" data-testid="boot-caption">
-              {t("app.bootLoading")}
-            </p>
+              className="bg-primary h-full rounded-full transition-[width] duration-500 ease-out"
+              style={{ width: `${percent}%` }}
+            />
           </div>
-        )}
+          <p className="text-muted-foreground text-center text-[11px]" data-testid="boot-caption">
+            {t("app.bootLoading")}
+          </p>
+        </div>
       </div>
     </div>
   );

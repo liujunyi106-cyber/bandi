@@ -165,7 +165,7 @@ _DISPATCH_WORK_ITEM_GUIDELINES = (
 _EXECUTE_WORK_ITEM_GUIDELINES = (
     "## Company Work Item Turn: Execute\n"
     "- Prefer direct execution for the assigned slice once the approach is clear.\n"
-    "- 完成汇报格式（面向老板，回复卡可直接对表）：「任务 #N 已完成」"
+    "- 完成汇报格式（面向发起人，回复卡可直接对表）：「任务 #N 已完成」"
     "首行 → 「交付文件：<相对路径>」→ 关键结论（≤3 条，带数据）→ 链路推进（下一环解锁/"
     "派发情况）→ 产物清单。派发下游时在正文「成员任务」块写清下一环负责人与任务简报"
     "（标题 + 目标 + 输入/上游文件 + 输出文件路径 + 验收标准）。\n"

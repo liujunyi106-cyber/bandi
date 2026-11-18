@@ -8,6 +8,7 @@ from typing import Any
 
 from bandi.tools.base import BaseTool, ToolCategory, ToolPermissionContext
 from bandi.tools.fs_tool import (
+    is_pruned_dir,
     project_base,
     project_extra_roots,
     resolve_within_workspace,
@@ -75,6 +76,10 @@ class GlobTool(BaseTool):  # 功能：按 glob 模式匹配文件路径，支持
         search_path = str(root / pattern) if not Path(pattern).is_absolute() else pattern
         matches: list[str] = []
         for fp in _glob.iglob(search_path, recursive=True):
+            # 剪枝：iglob 会走进依赖/构建产物/发布副本目录，既慢又刷出大量
+            # 同名无关文件（模型会为「哪个才是真的」反复确认而偏离任务）。
+            if any(is_pruned_dir(part) for part in Path(fp).parts):
+                continue
             if len(matches) >= limit:
                 break
             raw = Path(fp)

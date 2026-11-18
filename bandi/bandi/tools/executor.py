@@ -34,6 +34,10 @@ logger = logging.getLogger(__name__)
 # 否则配置里的 120s 工具超时会先中断 request_user_input（卡片仍在、工具已失败）。
 _INTERACTIVE_TOOL_NAMES: frozenset[str] = frozenset({"request_user_input"})
 
+# 功能：工具批次的整体超时倍数——逐工具超时之上再留一个余量，
+# 保证并发组里最慢的那条能走完自己的超时，同时整批不会无限等待。
+_BATCH_TIMEOUT_FACTOR = 1.2
+
 # 按 (事件循环, 上限) 共享的批内并发闸门——见 shared_concurrency_limiter
 _SHARED_CONCURRENCY_LIMITERS: Any = WeakKeyDictionary()
 
@@ -645,10 +649,38 @@ class ToolExecutor:  # 功能：工具执行引擎（并发/串行分区执行 +
                 asyncio.ensure_future(coro): tc for coro, tc in zip(task_list, seg_calls)
             }
             pending: set[asyncio.Task[ToolResult]] = set(task_map)
+            # 批次级兜底超时：并发组里任一工具挂住（典型是抓国外站点永不返回），
+            # 整批会一直等下去——真机上表现为「执行中」卡十几分钟、槽位不释放。
+            # 逐工具超时在 _execute_one 内部生效，这里再给整批一个上限：
+            # 逐工具上限 + 余量，保证最慢的那条也能走完自己的超时再收口。
+            batch_deadline = (
+                time_module.time() + max(1, self._execution_timeout) * _BATCH_TIMEOUT_FACTOR
+            )
 
             while pending:
+                remaining = batch_deadline - time_module.time()
+                if remaining <= 0:
+                    logger.warning(
+                        "tool batch exceeded %.0fs; cancelling %d pending call(s): %s",
+                        self._execution_timeout * _BATCH_TIMEOUT_FACTOR,
+                        len(pending),
+                        [task_map[t].name for t in pending],
+                    )
+                    for p in pending:
+                        p.cancel()
+                    await asyncio.gather(*pending, return_exceptions=True)
+                    for t in pending:
+                        results_by_id[task_map[t].id] = await self._fail_result(
+                            task_map[t],
+                            f"batch timeout: {task_map[t].name} exceeded "
+                            f"{self._execution_timeout}s",
+                            0.0,
+                            error_class="timeout",
+                        )
+                    pending = set()
+                    break
                 done_batch, pending = await asyncio.wait(
-                    pending, return_when=asyncio.FIRST_COMPLETED
+                    pending, return_when=asyncio.FIRST_COMPLETED, timeout=remaining
                 )
                 abort_seen = False
                 for t in done_batch:
@@ -1845,17 +1877,33 @@ class ToolExecutor:  # 功能：工具执行引擎（并发/串行分区执行 +
                     (time_module.time() - start) * _MS_PER_SEC,
                     error_class="cancelled",
                 )
-            if getattr(tool, "cancellable", False) and controller is not None:
+            if getattr(tool, "cancellable", False):
+                # 超时与「能不能被用户中止」是两件事：没有 abort controller 时也必须
+                # 有超时，否则挂住的子进程会永久占住这一轮（真机：python_exec 扫大目录
+                # 卡死，CPU 静止、回合停在 executing，客户端等满 300s 才报空闲超时）。
                 exec_task = asyncio.create_task(self._invoke_or_execute(tool, tc, kwargs))
-                abort_task = asyncio.create_task(controller.wait())
+                wait_set: set[asyncio.Task] = {exec_task}
+                abort_task: asyncio.Task | None = None
+                if controller is not None:
+                    abort_task = asyncio.create_task(controller.wait())
+                    wait_set.add(abort_task)
                 done, pending = await asyncio.wait(
-                    {exec_task, abort_task}, return_when=asyncio.FIRST_COMPLETED
+                    wait_set,
+                    return_when=asyncio.FIRST_COMPLETED,
+                    timeout=self._execution_timeout,
                 )
                 for t in pending:
                     t.cancel()
                 if pending:
                     await asyncio.gather(*pending, return_exceptions=True)
-                if abort_task in done and exec_task not in done:
+                if not done:
+                    return await self._fail_result(
+                        tc,
+                        f"tool timeout: {tool.name} exceeded {self._execution_timeout}s",
+                        (time_module.time() - start) * _MS_PER_SEC,
+                        error_class="timeout",
+                    )
+                if abort_task is not None and abort_task in done and exec_task not in done:
                     return await self._fail_result(
                         tc,
                         f"aborted: {controller.reason or 'user_interrupt'}",

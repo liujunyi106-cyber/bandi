@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from bandi.core.message import Message, MessageRole
+from bandi.memory.compact_range import select_compact_range
 from bandi.memory.compaction import (
     DEFAULT_SUMMARY_MAX_TOKENS,
     SUMMARY_ANALYSIS_INSTRUCTION,
@@ -693,6 +694,19 @@ class ProgressiveCompressor:
         previous_summary, stripped = extract_previous_summary(messages)
         system_msgs = [m for m in stripped if m.role == MessageRole.SYSTEM]
         non_system = [m for m in stripped if m.role != MessageRole.SYSTEM]
+
+        # 先划出「保留尾部」：最近若干 token 的原文一律不动，只压它之前的头部。
+        # 少了这一步，最近几轮对话也会被改写成摘要，模型失去真实近况；而且每轮都要
+        # 重压整段历史，单次压缩几十秒、压完仍可能超阈值，于是反复压缩直到迭代耗尽。
+        retained_tail: list[Message] = []
+        range_ = select_compact_range(
+            non_system,
+            effective_window=int(context_window or 0),
+        )
+        if range_ is not None:
+            non_system = range_.head
+            retained_tail = range_.tail
+
         # MemoryCompactor.compact 命中最小条数 bail 而「每块必失败」，渐进压缩整体
         # 退化成 truncate。仅在「整段对话已超模型窗口」时激进合并（避免小窗近临界的
         all_tokens = TokenCounter.count_messages(non_system)
@@ -834,7 +848,11 @@ class ProgressiveCompressor:
         # （失败块可能恰好落在尾部保留区内）。
         fallback_ids = {id(m) for m in fallback_messages}
         tail = [m for m in non_system[keep_start:] if id(m) not in fallback_ids]
-        result = system_msgs + [summary_msg] + fallback_messages + tail
+        # 区间选择留下的尾部原文排在最后：它是最近的对话，必须原样出现在摘要之后。
+        # 与 fallback/tail 去重按对象 id（同一消息可能被多处选中）。
+        tail_ids = {id(m) for m in tail}
+        retained = [m for m in retained_tail if id(m) not in fallback_ids and id(m) not in tail_ids]
+        result = system_msgs + [summary_msg] + fallback_messages + tail + retained
         logger.debug(
             "PROG-TRACE: final_summary_chars=%d keep_start=%d result_msgs=%d result_chars=%d",
             len(final_summary),

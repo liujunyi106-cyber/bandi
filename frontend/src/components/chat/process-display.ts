@@ -19,6 +19,29 @@ const MAX_TITLE = 40;
  * 优先级（借 opencode `reasoningSummary`）：markdown 标题 → 加粗首行 → 首句截断。
  * 纯函数、无副作用、失败回落为空标题（不抛）。
  */
+/** 功能：取「最后一个已完成段落」的首行（流式时摘要跟随最新结论而非开头）。
+ *
+ *  与 DSH 同口径：按空行分段，每段若已完成（段内已有换行）就更新摘要，
+ *  最后停在最后一段有内容的首行上——读者看到的是「刚想完的那一步」。
+ */
+export function latestParagraphFirstLine(text: string): string {
+  const content = (text ?? "").replace(/\r\n?/g, "\n");
+  let summary = "";
+  let start = 0;
+  const separator = /\n(?:[\t ]*\n)+/g;
+  for (;;) {
+    const next = separator.exec(content);
+    const end = next === null ? content.length : next.index;
+    const newline = content.indexOf("\n", start);
+    if (newline !== -1 && newline <= end) {
+      const candidate = content.slice(start, newline).trim();
+      if (candidate) summary = candidate;
+    }
+    if (next === null) return summary;
+    start = next.index + next[0].length;
+  }
+}
+
 export function thinkingSummary(text: string): { title: string; body: string } {
   const content = (text ?? "").replace(/\r\n?/g, "\n").trim();
   if (!content) return { title: "", body: "" };

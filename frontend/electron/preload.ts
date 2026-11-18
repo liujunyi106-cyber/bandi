@@ -7,6 +7,8 @@ import { contextBridge, ipcRenderer } from "electron";
 
 /** 功能：启动阶段广播通道名（与主进程共用同一常量）。 */
 const BOOT_STAGE_CHANNEL = "bandi:boot-stage";
+/** 功能：启动画面播完的握手通道名。 */
+const BOOT_DONE_CHANNEL = "bandi:boot-done";
 
 /** 功能：启动阶段订阅——返回取消订阅函数，组件卸载时调用。 */
 function onBootStage(listener: (stage: string) => void): () => void {
@@ -17,6 +19,11 @@ function onBootStage(listener: (stage: string) => void): () => void {
   return () => {
     ipcRenderer.removeListener(BOOT_STAGE_CHANNEL, handler);
   };
+}
+
+/** 功能：通知主进程启动画面已播完——主进程据此导航进 SPA，启动只演一次。 */
+function notifyBootDone(): void {
+  ipcRenderer.send(BOOT_DONE_CHANNEL);
 }
 
 const desktopApi = {
@@ -32,6 +39,8 @@ const desktopApi = {
   apiKey: process.env.BANDI_API_KEY ?? "",
   /** 订阅启动阶段（spawn → listening → probing → ready） */
   onBootStage,
+  /** 上报启动画面已播完（主进程据此进入 SPA） */
+  notifyBootDone,
 } as const;
 
 contextBridge.exposeInMainWorld("bandi", desktopApi);

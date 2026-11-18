@@ -8,7 +8,9 @@ llm:
 
 agent:
   mode: execute
-  max_iterations: 15
+  # 单轮工具往返的安全上限（不是任务复杂度限制）：每轮 = 一次「模型思考 + 一批工具」，
+  # 太小会把「搜网页 + 读文件 + 写结论」这类多步任务砍在半路
+  max_iterations: 60
   # 员工/委托回合墙钟上限（秒）；0=不限
   turn_timeout_sec: 1860
 

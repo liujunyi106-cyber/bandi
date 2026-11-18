@@ -34,6 +34,41 @@ _SENSITIVE_EXTENSIONS: tuple[str, ...] = (".pem", ".key", ".pfx", ".p12", ".keys
 
 _SENSITIVE_DIRS_LOWER: set[str] = {p.lower() for p in _SENSITIVE_PATHS}
 
+# 功能：遍历类工具（grep/glob/list_dir）统一跳过的目录——依赖、构建产物、
+# 发布副本、版本库。这些目录动辄数百 MB 且与用户任务无关：遍历进去会让一次
+# 普通搜索耗时数分钟，并且同名副本（_release-public 里的 README）会让模型
+# 反复确认「哪个才是真的」，最终偏离原任务。
+_TRAVERSAL_PRUNE_DIRS: frozenset[str] = frozenset(
+    {
+        ".git",
+        ".hg",
+        ".svn",
+        "node_modules",
+        "__pycache__",
+        ".venv",
+        "venv",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        "dist",
+        "build",
+        "release",
+        "_release-public",
+        ".bandi",
+    }
+)
+
+# 功能：按前缀剪枝——打包产物目录名带序号（scb-130 / scbw-131 / bandi-rel-*），
+# 逐个枚举不现实，且每个都数百 MB。
+_TRAVERSAL_PRUNE_PREFIXES: tuple[str, ...] = ("scb-", "scbw-", "bandi-rel", "release-")
+
+
+def is_pruned_dir(name: str) -> bool:
+    """功能：判断目录名是否应在遍历时跳过（三个遍历类工具共用同一口径）。"""
+    lowered = name.lower()
+    return lowered in _TRAVERSAL_PRUNE_DIRS or lowered.startswith(_TRAVERSAL_PRUNE_PREFIXES)
+
+
 _CONTROL_PLANE_FILES: frozenset[str] = frozenset(
     {
         "mcp.json",

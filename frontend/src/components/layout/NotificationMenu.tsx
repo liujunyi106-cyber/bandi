@@ -232,8 +232,7 @@ export function NotificationMenu() {
             <span className="text-muted-foreground">写入目标：</span>
             {target}
           </p>
-          <p className="mt-1 text-[11px]">
-            <span className="text-muted-foreground">来源：</span>
+          <p className="mt-1 text-[11px] text-muted-foreground">
             {origin}
           </p>
           {isDraft ? (

@@ -131,6 +131,43 @@ def _ensure_pipeline(ctx: ExecutionContext) -> Any:
     return ctx.compress.pipeline
 
 
+def _ctx_with_summarization_profile(ctx: ExecutionContext) -> ExecutionContext:
+    """功能：把 ctx 的模型临时指向「摘要专用档案」，未配置时原样返回。
+
+    压缩是「读一大段、写一份摘要」的调用，用主模型单次 30-40 秒；换成便宜的小模型
+    能明显缩短等待，而摘要质量对模型强弱不敏感。用浅拷贝只替换 provider/config，
+    其余执行状态共享，避免复制整个上下文。
+    """
+    profile_id = str(getattr(ctx.config, "summarization_profile_id", "") or "").strip()
+    if not profile_id:
+        return ctx
+    try:
+        import copy
+
+        from bandi.llm.profiles import store_singleton, with_resolved_llm
+        from bandi.llm.registry import ProviderRegistry
+
+        profile = store_singleton().get(profile_id)
+        if profile is None:
+            logger.debug("summarization profile %s not found; fallback to main model", profile_id)
+            return ctx
+        scoped = copy.copy(ctx)
+        overridden = copy.deepcopy(ctx.config)
+        overridden.llm.model = str(profile.model or overridden.llm.model)
+        overridden.llm.provider = str(profile.provider or overridden.llm.provider)
+        if profile.base_url:
+            overridden.llm.base_url = profile.base_url
+        resolved = with_resolved_llm(overridden)
+        scoped.config = resolved
+        scoped.provider = ProviderRegistry(config=resolved).get_provider(
+            resolved.llm.model, resolved, resolve_profile=False
+        )
+        return scoped
+    except Exception:
+        logger.debug("summarization profile switch failed; fallback to main model", exc_info=True)
+        return ctx
+
+
 async def _compress_via_pipeline(ctx: ExecutionContext, *, maintenance: bool) -> CompactOutcome:
     # 功能：生产压缩公共体——同一 CompressionPipeline 出口，按档位分发
     pipeline = _ensure_pipeline(ctx)
@@ -141,7 +178,8 @@ async def _compress_via_pipeline(ctx: ExecutionContext, *, maintenance: bool) ->
         previous = ctx.meta.get("_llm_call_purpose")
         ctx.meta["_llm_call_purpose"] = "compaction"
         try:
-            response = await get_query_deps(ctx).call_model(ctx, messages)
+            purpose_ctx = _ctx_with_summarization_profile(ctx)
+            response = await get_query_deps(purpose_ctx).call_model(purpose_ctx, messages)
             await states._record_side_usage(ctx, response, "compaction")
             return response
         finally:

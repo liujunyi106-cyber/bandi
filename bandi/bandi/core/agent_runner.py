@@ -2767,22 +2767,32 @@ async def run_agent_turn(
             except Exception:  # noqa: BLE001 — 注记失败不阻断终态返回
                 logger.warning("interrupt note persist failed: session=%s", session_id)
     finally:
+        # 释放执行槽位必须是 finally 里的**第一件事**：后面的 await 清理
+        # （取消预取、停租约续期、关层级）任一抛错都会跳过后续语句，而槽位一旦
+        # 泄漏，该会话此后所有请求都返回 SESSION_BUSY 直到进程重启——一次网络
+        # 抖动就能让会话永久不可用。
+        _release_session_slot(session_id, store=store)
         if prefetch_handle is not None:
             # memory.close 后访问 SQLite（静默丢结果）
-            cancel_wait = getattr(prefetch_handle, "cancel_and_wait", None)
-            if cancel_wait is not None:
-                await cancel_wait()
-            else:
-                prefetch_handle.cancel()
+            try:
+                cancel_wait = getattr(prefetch_handle, "cancel_and_wait", None)
+                if cancel_wait is not None:
+                    await cancel_wait()
+                else:
+                    prefetch_handle.cancel()
+            except Exception:
+                logger.debug("prefetch cancel failed: session=%s", session_id, exc_info=True)
         if hierarchy_owned and hierarchy is not None:
-            close_hierarchy = getattr(hierarchy, "close", None)
-            if close_hierarchy is not None:
-                close_hierarchy()
-        # 释放执行槽位必须先于 store.close()——二次释放是「幂等丢弃」兜底
-        # 若在 close 后调用会读已关闭连接（sqlite3.ProgrammingError）导致
-        # 租约清除失败（异常路径兜底失效）且每次 run 都打 release failed 警告。
-        await _stop_lease_keeper(lease_keeper)
-        _release_session_slot(session_id, store=store)
+            try:
+                close_hierarchy = getattr(hierarchy, "close", None)
+                if close_hierarchy is not None:
+                    close_hierarchy()
+            except Exception:
+                logger.debug("hierarchy close failed: session=%s", session_id, exc_info=True)
+        try:
+            await _stop_lease_keeper(lease_keeper)
+        except Exception:
+            logger.debug("lease keeper stop failed: session=%s", session_id, exc_info=True)
         if store_owned:
             store.close()
         await _unsubscribe_handler(bus, bindings)

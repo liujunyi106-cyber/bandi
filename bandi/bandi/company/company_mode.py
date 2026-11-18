@@ -78,6 +78,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# 功能：派发批次超时倍数——逐项超时之上的整批上限，防单卡卡死拖住整轮
+_DISPATCH_BATCH_TIMEOUT_FACTOR = 1.5
+
 
 def _as_bool(value: Any, default: bool = False) -> bool:
     """metadata 布尔容错解析——API/JSON 层布尔可能被序列化为字符串。
@@ -1924,7 +1927,34 @@ class CompanyDispatcher:
                     running[asyncio.create_task(self._run_one(candidate))] = candidate
                 if not running:
                     break
-                done, _pending = await asyncio.wait(running, return_when=asyncio.FIRST_COMPLETED)
+                # 批次级兜底：_run_one 自身有 per_item_timeout_sec，但该值配成 0
+                # 表示「不限」，此时任一员工卡住会让整轮群聊协作永久挂起。这里再给
+                # 一个上限，超时就取消剩余任务并如实记账，避免群聊回合永不收口。
+                batch_limit = getattr(self.config, "per_item_timeout_sec", 0) or 0
+                batch_limit = max(1, batch_limit) * _DISPATCH_BATCH_TIMEOUT_FACTOR
+                done, _pending = await asyncio.wait(
+                    running,
+                    return_when=asyncio.FIRST_COMPLETED,
+                    timeout=batch_limit,
+                )
+                if not done:
+                    logger.warning(
+                        "dispatch batch exceeded %.0fs; cancelling %d running item(s)",
+                        batch_limit,
+                        len(running),
+                    )
+                    for _t in list(running):
+                        _t.cancel()
+                    await asyncio.gather(*running, return_exceptions=True)
+                    for _t, _entry in list(running.items()):
+                        self._account_dispatch_outcome(
+                            report,
+                            runtime,
+                            (*_entry, False, f"batch timeout {batch_limit:.0f}s", 0.0),
+                        )
+                        busy_roles.discard(_entry[1])
+                        running.pop(_t, None)
+                    break
                 for task in done:
                     entry = running.pop(task)
                     busy_roles.discard(entry[1])

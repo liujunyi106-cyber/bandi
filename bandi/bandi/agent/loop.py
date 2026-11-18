@@ -43,6 +43,9 @@ from bandi.core.events import Event, EventType
 
 logger = logging.getLogger(__name__)
 
+# 功能：压缩续作不消耗轮次预算的护栏——连续压缩超过此数仍不收敛即终止。
+_MAX_FREE_COMPACTION_CYCLES = 6
+
 TOOL_OUTCOME_UNKNOWN_TEXT = "该工具可能已执行，结果未知，请先核实外部状态或询问用户，不要盲目重试。"
 
 # 功能：连续多少次同一工具失败后插入改路提示——3 次足以说明当前参数形状不被接受。
@@ -565,6 +568,10 @@ class AgentLoop:  # 功能：Agent 主循环（状态机驱动的思考→工具
                 try:
                     return await asyncio.wait_for(loop_coro, timeout=session_timeout_sec)
                 except TimeoutError:
+                    # 超时是不可恢复终态：必须写回 ctx，否则上层按「无终态」处理，
+                    # 客户端也收不到收尾帧——评测里表现为「跑满预算后 0 帧结束」，
+                    # 界面表现为「一直转圈却已停」。
+                    ctx.terminal_reason = TerminalReason.TIMEOUT
                     self._on_timeout(ctx, turns_taken)
                     await ctx.bus.emit(
                         Event(
@@ -904,7 +911,25 @@ class AgentLoop:  # 功能：Agent 主循环（状态机驱动的思考→工具
                     ctx.active_tools = []
                 self._inject_retrieval_stall_notice(ctx)
                 self._inject_turn_budget_notice(ctx, max_turns, turns_taken)
-                turns_taken += 1
+                # 压缩后回到 thinking 属于系统内部动作，不该消耗用户的轮次预算：
+                # 一次长会话可能压缩好几轮，每轮几十秒，算进去就会把正常任务顶成
+                # MAX_TURNS（真机现象：灌入大段材料后第 3、4 轮全 MAX_TURNS）。
+                # 同时用连续压缩计数防死循环：不消耗预算就必须有别的出口。
+                if ctx.meta.pop("_resumed_from_compaction", False):
+                    cycles = int(ctx.meta.get("_compaction_cycles", 0) or 0) + 1
+                    ctx.meta["_compaction_cycles"] = cycles
+                    if cycles > _MAX_FREE_COMPACTION_CYCLES:
+                        logger.warning(
+                            "compaction cycles exceeded %d without progress; terminating",
+                            _MAX_FREE_COMPACTION_CYCLES,
+                        )
+                        ctx.terminal_reason = TerminalReason.PROMPT_TOO_LONG
+                        ctx.final_message = "上下文压缩多轮仍无法收敛，请开新会话或减小输入规模。"
+                        ctx.current_state = "terminated"
+                        break
+                    logger.info("turn budget preserved: resumed from compaction (%d)", cycles)
+                else:
+                    turns_taken += 1
                 if turns_taken > max_turns:
                     ctx.terminal_reason = TerminalReason.MAX_TURNS
                     ctx.current_state = "terminated"

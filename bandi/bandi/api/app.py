@@ -87,19 +87,35 @@ def _startup_log(label: str) -> None:
 
 app = FastAPI(title="Bandi API", version="0.1.0")
 
+# 功能：后台任务保活集合——任务对象只被弱引用时可能被 GC 回收，留一个强引用到完成。
+_background_tasks: set[Any] = set()
+
+
+def _keep_background_task(task: Any) -> None:
+    """功能：登记后台任务，完成后自动从集合移除（避免被 GC 提前回收）。"""
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+
 
 @app.on_event("startup")
 async def _startup_models_dev_sync() -> None:
-    # ensure 内部 _sync_done 短接——CLI+API 双触发安全，失败静默不阻断启动）
+    # 功能：模型能力缓存同步——放后台跑，不占启动窗口。
+    #
+    # 它只是一份可选的模型元数据缓存（38 个模型的上下文/价格信息），首轮对话并不依赖；
+    # 在 startup 里等它，等于把「内核可服务」推迟 1-2 秒，用户看到的是启动后第一下点击
+    # 卡住。这里只调度不等待，失败静默（缓存缺失时读取方回落内置表）。
     import asyncio
 
     from bandi.llm.models_dev import trigger_models_dev_sync
 
-    try:
-        await asyncio.wait_for(asyncio.to_thread(trigger_models_dev_sync), timeout=2.0)
-    except TimeoutError:
-        logger.warning("models.dev sync exceeded 2s; startup continues")
-    _startup_log("models_dev_sync")
+    async def _sync() -> None:
+        try:
+            await asyncio.wait_for(asyncio.to_thread(trigger_models_dev_sync), timeout=60.0)
+        except Exception as exc:  # noqa: BLE001 — 缓存同步失败不阻断任何功能
+            logger.debug("models.dev sync skipped: %s", exc)
+        _startup_log("models_dev_sync")
+
+    _keep_background_task(asyncio.create_task(_sync()))
 
 
 @app.on_event("startup")
@@ -999,7 +1015,12 @@ async def activate_llm_profile(profile_id: str) -> dict[str, Any]:
 
 # 功能：端点面回合看门狗默认时长——请求未显式指定时启用，保证任何回合（含卡在
 # 等待态的）在上限内产出终帧并释放会话锁；部署侧可用 env 覆写（显式传 0 仍可关闭）。
-_DEFAULT_SESSION_TIMEOUT_SEC = int(os.environ.get("BANDI_SESSION_TIMEOUT_SEC", "900"))
+#
+# 取值口径：这是「防卡死」兜底，不是「长任务上限」。真正限制长任务的是轮次预算与
+# 成本，参考实现（Claude Code 的 maxTurns/taskBudget、DSH 完全无回合超时）都不靠
+# 墙钟掐活着的任务。900 秒会把「搜十个网页 + 读文件 + 写结论」这类正常长任务判死，
+# 因此抬到 1 小时，让还在产出帧的任务跑完。
+_DEFAULT_SESSION_TIMEOUT_SEC = int(os.environ.get("BANDI_SESSION_TIMEOUT_SEC", "3600"))
 
 
 def _session_timeout_sec_from(body: dict[str, Any]) -> int:
@@ -1211,6 +1232,9 @@ async def agent_stream(body: dict[str, Any]) -> StreamingResponse:
                         "interaction", _interaction_frame(item)
                     ),
                 )
+                # 授权卡等待不超过本轮总超时：无人应答（关窗/断线/评测直连）时
+                # 按总超时收口，而不是把执行槽位占满权限 TTL 的 30 分钟。
+                http_ui._permission_wait_limit = float(_session_timeout_sec_from(body) or 0)
                 result = await run_agent_turn(
                     user_input=message,
                     mode=mode,
@@ -5091,6 +5115,9 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     with _ws_lock:
         _ws_connections += 1
         logger.info("WebSocket connected, active: %d", _ws_connections)
+    # 本连接发起的回合（session_id → task）：断连时据此逐个收掉，
+    # 不依赖全局表（同一会话可能已被新连接接管，不能误杀新轮的回合）。
+    _ws_own_turns: dict[str, asyncio.Task[None]] = {}
     try:
         while True:
             data = await websocket.receive_text()
@@ -5118,6 +5145,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 turn_sid = str(payload.get("session_id") or "").strip()
                 if turn_sid:
                     _ws_turn_tasks_by_session[turn_sid] = task
+                    _ws_own_turns[turn_sid] = task
 
                 def _drop_task(t: asyncio.Task[None], _sid: str = turn_sid) -> None:
                     if _sid and _ws_turn_tasks_by_session.get(_sid) is t:
@@ -5152,6 +5180,19 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
         with _ws_lock:
             _ws_connections -= 1
             logger.info("WebSocket disconnected, active: %d", _ws_connections)
+        # 连接断了，这条连接发起的回合就没有接收方了：不中止的话它会一直跑下去、
+        # 占着执行槽位，同会话的下一条请求只能拿到 SESSION_BUSY（真机评测里表现为
+        # 「一条超时之后接连六条全忙」）。这里按连接把它的回合收掉。
+        for _sid, _task in list(_ws_own_turns.items()):
+            if _task.done():
+                continue
+            _controller = _active_abort_controllers.get(_sid)
+            if _controller is not None:
+                try:
+                    _controller.abort("websocket disconnected")
+                except Exception:
+                    logger.debug("abort on disconnect failed: %s", _sid, exc_info=True)
+            logger.info("websocket closed; aborting in-flight turn for session %s", _sid)
 
 
 class _SSEStreamHandler:
@@ -5636,6 +5677,9 @@ async def _handle_ws_chat(websocket: WebSocket, payload: dict[str, Any]) -> None
         session_id=session_id or "ws-default",
         on_interaction=lambda item: ws_handler.on_interaction_frame(_interaction_frame(item)),
     )
+    # 授权卡等待不超过本轮总超时：无人应答（关窗/断线/评测直连）时按总超时收口，
+    # 而不是把执行槽位占满权限 TTL 的 30 分钟。
+    http_ui._permission_wait_limit = float(_session_timeout_sec_from(payload) or 0)
     user_id, account_store = _identity_from(payload)
     project_id_raw = str(payload.get("project_id") or "").strip()
     access_block = _project_access_block(
@@ -6069,11 +6113,14 @@ def _employee_interaction_provider(session_id: str) -> Any:
     """员工交互通道工厂（seat_executor 的 interaction_provider）——每轮执行按会话构建。"""
     from bandi.core.user_interaction import HTTPUserInteraction
 
-    return HTTPUserInteraction(
+    ui = HTTPUserInteraction(
         _get_interaction_store(),
         session_id=session_id,
         on_interaction=_broadcast_interaction_frame,
     )
+    # 员工回合同样受总超时约束：无人应答时按回合预算收口，不占满权限 TTL。
+    ui._permission_wait_limit = float(_DEFAULT_SESSION_TIMEOUT_SEC or 0)
+    return ui
 
 
 def _progress_scope(frame: dict[str, Any]) -> str:

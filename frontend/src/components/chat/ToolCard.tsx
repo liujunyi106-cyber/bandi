@@ -87,10 +87,18 @@ function DiffBody({ text }: { text: string }) {
 function ReadBody({ path, output }: { path: string; output: string }) {
   const lineCount = output ? output.split("\n").length : 0;
   return (
-    <div className="mt-0.5 flex min-w-0 items-center gap-2 text-[11px]">
-      <span className="text-chat-muted truncate font-mono">{path}</span>
-      {lineCount > 0 ? (
-        <span className="text-chat-muted/60 shrink-0 tabular-nums">{lineCount} 行</span>
+    <div className="mt-0.5 min-w-0 text-[11px]">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="text-chat-muted truncate font-mono">{path}</span>
+        {lineCount > 0 ? (
+          <span className="text-chat-muted/60 shrink-0 tabular-nums">{lineCount} 行</span>
+        ) : null}
+      </div>
+      {/* 展开就是要看读到什么：把内容区原样铺出来（带行号观感的等宽块） */}
+      {output ? (
+        <pre className="text-chat-muted/85 mt-1 max-h-[260px] overflow-auto rounded-md border border-black/5 bg-black/[0.03] p-2 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-words">
+          {output}
+        </pre>
       ) : null}
     </div>
   );

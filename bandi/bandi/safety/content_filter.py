@@ -22,6 +22,20 @@ class FilterResult:
     action: str = "pass"  # "block" | "warn" | "pass"
 
 
+# 功能：软拦占位符——命中软拦类关键词时替换成它，正文其余内容照常输出。
+_MASK_PLACEHOLDER = "[已遮蔽]"
+
+# 功能：每类的处置档位——block=命中即拦截，warn=遮蔽后继续。
+# 涉法词汇（黑客攻击/盗号/走私/制毒/洗钱）在新闻、案情、安全科普里属正常引用，
+# 硬拦会把普通检索任务判成违规；暴力/仇恨/自伤类保持硬拦。
+_CATEGORY_ACTIONS: dict[str, str] = {
+    "violence": "block",
+    "hate": "block",
+    "self_harm": "block",
+    "illegal": "warn",
+}
+
+
 DEFAULT_CATEGORIES: dict[str, list[str]] = {
     "violence": [
         "恐怖袭击",
@@ -93,7 +107,7 @@ class ContentFilter:
         self._event_bus = event_bus
 
     def check(self, text: str) -> FilterResult:
-        """按类别逐模式匹配，返回拦截决策。"""
+        """按类别逐模式匹配，返回分级拦截决策。"""
         matched: dict[str, list[str]] = {}
         for category, keywords in self._categories.items():
             found: list[str] = []
@@ -102,14 +116,26 @@ class ContentFilter:
                     found.append(keyword)
             if found:
                 matched[category] = found
-        blocked = len(matched) > 0
-        if blocked:
-            self._emit_safety_event(matched)
-        return FilterResult(
-            blocked=blocked,
-            categories=matched,
-            action="block" if blocked else "pass",
-        )
+        if not matched:
+            return FilterResult(blocked=False, categories={}, action="pass")
+
+        # 分级：硬拦类命中即拦截；软拦类（涉法词汇）遮蔽后继续。
+        # 「走私/洗钱/黑客攻击」这类词在新闻、案情、安全科普里是正常引用，
+        # 一律拦截会把「搜 AI 新闻」这种普通任务判成违规（真机已复现）。
+        hard = [cat for cat in matched if _CATEGORY_ACTIONS.get(cat, "block") == "block"]
+        self._emit_safety_event(matched)
+        if hard:
+            return FilterResult(blocked=True, categories=matched, action="block")
+        return FilterResult(blocked=False, categories=matched, action="warn")
+
+    def mask(self, text: str, matched: dict[str, list[str]]) -> str:
+        """功能：把命中的软拦关键词替换成占位符——保留语义可读，去掉具体词汇。"""
+        out = text
+        for keywords in matched.values():
+            for keyword in keywords:
+                if keyword and keyword in out:
+                    out = out.replace(keyword, _MASK_PLACEHOLDER)
+        return out
 
     @staticmethod
     def _keyword_in_text(text: str, keyword: str) -> bool:

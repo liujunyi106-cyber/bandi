@@ -404,6 +404,18 @@ class HTTPUserInteraction:
         except InteractionDeliveryError:
             return False
 
+    def _permission_wait_timeout(self) -> float:
+        """功能：授权卡实际等待时长——无人应答时不再挂满整个 TTL。
+
+        固定等 30 分钟会在桌面端关窗/断线/无人应答时把执行槽位占满半小时，前端
+        表现为「一直在跑」；WS 直连评测里没有可点的 UI，连进度帧都推不动。这里
+        优先用调用方给的等待上限，缺省回落权限 TTL，行为与原来一致。
+        """
+        limit = getattr(self, "_permission_wait_limit", None)
+        if isinstance(limit, (int, float)) and limit > 0:
+            return min(float(limit), float(self._permission_ttl))
+        return float(self._permission_ttl)
+
     async def _ask_permission_inner(self, tool_name: str, args: dict[str, Any], risk: str) -> bool:
         decision = await self._suspend(
             INTERACTION_KIND_PERMISSION,
@@ -416,7 +428,7 @@ class HTTPUserInteraction:
                 "ui_variant": "permission",
                 "executor_session_id": self._executor_session_id,
             },
-            timeout=self._permission_ttl,
+            timeout=self._permission_wait_timeout(),
         )
         # 会把「拒绝+理由」误当批准
         if isinstance(decision, dict):
@@ -445,7 +457,7 @@ class HTTPUserInteraction:
                 "ui_variant": "permission",
                 "executor_session_id": self._executor_session_id,
             },
-            timeout=self._permission_ttl,
+            timeout=self._permission_wait_timeout(),
         )
         if isinstance(decision, dict):
             return bool(decision.get("granted")), str(decision.get("feedback") or "")
@@ -469,7 +481,7 @@ class HTTPUserInteraction:
                 "args": dict(first.get("args") or {}),
                 "risk": str(first.get("risk") or "medium"),
             },
-            timeout=self._permission_ttl if timeout is None else timeout,
+            timeout=self._permission_wait_timeout() if timeout is None else timeout,
         )
         if isinstance(decision, dict):
             return {

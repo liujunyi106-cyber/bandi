@@ -7,6 +7,7 @@ from typing import Any
 
 from bandi.tools.base import BaseTool, ToolCategory, ToolPermissionContext
 from bandi.tools.fs_tool import (
+    is_pruned_dir,
     project_base,
     project_extra_roots,
     resolve_within_workspace,
@@ -92,7 +93,12 @@ class ListDirTool(BaseTool):  # 功能：列出目录内容，支持深度限制
             if count >= limit:
                 return
             try:
-                entries = sorted(current.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()))
+                # 剪枝：依赖/构建产物/发布副本目录不进列表——它们只会挤占
+                # 条目上限，让模型看不到真正相关的同级目录。
+                entries = sorted(
+                    (p for p in current.iterdir() if not is_pruned_dir(p.name)),
+                    key=lambda p: (not p.is_dir(), p.name.lower()),
+                )
             except PermissionError:
                 lines.append(f"{'  ' * (cur_depth + 1)}[permission denied]")
                 return

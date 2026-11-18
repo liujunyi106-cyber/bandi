@@ -210,12 +210,21 @@ class AgentConfig(
     BaseModel
 ):  # 功能：Agent 模式/迭代上限/压缩阈值/上下文窗口/Token 预算/折叠阈值配置
     mode: str = "execute"  # plan | execute（双模式，u 日拍板）
-    max_iterations: int = 15
+    # 功能：单轮工具往返的安全上限——不是任务复杂度限制。
+    # 每轮 = 一次「模型思考 + 一批工具执行」。15 轮会把「搜几个网页、读几个文件、
+    # 再写结论」这种正常多步任务掐死在半路（真机实测：18 次工具调用就撞 MAX_TURNS）。
+    # 参考实现都用「模型自己停」或很宽松的护栏（Claude Code 主循环无轮次硬限，
+    # DSH 靠 stopReason），这里抬到 60 作兜底：正常任务远够用，真死循环仍能收口。
+    max_iterations: int = 60
     # 员工/委托回合墙钟上限（秒）；0=不限。默认与 dispatcher 的 per_item_timeout 对齐，
     # 防止单卡无限跑占用席位；显式 0 可由调用方关闭。
     turn_timeout_sec: int = 1860
     stream_to_ui: bool = True
     compression_threshold: float = 0.85
+    # 功能：摘要专用模型档案 id——留空表示与主模型相同。
+    # 压缩是「读大段、写摘要」的调用，用主模型单次 30-40 秒；换小模型能明显缩短，
+    # 而摘要质量对模型强弱不敏感。
+    summarization_profile_id: str = ""
     # 0 = 「未显式配置」哨兵 → 装配时按模型目录回填真实窗口（`resolve_context_window`）；
     # 目录未收录该模型时回落 `DEFAULT_CONTEXT_WINDOW`。显式配置（>0）保持只收紧口径
     # （min(配置, 目录)）。切勿改回静态 128000——那会与用户显式配置不可区分

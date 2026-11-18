@@ -35,6 +35,10 @@ _TRUNCATION_EXHAUSTED_NOTE = "\n\n[注意] 输出多次因长度限制被截断�
 _TRUNCATED_FINISH_REASONS = frozenset({"length", "max_tokens"})
 _PROMPT_TOO_LONG_MESSAGE = "上下文长度超出模型窗口且压缩后无法收敛，请开新会话或减小输入规模。"
 
+# 功能：流式中断重试上限与间隔——首事件后断流多半是网关瞬时中断，重发通常能续上。
+_MAX_STREAM_RETRIES = 2
+_STREAM_RETRY_DELAY_SECONDS = 1.5
+
 
 def _response_model_name(ctx: Any) -> str:
     """（批 3）：记账/事件用的模型名——实际调用模型（provider_name）优先
@@ -56,6 +60,11 @@ _HALLUCINATION_TOOL_EVIDENCE_MAX_CHARS = 600
 # 先给模型基于证据的校对机会（拦截不再直接拒绝输出）；达上限仍 blocked 才终态
 # 拦截。重写内容会再次过 judge（校对不可绕过），校对指令含 judge 指出的待核对片段。
 _HALLUCINATION_MAX_REWRITES = 2
+# 标识型实体：带数字的编号/英文标识/连字符代号——可在证据里逐个核对出处
+_ENTITY_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_-]*\d[A-Za-z0-9_-]*")
+# 日期与纯数字不作为「必须出现在证据里」的实体：同一事实常以 2026-11-16 /
+# 11/16 / 2026 年 11 月等不同写法出现，按字面比对会把正常引用判成编造
+# （真机：带真实时间戳的新闻综述被判 1.0）。
 _HALLUCINATION_REWRITE_QUOTE_CHARS = 400
 
 
@@ -1978,6 +1987,16 @@ async def _stream_thinking(
             else:
                 delta = combined
             _hanging_pii = _hanging_pii_suffix(delta)
+            # 重试续流：新一次生成会从头复述，已推给用户的正文按长度跳过，
+            # 只接上后续增量（否则界面出现整段重复）。无重试时为零开销。
+            retry_keep = int(ctx.meta.get("_stream_retry_keep", 0) or 0)
+            if retry_keep > 0:
+                emitted_len = len(buffer.text)
+                if emitted_len < retry_keep:
+                    overlap = min(len(delta), retry_keep - emitted_len)
+                    delta = delta[overlap:]
+                if len(buffer.text) >= retry_keep:
+                    ctx.meta.pop("_stream_retry_keep", None)
             if delta:
                 buffer.append_text(delta)
                 await ctx.bus.emit(
@@ -2049,6 +2068,25 @@ async def _stream_thinking(
                     },
                 )
             )
+            # 首事件后断流多半是网关瞬时中断，重发一次通常能续上；已产出的正文与
+            # 工具调用保留在 buffer 里，重试只追加增量。超过上限才落 MODEL_ERROR
+            # （否则用户看到的是「说到一半就没了」）。
+            attempts = int(ctx.meta.get("_stream_retry_attempts", 0) or 0)
+            if attempts < _MAX_STREAM_RETRIES:
+                ctx.meta["_stream_retry_attempts"] = attempts + 1
+                # 重发会让模型从头再讲一遍，已推给用户的正文必须记住长度，
+                # 重试期间把重复的前缀丢弃，否则界面会出现整段重复。
+                ctx.meta["_stream_retry_keep"] = len(buffer.text)
+                logger.warning(
+                    "stream interrupted; retry %d/%d session=%s",
+                    attempts + 1,
+                    _MAX_STREAM_RETRIES,
+                    ctx.meta.get("session_id", ""),
+                )
+                await asyncio.sleep(_STREAM_RETRY_DELAY_SECONDS)
+                return await _stream_thinking(ctx, provider_messages, provider, max_tokens)
+            ctx.meta.pop("_stream_retry_attempts", None)
+            ctx.meta.pop("_stream_retry_keep", None)
             ctx.terminal_reason = TerminalReason.MODEL_ERROR
             ctx.final_message = (
                 event.error_message or "流式错误（回复可能不完整），请重试或继续对话。"
@@ -2082,6 +2120,92 @@ async def _stream_thinking(
         refusal=False,
         reasoning=buffer.thinking,
     )
+
+
+def _is_sourced_summary(content: str) -> bool:
+    """功能：判断回复是否为「带来源出处的综述」（引用检索结果而非凭空断言）。
+
+    依据是显式的溯源表述——「来源」「原文」「据…报道」「未查证」「官方页面」等。
+    这类回复把事实归因到具体来源，出处就在工具证据里，可按证据核验；模型若凭空
+    编造则不会主动标注「未查证」「以原文为准」，也仍会被实体比对拦住。
+    """
+    text = content.strip()
+    if not text:
+        return False
+    markers = (
+        "以来源",
+        "据原文",
+        "来源原文",
+        "原文标注",
+        "据…报道",
+        "官方页面",
+        "未查证",
+        "无法核实",
+        "未能核实",
+        "可核验",
+        "查证",
+        "检索结果",
+    )
+    return sum(1 for m in markers if m in text) >= 2
+
+
+def _report_spans(report: Any) -> list[str]:
+    """功能：取出裁判指出的待核对片段（供事件与日志核对判定依据）。"""
+    l2 = getattr(report, "l2", None)
+    return [str(s)[:200] for s in (getattr(l2, "hallucination_spans", None) or []) if s]
+
+
+def _is_execution_report(content: str) -> bool:
+    """功能：判断回复是否为「我刚做了什么」的执行汇报（而非对外部事实的断言）。
+
+    依据是完成态表达与产物指向——「已完成」「已保存」「转换完成」「写入」等，且
+    不包含强事实断言标记（数字区间、日期、外部主体属性）。这类回复的事实在工具
+    调用记录里可核验，不适用「与上下文矛盾」的幻觉判据。
+    """
+    text = content.strip()
+    if not text:
+        return False
+    markers = (
+        "已完成",
+        "完成",
+        "已保存",
+        "已写入",
+        "已生成",
+        "已创建",
+        "已转换",
+        "转换成功",
+        "保存至",
+        "写入到",
+        "输出到",
+        "处理完",
+    )
+    return any(m in text for m in markers)
+
+
+def _claims_covered_by_evidence(
+    content: str, evidence: list[str], *, has_spans: bool = True
+) -> bool:
+    """功能：判断回复里的标识型实体是否都能在工具证据中找到出处。
+
+    给「有工具证据但被自评判成幻觉」的回复一个可核验的放行口径：抽出回复里的
+    标识型实体（带数字的编号、英文标识、连字符代号），逐个在证据里查；全部能对上
+    才算「转述来源」，任一明显对不上（证据 pineapple-77、回复 Alpha-999）仍按幻觉
+    处理。纯中文叙述不做实体比对，避免把正常措辞误判成编造。
+    """
+    evidence_blob = "\n".join(evidence)
+    if not evidence_blob.strip():
+        return False
+    if not has_spans:
+        # 裁判说不出具体冲突片段：只在回复属于「执行汇报/带来源综述」这类可核验
+        # 形态时放行；其余（纯断言）仍按未通过处理。
+        return _is_execution_report(content) or _is_sourced_summary(content)
+    entities = set(_ENTITY_PATTERN.findall(content))
+    if not entities:
+        # 没有标识型实体：多为「已完成转换 / 文件已保存」这类执行汇报。这类陈述的
+        # 事实是「我做完了什么」，本就可由工具调用记录核验，不该由自评总分否决
+        # （真机：CSV→Excel 转换的成功汇报被判 1.0 → 整轮拦掉）。
+        return _is_execution_report(content) or _is_sourced_summary(content)
+    return all(e in evidence_blob for e in entities)
 
 
 def _is_blank_reply(text: str) -> bool:
@@ -2130,14 +2254,20 @@ async def on_parsing(
                         data={
                             "module": "content_filter",
                             "categories": filter_result.categories,
+                            "action": filter_result.action,
                         },
                     )
                 )
-                ctx.terminal_reason = TerminalReason.SAFETY_BLOCKED
-                ctx.final_message = "内容被安全护栏拦截"
-                ctx.current_content = None
-                ctx.current_tool_calls = None
-                return
+                if filter_result.action == "warn":
+                    # 软拦：涉法词汇在新闻/案情/科普里是正常引用，遮蔽后继续作答，
+                    # 不能整轮拦掉（真机现象：搜 AI 新闻因「走私」被判违规终止）。
+                    content = content_filter.mask(content, filter_result.categories)
+                else:
+                    ctx.terminal_reason = TerminalReason.SAFETY_BLOCKED
+                    ctx.final_message = "内容被安全护栏拦截"
+                    ctx.current_content = None
+                    ctx.current_tool_calls = None
+                    return
     except Exception as e:  # noqa: BLE001
         logger.warning("content_filter.check failed: %s", e)
 
@@ -2181,9 +2311,24 @@ async def on_parsing(
         if hc and content and ctx.raw_input and not tool_calls:
             # 工具轮拦截会直接掐断工具执行（误伤查证路径）。
             # 输入时，跨轮事实（上轮定义、本轮引用）会被误判为幻觉（score=1.0
+            # 对话上下文同样只取本轮：跨任务的旧发言会让裁判拿错对照物。
+            _turn_idx = -1
+            for _i in range(len(ctx.messages) - 1, -1, -1):
+                _m = ctx.messages[_i]
+                if (
+                    _m.role == MessageRole.USER
+                    and ctx.raw_input
+                    and ctx.raw_input in (_m.content or "")
+                ):
+                    _turn_idx = _i
+                    break
+            # 取「本轮之前 + 本轮」的窗口：本轮之前的对话是核对跨轮事实所必需的
+            # 对照物（问「代号是什么」要能对上前面说过的代号），但不能越过更早的
+            # 任务边界——所以从本轮 USER 往前取有限条，而不是整段历史。
+            _window = ctx.messages[max(0, _turn_idx - 6) :] if _turn_idx >= 0 else ctx.messages[-6:]
             dialogue = [
                 m
-                for m in ctx.messages[-6:]
+                for m in _window[-8:]
                 if m.role in (MessageRole.USER, MessageRole.ASSISTANT) and (m.content or "").strip()
             ]
             # 本轮输入（末条 USER，内容含 raw_input）不属于既往证据链——
@@ -2198,6 +2343,8 @@ async def on_parsing(
             # 文件读取、多跳计算），judge 看不到工具结果 = 无法对照「模型引用
             # 拦截）。补最近 TOOL 输出入证据链——judge 仍可凭证据发现曲解/夸大
             # 不豁免 judge 本身（契约幻觉 5 护栏）。
+            # TOOL 证据取最近若干条，且不按「本轮」切：会话压缩后历史里可能只剩
+            # TOOL 里的事实（模型正是引用它作答），排除掉会让裁判看不到唯一证据来源。
             tool_evidence = [
                 (m.content or "")[:_HALLUCINATION_TOOL_EVIDENCE_MAX_CHARS]
                 for m in reversed(ctx.messages[-_HALLUCINATION_TOOL_EVIDENCE_MSGS:])
@@ -2220,6 +2367,25 @@ async def on_parsing(
             else:
                 judge_context = "\n".join(evidence_parts) + f"\n[本轮用户输入] {ctx.raw_input}"
                 report = await hc.check(text=content, context=judge_context)
+                # 有工具证据时改判「证据优先」：裁判是同一个模型自评，看到检索结果、
+                # 文件内容后仍会把「转述来源」判成 1.0（真机：29 次工具调用的调研结论
+                # 被判 1.0 → 重写耗尽 → 整轮 SAFETY_BLOCKED，用户拿不到任何结论）。
+                # 但真幻觉必须照拦（契约：证据说 pineapple-77、回答 Alpha-999 要拦），
+                # 所以放行条件是「本回复的每个断言都能在证据里找到」，不是「有证据就免检」。
+                # 判据交给有证据在手的裁判：证据覆盖度足够才算通过。
+                has_tool_evidence = bool(tool_evidence)
+                if report.blocked and has_tool_evidence:
+                    # 实测：裁判常给 1.0 却列不出任何具体矛盾片段（spans 全空）——
+                    # 这是自评噪声，不是真判断：「说不出哪里冲突」本身就不构成拦截依据。
+                    # 有片段时按片段与实体比对决定；无片段时按回复形态（执行汇报/
+                    # 带来源综述）判断是否可核验。
+                    spans = _report_spans(report)
+                    if _claims_covered_by_evidence(content, tool_evidence, has_spans=bool(spans)):
+                        logger.info(
+                            "hallucination passed (claims covered by tool evidence): score=%.2f",
+                            getattr(report, "overall_score", 0.0),
+                        )
+                        report.blocked = False
                 if report.blocked:
                     rewrite_used = int(ctx.meta.get("_hallucination_rewrite_count", 0) or 0)
                     if rewrite_used < _HALLUCINATION_MAX_REWRITES:
@@ -2238,6 +2404,7 @@ async def on_parsing(
                                     "module": "hallucination_checker",
                                     "score": report.overall_score,
                                     "action": "rewrite",
+                                    "spans": _report_spans(report),
                                 },
                             )
                         )
@@ -2267,6 +2434,7 @@ async def on_parsing(
                                 "module": "hallucination_checker",
                                 "score": report.overall_score,
                                 "action": "blocked",
+                                "spans": _report_spans(report),
                             },
                         )
                     )
@@ -2876,7 +3044,17 @@ async def on_compressing(
     # 排除 SYSTEM 的 compressible 口径会使「摘要膨胀/搬运」误判为已缩减
     before_live = ctx.live_token_count()
 
-    from bandi.memory.compression_pipeline import CompressionPipeline
+    from bandi.memory.compression_pipeline import CompressionPipeline, prune_before_request
+
+    # 先跑一遍免模型裁剪（去重工具输出、超预算裁剪、剥图片），再重测压力。
+    # 参考实现同样把免费 pass 前置：很多轮次靠这一步就回到阈值内，不必付一次
+    # 几十秒的摘要调用；直接进 LLM 压缩会让长会话每轮都变慢。
+    try:
+        pruned, pruned_count = prune_before_request(ctx.messages)
+        if pruned_count:
+            ctx.messages = pruned
+    except Exception:
+        logger.debug("pre-request prune failed; continue to compaction", exc_info=True)
 
     ratio = (
         ctx.compressible_token_count() / ctx.effective_context_window
@@ -2965,6 +3143,13 @@ async def on_compressing(
         ctx.compress.consecutive_fallbacks += 1
         ctx.messages = CompressionPipeline.truncate(ctx.messages)
         ctx.compress.compress_ok = True
+        # 维护计时器必须一并推进：否则 is_maintenance_due 在下一轮迭代仍为真，
+        # 状态机回到 compressing 再失败一次，连续三次后升级 ESCALATED 直接终止本轮
+        # （真机现象：灌入大段材料后整轮 ESCALATED，模型根本没被调用）。
+        import time
+
+        ctx.compress.turns_since_maintenance = 0
+        ctx.compress.last_active_ts = time.time()
         # 注入锚点——续作连续性不得只靠成功压缩路径（成功分支 :1253 注入，此处补齐）
         _inject_continuity_anchor(ctx)
         if _hook_runner is not None:
@@ -3018,6 +3203,9 @@ async def on_compressing(
     # 无效/渐进部分收敛即被旧转移 terminated → 兜底假 MAX_TURNS 空回复）；无成效或
     # reason 已设（PROMPT_TOO_LONG）则直终。
     ctx.compress.last_shrunk = ctx.live_token_count() < before_live
+    # 回 thinking 是压缩后的续作，不是用户又发起了一轮：标记给主循环，
+    # 让这一圈不消耗轮次预算（否则长会话的压缩次数会把正常任务顶成 MAX_TURNS）。
+    ctx.meta["_resumed_from_compaction"] = True
     logger.info(
         "compression post-state: compressible=%d needs=%s failed=%s live=%d window=%d shrunk=%s "
         "input_msgs=%s",
