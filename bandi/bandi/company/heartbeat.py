@@ -207,7 +207,8 @@ class HeartbeatScheduler:
         await self._resolve_stale_waits()
         stagnant = detect_stagnant_work_items(self.store)
         if stagnant:
-            logger.warning("stagnant work items: %s", [s["id"] for s in stagnant])
+            logger.warning("stagnant work items: %d item(s)", len(stagnant))
+            logger.debug("stagnant work item ids: %s", [s["id"] for s in stagnant])
 
         if self.communication is not None:
             waiting_for_meeting = [

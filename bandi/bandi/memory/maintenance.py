@@ -254,7 +254,7 @@ def promote_notable_episodes(
     checked_promoted: set[str] = set()
     candidates: dict[str, Episode] = {}
     from bandi.memory.consolidation import PROMOTION_REJECTED_TAG, _turn_recorded_inputs
-    from bandi.memory.ingest_review import is_noise_memory
+    from bandi.memory.ingest_review import is_noise_memory, review_episodic_ingest
 
     dedup_inputs: set[str] | None = None
     for project_id, employee_id in episodic.list_scopes():
@@ -272,6 +272,10 @@ def promote_notable_episodes(
                     continue
                 if is_noise_memory(episode.summary):
                     # 审批等待/回执/寒暄/自我介绍/可推导——不进入晋升候选
+                    continue
+                # 与入库同一套判断：一次性任务指令（读某文件/生成某表）当下有用，
+                # 换一个任务就失效，不该占着审批列表。
+                if review_episodic_ingest(episode.summary).decision == "reject":
                     continue
                 if episode.importance < min_importance or episode.recall_count < min_recalls:
                     continue
@@ -464,3 +468,37 @@ __all__ = [
     "run_memory_maintenance",
     "run_session_maintenance",
 ]
+
+
+def purge_orphan_work_items(
+    store: Any,
+    *,
+    alive_session_ids: set[str],
+    limit: int = 2_000,
+) -> int:
+    """\u529f\u80fd\uff1a\u56de\u6536\u5f52\u5c5e\u4f1a\u8bdd\u5df2\u88ab\u5220\u9664\u7684\u5de5\u4f5c\u9879\uff0c\u8fd4\u56de\u6e05\u7406\u6570\u91cf\u3002
+
+    \u4f1a\u8bdd\u5220\u9664\u65f6\u5df2\u7ecf\u4f1a\u6536\u6389\u5f53\u65f6\u5b58\u5728\u7684\u5de5\u4f5c\u9879\uff1b\u8fd9\u91cc\u5904\u7406\u5386\u53f2\u6b8b\u7559\u2014\u2014
+    \u76ee\u6807\u5c31\u662f\u4e0d\u8ba9\u5b83\u4eec\u5728\u6bcf\u8f6e tick \u88ab\u91cd\u590d\u626b\u63cf\u3002\u5b64\u513f\u5224\u5b9a\u53ea\u770b
+    \u5f52\u5c5e\u4f1a\u8bdd\u662f\u5426\u8fd8\u5b58\u5728\uff1a\u5b58\u5728\u7684\u4f1a\u8bdd\u4e0d\u52a8\uff08\u54ea\u6015\u9879\u76ee\u5df2\u5f52\u6863\uff09\uff0c\u907f\u514d\u628a\u7528\u6237
+    \u6b63\u5728\u7528\u7684\u4efb\u52a1\u5f53\u6210\u5783\u573e\u3002
+    """
+    removed = 0
+    scanned = 0
+    for item in store.list_all():
+        if scanned >= limit:
+            break
+        scanned += 1
+        metadata = getattr(item, "metadata", None) or {}
+        origin = str(metadata.get("origin_session_id") or "").strip()
+        if not origin or origin in alive_session_ids:
+            continue
+        delete = getattr(store, "delete", None)
+        if not callable(delete):
+            break
+        try:
+            delete(str(item.id))
+            removed += 1
+        except Exception:  # noqa: BLE001 - \u56de\u6536\u5931\u8d25\u4e0d\u5f71\u54cd\u4e3b\u6d41\u7a0b
+            continue
+    return removed

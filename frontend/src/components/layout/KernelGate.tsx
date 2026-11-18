@@ -63,9 +63,10 @@ export function KernelGate({ children }: { children: ReactNode }) {
         const contentType = response.headers.get("content-type") ?? "";
         if (response.ok && contentType.includes("application/json")) {
           if (cancelled) return;
-          // 内核活着只代表接口可用：等首屏数据落位再交出内容，避免进桌面端先白屏。
-          await warmupFirstScreen().catch(() => undefined);
-          if (!cancelled) setState("ready");
+          // 立即放行：内核活着就能渲染界面，首屏数据在后台补——
+          // 界面先出来、数据再填进去，比「等完三个请求才看到框架」快得多。
+          setState("ready");
+          void warmupFirstScreen().catch(() => undefined);
           return;
         }
       } catch {

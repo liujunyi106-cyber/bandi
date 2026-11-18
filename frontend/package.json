@@ -1,7 +1,7 @@
 {
   "name": "bandi-frontend",
   "private": true,
-  "version": "1.2.21",
+  "version": "1.2.24",
   "description": "Bandi desktop shell (Electron + FastAPI sidecar)",
   "author": "Bandi",
   "type": "module",

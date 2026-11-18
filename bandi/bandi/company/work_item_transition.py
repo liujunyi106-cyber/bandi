@@ -663,8 +663,14 @@ def refresh_dependents(
         doomed_ids = compute_doomed_work_item_ids(work_item_by_id)
         abandoned_ids = compute_abandoned_work_item_ids(work_items)
         if abandoned_ids:
+            # 只在中止发生的那一轮打一条汇总：这些项一旦标成失败就不会再进这个分支，
+            # 但历史遗留可能长期驻留，逐条刷 UUID 会把日志和 tick 都拖慢。
             logger.warning(
-                "abandoned needs_attention dependencies released as failures: %s",
+                "abandoned needs_attention dependencies released as failures: %d item(s)",
+                len(abandoned_ids),
+            )
+            logger.debug(
+                "abandoned needs_attention ids: %s",
                 sorted(abandoned_ids),
             )
         changed = False

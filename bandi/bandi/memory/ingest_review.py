@@ -1,6 +1,10 @@
 # 功能：入库价值判断——纯规则三条件评分（长期价值/可结构化/影响个性化）
 from __future__ import annotations
 
+import asyncio
+import inspect
+from collections.abc import Callable
+
 import re
 from dataclasses import dataclass
 
@@ -551,6 +555,93 @@ def review_ingest(
     return IngestVerdict("reject", "no_signal", score)
 
 
+# 功能：一次性任务指令的动词——用户让助手去做具体操作，而不是陈述事实。
+_TASK_IMPERATIVES = (
+    "帮我",
+    "给我",
+    "替我",
+    "请帮",
+    "麻烦",
+    "读一下",
+    "读下",
+    "读一遍",
+    "看一下",
+    "看下",
+    "打开",
+    "生成一个",
+    "生成一份",
+    "生成一份",
+    "创建一个",
+    "新建一个",
+    "写一个",
+    "写成",
+    "写成一行",
+    "写到",
+    "写入",
+    "改成",
+    "改为",
+    "改成",
+    "另存为",
+    "转换",
+    "转成",
+    "导出",
+    "统计一下",
+    "统计下",
+    "算一下",
+    "跑一下",
+    "执行一下",
+    "追加",
+    "替换",
+    "重命名",
+    "删掉",
+    "删除",
+    "整理成",
+    "排序",
+    "做一个小工具",
+    "做个",
+    "出张表",
+    "出一张表",
+    "合起来",
+    "各出",
+    "整理成",
+    "做成",
+    "做成一份",
+)
+
+# 功能：以「把…」起头的处置句——中文里这类句式绝大多数是在指令如何加工数据。
+_DISPOSAL_RE = re.compile(r"(?:^|[。；\n])\s*把[^。；\n]{2,60}?(?:输出|写到|写入|保存|另存|生成|改成|转成|合并|整理)", re.M)
+
+# 功能：产物/路径线索——带具体文件路径的指令多半是一次性操作。
+_ARTIFACT_HINT = re.compile(
+    r"(\.(csv|xlsx|docx|pptx|pdf|txt|md|json|yaml|yml|html|py|js|ts|sh|svg|png|jpg)\b"
+    r"|(?:^|[\s/\\])(?:out|fixtures|workspace|assets|src|tests?|data)/)",
+    re.IGNORECASE,
+)
+
+
+def _looks_task_instruction(text: str) -> bool:
+    """功能：判断一段经历文本是否只是「让助手去做某件事」的一次性指令。
+
+    区分「事实」与「指令」：事实描述用户/项目的稳定属性（「部署端口是 7421」
+    「偏好中文回复」），指令描述某个文件此刻要怎么处理（「读 out/a.csv，把前 3
+    名写到 out/b.txt」）。后者在下一个同类任务里立刻失效，不属于长期记忆。
+    """
+    body = str(text or "").strip()
+    if not body:
+        return False
+    condensed = body.strip(_MARKS)
+    if not condensed:
+        return False
+    imperative = any(word in condensed for word in _TASK_IMPERATIVES) or bool(
+        _DISPOSAL_RE.search(condensed)
+    )
+    if not imperative:
+        return False
+    # 有明确产物/路径线索时更确定是一次性操作；纯动词也可能是偏好表达，
+    # 因此要求两者同时出现，避免把「帮我记住我喜欢简短回答」误拦。
+    return bool(_ARTIFACT_HINT.search(condensed))
+
+
 def review_episodic_ingest(candidate: str) -> IngestVerdict:
     """功能：经历层入库判断——拒「不该存的内容」+ 空/寒暄，业务句才记录。
 
@@ -598,4 +689,53 @@ def review_episodic_ingest(candidate: str) -> IngestVerdict:
         return IngestVerdict("reject", "approval_wait", 0.0)
     if _looks_failed_answer(answer):
         return IngestVerdict("reject", "failed_turn", 0.0)
+    # 任务派单：用户让助手「去某个文件里读/写/生成/转换」的一次性指令。
+    # 这类文本不是关于用户或世界的事实，等下一条同类指令出现时它就无用了；
+    # 留在长期记忆里只会让审批列表被一次性操作淹没。
+    if _looks_task_instruction(body):
+        return IngestVerdict("reject", "task_instruction", 0.0)
     return IngestVerdict("accept", "episodic_record", 1.0)
+
+
+# 功能：LLM 精判提示词——只问「这条值不值得长期记住」，不问它是否真实。
+_JUDGE_PROMPT = """\u4f60\u662f\u957f\u671f\u8bb0\u5fc6\u5ba1\u6838\u5458\u3002\u5224\u5b9a\u4e0b\u9762\u8fd9\u6bb5\u6587\u672c\u662f\u5426\u503c\u5f97\u8fdb\u5165\u957f\u671f\u8bb0\u5fc6\u3002
+
+\u503c\u5f97\u8bb0\u4f4f\uff08ACCEPT\uff09\uff1a\u5173\u4e8e\u7528\u6237\u672c\u4eba\u7684\u7a33\u5b9a\u504f\u597d/\u4e60\u60ef/\u8eab\u4efd\uff1b\u9879\u76ee\u7684\u6301\u4e45\u5c5e\u6027\uff08\u4ee3\u53f7\u3001\u7aef\u53e3\u3001\u6280\u672f\u6808\u3001\u7ea6\u5b9a\uff09\uff1b\u53ef\u590d\u7528\u7684\u6280\u672f\u7ed3\u8bba\u4e0e\u53cd\u76f4\u89c9\u53d1\u73b0\u3002
+\u4e0d\u503c\u5f97\u8bb0\u4f4f\uff08REJECT\uff09\uff1a\u4e00\u6b21\u6027\u4efb\u52a1\u6307\u4ee4\uff08\u8bfb\u67d0\u4e2a\u6587\u4ef6\u3001\u751f\u6210\u67d0\u4e2a\u8868\u3001\u8f6c\u6362\u683c\u5f0f\uff09\uff1b\u4e34\u65f6\u67e5\u8be2\u7ed3\u679c\uff1b\u5bd2\u6684\uff1b\u81ea\u6211\u4ecb\u7ecd\uff1b\u53ef\u4ece\u4ee3\u7801/git \u63a8\u5bfc\u7684\u5185\u5bb9\u3002
+
+\u53ea\u56de\u4e00\u4e2a\u8bcd\uff1aACCEPT \u6216 REJECT\u3002
+
+\u5f85\u5ba1\u6587\u672c\uff1a
+{text}
+"""
+
+
+def review_with_judge(candidate: str, llm: Callable[[str], Any] | None) -> IngestVerdict:
+    """\u529f\u80fd\uff1a\u89c4\u5219\u7c97\u7b5b + LLM \u7cbe\u5224\u7684\u4e24\u9636\u6bb5\u5ba1\u6279\u5165\u53e3\u3002
+
+    \u7b2c\u4e00\u9636\u6bb5\uff08\u89c4\u5219\uff09\u5148\u628a\u7a7a\u6587\u672c\u3001\u5bd2\u6684\u3001\u81ea\u6211\u4ecb\u7ecd\u3001\u4efb\u52a1\u6307\u4ee4\u6321\u6389\uff0c\u5c11\u8de8\u4e00\u6b21\u6a21\u578b\u8c03\u7528\uff1b
+    \u7b2c\u4e8c\u9636\u6bb5\uff08LLM\uff09\u53ea\u5224\u89c4\u5219\u6ca1\u62e6\u4f4f\u7684\u6a21\u7cca\u6587\u672c\u3002\u65e0 LLM \u6216\u8c03\u7528\u5931\u8d25\u65f6\u56de\u9000\u5230\u89c4\u5219\u7ed3\u8bba\u2014\u2014
+    \u5ba1\u6279\u662f\u589e\u5f3a\u9879\uff0c\u4e0d\u80fd\u56e0\u6a21\u578b\u4e0d\u53ef\u7528\u800c\u4e22\u5f03\u5019\u9009\u3002
+    """
+    verdict = review_episodic_ingest(candidate)
+    if verdict.decision != "accept" or llm is None:
+        return verdict
+    try:
+        raw = llm(_JUDGE_PROMPT.format(text=str(candidate)[:1500]))
+        if inspect.isawaitable(raw):
+            raw = asyncio.get_event_loop().run_until_complete(raw) if not _in_loop() else None
+        answer = str(raw or "").strip().upper()
+    except Exception:  # noqa: BLE001 - \u5224\u5b98\u5931\u8d25\u4e0d\u963b\u65ad\u5199\u5165
+        return verdict
+    if answer.startswith("REJECT"):
+        return IngestVerdict("reject", "llm_judged", 0.2)
+    return verdict
+
+
+def _in_loop() -> bool:
+    """\u529f\u80fd\uff1a\u5f53\u524d\u662f\u5426\u5df2\u5728\u4e8b\u4ef6\u5faa\u73af\u4e2d\uff08\u540c\u6b65\u5165\u53e3\u4e0d\u53ef\u518d run_until_complete\uff09\u3002"""
+    try:
+        asyncio.get_running_loop()
+        return True
+    except RuntimeError:
+        return False

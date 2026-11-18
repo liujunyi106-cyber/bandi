@@ -1090,8 +1090,8 @@ class CompanyDispatcher:
                     "recovered %d stale claims during tick", report.recovered_stale_claims
                 )
             if report.stagnant_work_items:
-                logger.warning(
-                    "detected %d stagnant work items during tick", len(report.stagnant_work_items)
+                logger.debug(
+                "detected %d stagnant work items during tick", len(report.stagnant_work_items)
                 )
 
         if not self.config.enable_auto_process:

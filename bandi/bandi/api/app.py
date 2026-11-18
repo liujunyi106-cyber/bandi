@@ -2274,7 +2274,11 @@ def _bind_session_thread(session_id: str, thread_id: str) -> None:
 
 
 async def _interrupt_session_work_items(session_id: str) -> None:
-    """功能：会话删除联动——中止由该会话发起的活动执行（员工任务不残留继续跑）。"""
+    """功能：会话删除联动——中止该会话发起的执行，并清除它的工作项记录。
+
+    只中止不删会留下永久残留：这些项不再有人查看，却会在每轮 tick 被全量扫描，
+    越积越多把调度拖慢。会话是工作项的归属者，删会话就要带走它创建的工作项。
+    """
     try:
         dispatcher = _get_company_dispatcher()
         round_service = getattr(dispatcher, "group_rounds", None)
@@ -2282,17 +2286,34 @@ async def _interrupt_session_work_items(session_id: str) -> None:
             active_round = round_service.get_active(session_id)
             if active_round is not None:
                 round_service.cancel(active_round.round_id, reason="session_deleted")
-        for item in dispatcher.store.list_all():
+        store = getattr(dispatcher, "store", None)
+        if store is None:
+            return
+        doomed: list[str] = []
+        for item in store.list_all():
             metadata = getattr(item, "metadata", None) or {}
             if str(metadata.get("origin_session_id") or "") != session_id:
                 continue
+            item_id = str(item.id)
+            doomed.append(item_id)
             cancel = getattr(dispatcher, "cancel_work_item", None)
-            if callable(cancel):
-                await cancel(str(item.id), reason="session_deleted")
-            else:
-                await dispatcher.interrupt_work_item(str(item.id))
-    except Exception as exc:  # noqa: BLE001 —— 中断失败不阻断会话删除
-        logger.warning("session work item interrupt failed: %s (%s)", session_id, exc)
+            try:
+                if callable(cancel):
+                    await cancel(item_id, reason="session_deleted")
+                else:
+                    await dispatcher.interrupt_work_item(item_id)
+            except Exception:  # noqa: BLE001 — 单个取消失败仍要删记录
+                logger.warning("cancel work item failed during session delete: %s", item_id)
+        # 取消之后删记录：留下的中断态项没有任何后续动作能回收它们。
+        delete = getattr(store, "delete", None)
+        if callable(delete):
+            for item_id in doomed:
+                try:
+                    delete(item_id)
+                except Exception:  # noqa: BLE001 — 删除失败不影响会话删除
+                    logger.warning("delete work item failed: %s", item_id)
+    except Exception as exc:  # noqa: BLE001 —— 清理失败不阻断会话删除
+        logger.warning("session work item cleanup failed: %s (%s)", session_id, exc)
 
 
 async def _run_session_end_hooks(session_id: str) -> None:
@@ -3717,11 +3738,39 @@ def _get_task_scheduler() -> Any:
                 if maintenance.enabled and interval_hours > 0:
                     scheduler_config.maintenance_enabled = True
                     scheduler_config.maintenance_interval_sec = interval_hours * 3600.0
-                    scheduler_config.maintenance_callable = default_maintenance_callable(
+                    base_maintenance = default_maintenance_callable(
                         ttl_days=maintenance.session_ttl_days,
                         forget_older_than_days=maintenance.forget_older_than_days,
                         promote_limit=maintenance.promote_limit,
                     )
+
+                    def _maintenance_with_reclaim() -> Any:
+                        """功能：记忆维护 + 孤儿工作项回收。
+
+                        孤儿回收只在维护周期做：每 tick 都扫一遍全表，正是拖慢
+                        调度与界面交互的原因之一。
+                        """
+                        result = base_maintenance()
+                        try:
+                            from bandi.memory.maintenance import purge_orphan_work_items
+
+                            dispatcher = _get_company_dispatcher()
+                            store = getattr(dispatcher, "store", None)
+                            if store is not None:
+                                alive = {
+                                    str(sess["id"])
+                                    for sess in _get_store().list_sessions(limit=10_000)
+                                }
+                                removed = purge_orphan_work_items(
+                                    store, alive_session_ids=alive
+                                )
+                                if removed:
+                                    logger.info("reclaimed %d orphan work item(s)", removed)
+                        except Exception as exc:  # noqa: BLE001 — 回收失败不影响维护
+                            logger.warning("orphan work item reclaim failed: %s", exc)
+                        return result
+
+                    scheduler_config.maintenance_callable = _maintenance_with_reclaim
                 elif maintenance.enabled:
                     scheduler_config.maintenance_enabled = False
                     logger.warning(
