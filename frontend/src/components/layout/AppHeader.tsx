@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 功能：顶栏（@base docs/前端设计规划.md §8 顶栏 56px 三槽位）。
  * 左：收缩开关（一键全部收缩/展开：左栏 + 项目面板）+ 当前会话名（+ 重命名按钮）；
  * 右：右栏开合 icon（v5：连接灯移除，与左栏切换按钮对称；WS 异常时保留文字提示）。
@@ -72,9 +72,11 @@ export function AppHeader({
   const dmEmployee = employees.find(
     (employee) => employee.role_id === dmTarget || employee.employee_id === dmTarget,
   );
+  // 标题只显示真实会话名：无标题时留空，不拿「会话」这类泛词占位——
+  // 空会话本该是干净的空状态，顶栏出现一个泛词会被读成「标题没加载出来」。
   const pageTitle = isDmView
-    ? dmEmployee?.name || dmTarget || activeSession?.title?.trim() || t("nav.chat")
-    : activeSession?.title?.trim() || t("nav.chat");
+    ? dmEmployee?.name || dmTarget || activeSession?.title?.trim() || ""
+    : activeSession?.title?.trim() || "";
   const status = worseStatus(wsStatus, sessionWsStatus);
   const labelKey = wsLabelKey(status);
   // 右栏开合（v5：与左栏 SidebarTrigger 同款镜像图标；仅收起态出现——展开后收起由右栏自身负责
@@ -96,14 +98,15 @@ export function AppHeader({
         : state.messagesBySession[""]?.length) ?? 0,
   );
   const busy = Boolean(useChatStore((state) => state.streams[activeSessionId ?? ""]));
-  // 空会话（无会话/无项目/无消息/未在跑）不占顶栏高度，让对话区更干净
+  // 空会话（无会话/无项目/无消息/未在跑/无标题）不占顶栏高度，让对话区更干净。
+  // 无标题也算空：只有 ID 没有名字的会话显示顶栏，等于给用户看一条空白条。
   const hideEmptyChatHeader =
     isChatRoute &&
-    !activeSessionId &&
     !activeProjectId &&
     !location.search &&
     messageCount === 0 &&
-    !busy;
+    !busy &&
+    (!activeSessionId || !activeSession?.title?.trim());
 
   // 功能：顶栏只服务会话路由——团队/工作/知识库/技能/自动化等页面自带标题，
   // 再叠一层顶栏会出现重复页名并把内容整体下推（标题位置与其他页不一致）

@@ -7,6 +7,18 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20261022" sizes="any" />
     <meta name="description" content="Bandi — 个人多 Agent 数字员工组织" />
     <title>Bandi</title>
+    <style>
+      /* 首帧底色：主包解析完成前先铺应用底色，避免「进入桌面端后白屏」。 */
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        background: #e8eaee;
+      }
+      #root {
+        height: 100%;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

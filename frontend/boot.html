@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'"
+    />
+    <title>Bandi</title>
+    <style>
+      /* 启动页配色与尺寸对齐桌面端设计 token：白底、近黑进度、同一最大宽度。 */
+      :root {
+        color-scheme: light;
+        --bg: #ffffff;
+        --fg: #111111;
+        --muted-foreground: #6b7280;
+        --primary: #18181b;
+        --primary-track: rgba(24, 24, 27, 0.25);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--fg);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+      }
+      /* 与桌面端启动画面同宽：动画、进度条、文案共用同一宽度基准。 */
+      .stage {
+        display: flex;
+        width: min(46vw, 13rem);
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+      }
+      .anim {
+        display: block;
+        width: 100%;
+        user-select: none;
+      }
+      .bar {
+        width: 100%;
+        height: 8px;
+        overflow: hidden;
+        border: 1px solid var(--primary-track);
+        border-radius: 999px;
+      }
+      .fill {
+        width: 0%;
+        height: 100%;
+        border-radius: 999px;
+        background: var(--primary);
+        transition: width 0.5s ease-out;
+      }
+      .caption {
+        margin: 0;
+        color: var(--muted-foreground);
+        font-size: 11px;
+        line-height: 1.4;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <!-- 占位动画：与桌面端同一张图：三黑点等待 → 进度 → 完成态换 done 图。 -->
+      <img id="anim" class="anim" alt="" aria-hidden="true" data-testid="boot-animation" />
+      <div class="bar">
+        <div class="fill" id="fill"></div>
+      </div>
+      <p class="caption" id="caption" data-testid="boot-caption">正在加载当中...</p>
+    </div>
+    <script type="module" src="./boot.ts"></script>
+  </body>
+</html>

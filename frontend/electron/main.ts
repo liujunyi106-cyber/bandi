@@ -193,13 +193,11 @@ function createWindow(): void {
 
   // 生产模式（ADR-42）：spawn sidecar → /ready → 进入 SPA（SPA+API+WS 单端口）。
   //
-  // 启动画面**只播一次**，载体是占位页：三黑点等待 → 真实进度 → 连接成功的完成动画，
-  // 播完由渲染进程通过 `boot:done` 通知主进程。主进程收到后再把窗口导航到 SPA，
-  // 并带上 `?boot=ready`——SPA 看到它就直接进内容，不再起第二个启动画面。
-  // 之所以不让 SPA 自己演：它是另一个页面，再演一遍就是用户看到的「两次加载」。
-  void win.loadFile(path.join(__dirname, "..", "dist", "index.html"), {
-    query: { boot: "starting" },
-  });
+  // 启动画面**只播一次**，载体是独立文档 `dist/boot.html`：三黑点等待 → 真实进度
+  // → 完成预示动画。它不加载 React 与桌面端 CSS，所以启动阶段不必先解析整个应用包。
+  // 播完由渲染进程通过 `boot:done` 通知主进程，主进程再把窗口导航到 SPA 并带
+  // `?boot=ready`——SPA 看到它直接出内容，不再起第二个启动画面。
+  void win.loadFile(path.join(__dirname, "..", "dist", "boot.html"));
   let navigated = false;
   const enterApp = () => {
     if (navigated || win.isDestroyed()) return;
@@ -207,7 +205,7 @@ function createWindow(): void {
     navigated = true;
     void win.loadURL(`http://127.0.0.1:${readyPort}/?boot=ready`);
   };
-  // 渲染进程播完成动画 → 立刻进桌面端；sidecar 没就绪则等就绪后补导航
+  // 渲染进程播完成预示动画 → 立刻进桌面端；sidecar 没就绪则等就绪后补导航
   ipcMain.removeAllListeners(BOOT_DONE_CHANNEL);
   ipcMain.once(BOOT_DONE_CHANNEL, () => {
     bootDoneAcknowledged = true;
@@ -219,7 +217,7 @@ function createWindow(): void {
       if (bootDoneAcknowledged) enterApp();
       return;
     }
-    console.warn("[main] sidecar 不可用，占位页转为错误重试页（不假装载入）");
+    console.warn("[main] sidecar 不可用，启动页转为错误页（不假装载入）");
     if (win.isDestroyed()) return;
     void win.loadFile(path.join(__dirname, "..", "dist", "index.html"), {
       query: { boot: "failed" },

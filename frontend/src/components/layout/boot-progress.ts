@@ -1,21 +1,30 @@
-// 功能：启动阶段的进度口径——把主进程上报的真实阶段映射成进度条百分比。
+// 功能：启动阶段的进度口径——把整条启动链路映射成一条进度条的百分比。
 
 /** 功能：壳上报的启动阶段，顺序即真实推进顺序。 */
 export type BootStage = "spawn" | "listening" | "probing" | "ready";
 
 /**
- * 功能：每个阶段完成时的百分比。
+ * 功能：每个阶段完成时的百分比——覆盖**整条启动链路**，不只是内核。
  *
- * 权重按真实耗时分布：拉起解释器最慢（进程冷启动占大头），端口监听次之，
- * 依赖探针通常在监听后很快返回。数值只决定进度条的视觉节奏，
- * 阶段判定本身全部来自主进程实测信号，不是计时估算。
+ * 链路真实构成（按耗时占比分配）：
+ *   ① spawn      拉起 Python 解释器 + 导入依赖   → 权重最大
+ *   ② listening  监听端口、Uvicorn 就绪
+ *   ③ probing    依赖探针（/ready）
+ *   ④ warming    首屏数据预热（会话/员工/项目）  ← 也是加载的一部分
+ *   ⑤ ready      交出桌面端
+ *
+ * 关键约束：内核 ready **不等于**界面可用。若把内核 ready 画成 100%，用户会在
+ * 进度条满格后继续等数据加载；因此内核只占 85%，余下 15% 留给首屏预热。
  */
 export const BOOT_STAGE_PROGRESS: Record<BootStage, number> = {
-  spawn: 10,
-  listening: 40,
-  probing: 85,
-  ready: 100,
+  spawn: 8,
+  listening: 32,
+  probing: 70,
+  ready: 85,
 };
+
+/** 功能：首屏数据预热阶段占用的进度区间（内核就绪 → 界面可用）。 */
+export const WARMUP_PROGRESS: { start: number; end: number } = { start: 85, end: 100 };
 
 /** 功能：阶段顺序表，用于求「当前阶段的下一个里程碑」。 */
 const STAGE_ORDER: BootStage[] = ["spawn", "listening", "probing", "ready"];
@@ -30,7 +39,8 @@ const STAGE_ORDER: BootStage[] = ["spawn", "listening", "probing", "ready"];
 export function bootProgressOf(stage: BootStage, sub = 0): number {
   const start = BOOT_STAGE_PROGRESS[stage];
   if (start === undefined) return BOOT_STAGE_PROGRESS.spawn;
-  if (stage === "ready") return 100;
+  // ready 是「内核就绪」不是「界面可用」：停在 85%，余下由首屏预热推到 100。
+  if (stage === "ready") return BOOT_STAGE_PROGRESS.ready;
 
   const clamped = Math.min(1, Math.max(0, sub));
   const index = STAGE_ORDER.indexOf(stage);

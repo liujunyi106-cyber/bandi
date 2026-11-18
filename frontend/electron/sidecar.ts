@@ -184,19 +184,33 @@ export class SidecarManager {
   private restarts = 0;
   private onGiveUp: GiveUpListener | null = null;
   private onStage: StageListener | null = null;
+  /** 最近一次上报的阶段——渲染进程订阅晚于启动，注册时补发用它。 */
+  private _stage: SidecarStage | null = null;
   private port: number | null = null;
 
   setGiveUpListener(listener: GiveUpListener): void {
     this.onGiveUp = listener;
   }
 
-  /** 功能：登记阶段监听器（窗口未创建时的上报会被丢弃，不影响启动）。 */
+  /** 功能：登记阶段监听器并立即补发当前阶段。
+   *
+   * 渲染进程的订阅一定晚于启动——补发当前阶段，进度条才不会从 `spawn` 重新起算
+   * （否则页面已在 70%+ 时会看到回落到 20% 的跳变）。
+   */
   setStageListener(listener: StageListener | null): void {
     this.onStage = listener;
+    if (listener && this._stage) {
+      try {
+        listener(this._stage);
+      } catch {
+        // 补发失败只影响进度条观感
+      }
+    }
   }
 
   /** 功能：安全上报阶段——监听器抛错不得拖垮启动链路。 */
   private reportStage(stage: SidecarStage): void {
+    this._stage = stage;
     try {
       this.onStage?.(stage);
     } catch {

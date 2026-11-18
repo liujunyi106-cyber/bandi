@@ -3997,6 +3997,11 @@ async def scheduler_task_create(body: dict[str, Any]) -> dict[str, Any]:
         value = str(body.get(key) or "").strip()
         if value:
             task.payload[key] = value
+    # 定时任务的结果必须落在自己的运行会话里：若沿用「发起任务时所在的会话」，
+    # 回复会被埋进那一段对话的历史深处（真机表现为「任务跑了但前端看不到回复」）。
+    # 调用方显式传 reuse_session=true 时才复用指定会话。
+    if not body.get("reuse_session"):
+        task.payload.pop("session_id", None)
     mcp_servers = body.get("mcp_servers")
     if isinstance(mcp_servers, list):
         names = [str(name).strip() for name in mcp_servers if str(name).strip()]

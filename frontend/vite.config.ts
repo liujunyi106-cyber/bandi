@@ -37,6 +37,14 @@ export default defineConfig(({ command }) => ({
     outDir: "dist",
     sourcemap: false,
     chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      // 启动页是独立文档：只跑 boot.ts，不加载 React 与桌面端 CSS。
+      // 两个入口各自只加载需要的资源，启动阶段不必先解析整个应用包。
+      input: {
+        main: fileURLToPath(new URL("./index.html", import.meta.url)),
+        boot: fileURLToPath(new URL("./boot.html", import.meta.url)),
+      },
+    },
   },
   test: {
     globals: true,
