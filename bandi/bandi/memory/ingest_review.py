@@ -653,6 +653,17 @@ _ARTIFACT_HINT = re.compile(
 )
 
 
+# 功能：结论信号——出现它们说明这件事已经做完并有产出，
+# 属于经验而非待办；「帮我修个 bug…已定位根因」不能当一次性指令丢掉。
+_CONCLUSION_RE = re.compile(
+    r"(?:已(?:定位|修复|解决|完成|处理|补(?:齐|上))"
+    r"|根因(?:是|在|已)"
+    r"|原因(?:是|在)"
+    r"|定位到"
+    r"|已建|已添加|已修改)"
+)
+
+
 def _looks_task_instruction(text: str) -> bool:
     """功能：判断一段经历文本是否只是「让助手去做某件事」的一次性指令。
 
@@ -672,7 +683,9 @@ def _looks_task_instruction(text: str) -> bool:
     imperative = any(word in condensed for word in _TASK_IMPERATIVES) or bool(
         _DISPOSAL_RE.search(condensed)
     )
-    if imperative and has_artifact:
+    # 有结论信号 = 已经做完的排查经历，属于经验；它虽然听起来像交办，
+    # 但结论本身就是可复用的知识，丢了就是丢了经验。
+    if imperative and has_artifact and not _CONCLUSION_RE.search(condensed):
         return True
     # 疑问式任务：问的是「环境里有没有 / 该怎么做」，答案换台机器就变。
     # 这类问句常与「没装的话给我…」连写，所以整段出现疑问或命令式都算。

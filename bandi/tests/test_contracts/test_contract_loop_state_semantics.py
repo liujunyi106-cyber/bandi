@@ -240,11 +240,16 @@ async def _run_until_max_turns(
     from bandi.llm.mock import MockProvider
 
     provider = MockProvider()
-    for _ in range(40):
+    # 模拟响应数必须超过 max_iterations：否则模型先耗尽，循环以
+    # COMPLETED 收尾，测不到 MAX_TURNS 这个终止点。
+    # 每轮换一个参数：同一工具同一参数连续重复会被循环检测
+    # 先截断（LOOP_DETECTED），就测不到 MAX_TURNS 这个终止点。
+    total = AgentConfig().max_iterations + 10
+    for index in range(total):
         provider.add_response(
             LLMResponse(
                 content="",
-                tool_calls=[ToolCall(id="c1", name="echo", arguments={})],
+                tool_calls=[ToolCall(id=f"c{index}", name="echo", arguments={"n": index})],
             )
         )
 

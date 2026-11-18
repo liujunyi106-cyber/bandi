@@ -1710,7 +1710,24 @@ async def _guard_reasoning_only(
     只补直调那一处等于死代码——真机实测 reasoning-only 一条都没被重试过。
     """
     if not _is_reasoning_only(response, safety_finish=_safety_finish(response)):
+        # 成功一次就重置连败计数：偶发的 reasoning-only 不应累计到后续轮次
+        ctx.meta.pop("_reasoning_only_streak", None)
         return response
+
+    # 连败熔断：模型持续只输出推理不给正文时，重试永远不会成功，
+    # 而重试不消耗轮次预算，会一直轮到会话时间上限（默认 1 小时）。
+    # 真机表现就是「一直转圈、不出结果」。连续失败达阈就当本轮失败，
+    # 把结果交给上层，不再空转。
+    streak = int(ctx.meta.get("_reasoning_only_streak", 0) or 0) + 1
+    ctx.meta["_reasoning_only_streak"] = streak
+    if streak > _REASONING_ONLY_MAX_STREAK:
+        await _emit_reasoning_only_retry(
+            ctx,
+            "exhausted",
+            f"reasoning-only {streak} times in a row, giving up this turn",
+        )
+        return response
+
     retried = await _retry_reasoning_only(
         ctx,
         provider_messages,
@@ -1848,6 +1865,10 @@ async def _retry_reasoning_only(
     if allow_stream:
         await _emit_aggregated_response_as_deltas(ctx, response)
     return response
+
+
+# 功能：连续 reasoning-only 的容忍次数——超过就不再重试，避免空转到会话时限。
+_REASONING_ONLY_MAX_STREAK = 3
 
 
 class _ReasoningOnlyError(Exception):
