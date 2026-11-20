@@ -28,13 +28,7 @@ def drop_orphan_tool_messages(
     SYSTEM 注入（压缩边界/摘要/提示）不重置——插在回合中间的真实 tool 结果
     不得被判孤儿整批删除。
     extra_pending_ids：当轮 current_tool_calls 的 id（结果回填先于清理执行
-    其 TOOL 消息尚无历史 assistant 可配对，属合法保留）。
-
-    关键约束：`extra_pending_ids` 是「本轮在途」白名单（`states.py` 传
-    `ctx.current_tool_calls`：结果先写、assistant 行后补），语义上必须放行。
-    真正会打到网关 400 的孤儿，靠 `guard_provider_dicts()` 在 dict 层兜底——
-    那里不再有「在途」概念，任何无前置 tool_calls 的 tool 行都必须剔除。
-    """
+    其 TOOL 消息尚无历史 assistant 可配对，属合法保留）。"""
     kept: list[Message] = []
     pending_ids: set[str] | None = None
     for msg in messages:
@@ -45,7 +39,6 @@ def drop_orphan_tool_messages(
         elif msg.role == MessageRole.TOOL:
             tcid = (msg.tool_call_id or "").strip()
             if not tcid or pending_ids is None or tcid not in pending_ids:
-                # 在途豁免：调用方只在「本轮确实还在等这个结果」时放进该集合
                 if extra_pending_ids and tcid in extra_pending_ids:
                     kept.append(msg)
                     continue
@@ -114,43 +107,8 @@ def guard_messages(
     )
 
 
-def guard_provider_dicts(messages: list[dict]) -> list[dict]:
-    """功能：provider dict 层最后一道孤儿校验（发请求前）。
-
-    Message 层的 `drop_orphan_tool_messages` 保留了「当轮在途」豁免
-    （assistant 行后补），那是正确的写序语义。但一旦轮次已结束、
-    那些 tool 行仍在历史里而 assistant(tool_calls) 从未落库，它就是真孤儿：
-    网关直接 400 `Messages with role 'tool' must be a response to a
-    preceding message with 'tool_calls'`，上层重试整轮又是同一伪孤儿——
-    真机表现就是界面长期停在「正在执行…」。
-
-    此处不再有「在途」概念：发请求时 assistant 行必须已存在。
-    """
-    kept: list[dict] = []
-    pending: set[str] | None = None
-    for msg in messages:
-        role = str(msg.get("role") or "")
-        if role == "assistant":
-            calls = msg.get("tool_calls") or []
-            pending = {str(c.get("id")) for c in calls if c.get("id")} if calls else None
-            kept.append(msg)
-        elif role == "tool":
-            tcid = str(msg.get("tool_call_id") or "").strip()
-            if not tcid or pending is None or tcid not in pending:
-                logger.warning("发请求前剔除孤儿 tool 行 (tool_call_id=%r)", tcid)
-                continue
-            kept.append(msg)
-        elif role == "system":
-            kept.append(msg)
-        else:
-            pending = None
-            kept.append(msg)
-    return kept
-
-
 __all__ = [
     "drop_orphan_tool_messages",
     "guard_messages",
-    "guard_provider_dicts",
     "inject_missing_tool_result_stubs",
 ]
