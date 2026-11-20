@@ -1,8 +1,11 @@
 # 功能：会话压缩服务（CLI /compact 与 API 端点共用——当前会话内替换）
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -17,6 +20,7 @@ class SessionCompactResult:
     before_tokens: int = 0
     after_tokens: int = 0
     has_summary: bool = False
+    archived_entries: int = 0
     reason: str = ""
 
 
@@ -125,6 +129,18 @@ async def compact_session(store: Any, session_id: str, provider: Any) -> Session
             meta={"compaction_card": card},
         ),
     )
+    # 功能：压缩要真正**减行**——把已被本次 summary 覆盖的历史归档出主表。
+    # 此前只有上面三次 append，`get_branch` 靠读时切片掩盖旧消息，
+    # 条目数只增不减（真机单会话累积 3353 条）。归档进
+    # session_entries_archive（payload 保留整行，可审计），主表只留边界之后。
+    archived = 0
+    archive = getattr(store, "archive_entries_before", None)
+    if callable(archive):
+        try:
+            archived = archive(session_id)
+        except Exception as exc:  # noqa: BLE001 — 归档失败不得影响压缩结果
+            archived = 0
+            logger.warning("compact archive skipped: %s", exc)
 
     return SessionCompactResult(
         success=True,
@@ -133,6 +149,7 @@ async def compact_session(store: Any, session_id: str, provider: Any) -> Session
         before_messages=len(messages),
         after_messages=len(compressed),
         before_tokens=total_tokens,
+        archived_entries=archived,
         after_tokens=after_tokens,
         has_summary=bool(summary_text),
     )

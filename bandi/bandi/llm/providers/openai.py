@@ -86,7 +86,7 @@ class OpenAICompatProvider(
             extra_headers=self._extra_headers(),
         )
 
-    async def stream(  # 功能：调用 OpenAI 兼容的流式补全 API，SSE 实时产出事件（重试策略保护）
+    async def stream(  # 功能：调用 OpenAI 兼容流式补全 API，SSE 产事件（首事件前失败按重试策略重试）
         self,
         messages: list[dict[str, Any]],
         tools: list[dict] | None = None,
@@ -104,26 +104,52 @@ class OpenAICompatProvider(
             prompt_tokens=_estimate_prompt_tokens(messages),
         )
         body["stream_options"] = {"include_usage": True}
-        # 流式请求通过 _call_with_retry 获得基础异常保护（失败不重试完整的 stream，但支持 CircuitBreaker 状态管理）
-        # 契约：首事件前失败 raise LLMError（strategy.stream_with_fallback 降级）
-        # 首事件后中途失败 yield ERROR（agent/states.py 消费终态）
-        emitted = False
-        try:
-            async for event in sse_stream(
+
+        # 功能：首事件前的连接失败必须重试，且复用 complete() 那条
+        # RetryPolicy/熔断器（指数退避 + 抖动）。
+        # 为什么只重试首事件前：此时一个字都没发出去，重发整个请求是安全的；
+        # 一旦 emit 过正文，重发会重复内容，只能 yield ERROR 交上层处置。
+        opener: dict[str, AsyncGenerator[StreamEvent, None]] = {}
+
+        async def _open_stream() -> StreamEvent:
+            agen = sse_stream(
                 self._client,
                 url,
                 headers,
                 body,
                 thinking_payload=self._thinking_payload(),
-            ):
-                emitted = True
-                yield event
+            )
+            try:
+                first_event = await agen.__anext__()
+            except BaseException:
+                await agen.aclose()
+                raise
+            opener["agen"] = agen
+            return first_event
+
+        try:
+            if self._retry_policy is not None:
+                first = await self._retry_policy.execute(
+                    _open_stream, circuit_breaker=self._circuit_breaker
+                )
+            else:
+                first = await _open_stream()
         except Exception as e:
-            logger.debug("stream connection failed: %s", e)
-            if not emitted:
-                raise llm_error_with_status(
-                    f"Stream connection failed before first event: {e}", e
-                ) from e
+            logger.debug("stream open failed: %s", e)
+            raise llm_error_with_status(
+                f"Stream connection failed before first event: {e}", e
+            ) from e
+
+        yield first
+        agen = opener.get("agen")
+        if agen is None:
+            return
+        try:
+            async for event in agen:
+                yield event
+        except Exception as e:  # noqa: BLE001 — 中途断流按终态上报，不重发避免重复正文
+            # 已 emit 过正文：不能重发（会重复），交上层按终态处理
+            logger.debug("stream interrupted after first event: %s", e)
             yield StreamEvent(
                 type=StreamEventType.ERROR,
                 error_message="流式传输中断（回复可能不完整），请重试或继续对话。",

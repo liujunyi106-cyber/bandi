@@ -1212,6 +1212,26 @@ export function applyToolStart(
     // 已终态的消息只能追加**已结算**节点——没有任何后续帧会来收尾它。
     const settled = message.done === true;
     const nodes = settleRunningThoughts(message.process ?? []);
+    // 功能：同一 toolCallId 只保留一个节点。
+    // 工具内部重试会重发 tool_start；若逐次追加，界面上就会出现
+    // 两个相同步骤、且旧那个永远停在 running（没有后续帧会收尾它）。
+    // 命中已有节点则原地更新：保留原 id/seq/进度，只刷新状态与参数。
+    const existingAt = toolCallId
+      ? nodes.findIndex((node) => node.kind === "tool" && node.toolCallId === toolCallId)
+      : -1;
+    if (existingAt >= 0) {
+      const existing = nodes[existingAt] as ProcessToolNode;
+      const refreshed = [...nodes];
+      refreshed[existingAt] = {
+        ...existing,
+        toolName,
+        input: toolInput,
+        // 重试不能把已结算的状态拉回 running：只有本轮真正运行才置 running
+        status: settled ? ("success" as const) : ("running" as const),
+        ...(presentCall ? { presentCall } : {}),
+      };
+      return { ...message, startedAt: message.startedAt ?? new Date().toISOString(), process: refreshed };
+    }
     return {
       ...message,
       startedAt: message.startedAt ?? new Date().toISOString(),
@@ -1222,6 +1242,8 @@ export function applyToolStart(
           kind: "tool" as const,
           toolName,
           input: toolInput,
+          // 功能：步号取全局工具计数（与 DSH 的 (turn, step) 同口径）。
+          step: nodes.filter((node) => node.kind === "tool").length + 1,
           status: settled ? ("success" as const) : ("running" as const),
           toolCallId: toolCallId || undefined,
           ...(presentCall ? { presentCall } : {}),

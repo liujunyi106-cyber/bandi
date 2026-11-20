@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useT } from "@/i18n";
+import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 
 const MERMAID_RENDER_DEBOUNCE_MS = 200;
@@ -82,12 +83,10 @@ export function DiagramCard({ code }: { code: string }) {
   }, [code, reactId]);
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      toast.success(t("chat.message.diagram.copyCode"));
-    } catch {
-      toast.error(t("chat.message.diagram.copyCode"));
-    }
+    // 功能：走共用复制入口（非安全上下文下自动降级），失败才报错。
+    const ok = await copyText(code);
+    if (ok) toast.success(t("chat.message.diagram.copyCode"));
+    else toast.error(t("chat.message.diagram.copyFailed"));
   };
 
   const handleDownloadSource = () => {

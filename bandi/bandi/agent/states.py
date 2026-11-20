@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import re
+import time
 from typing import Any
 
 from bandi.agent.base import CoTStep, CoTStepType, ExecutionContext, ParseOutcome, TerminalReason
@@ -1194,9 +1195,17 @@ async def on_thinking(
                 "可直接重试，或在输入框切换思考档位后重发）"
             )
         else:
+            # 功能：模型不可用时给可读文案——不得把 last_llm_error 拼进正文。
+            # 那是 `"ProviderChainExhaustedError: All connection attempts failed"`
+            # 之类的内部串，用户看不懂也无法行动；它还会被当普通正文渲染、
+            # 非空且不超时，容易被评测误算成一次成功回复。
+            logger.warning(
+                "LLM empty response; last_llm_error=%s",
+                ctx.meta.get("last_llm_error", "unknown"),
+            )
             ctx.final_message = (
-                "LLM returned empty response "
-                f"(last_llm_error: {ctx.meta.get('last_llm_error', 'unknown')})"
+                "LLM returned empty response（模型未返回正文）。"
+                "本轮没有产出回复，可直接重试或切换模型后再发。"
             )
         return
     _record_cot(ctx, CoTStepType.THOUGHT, thought=response.reasoning or "")
@@ -1720,11 +1729,20 @@ async def _guard_reasoning_only(
     # 把结果交给上层，不再空转。
     streak = int(ctx.meta.get("_reasoning_only_streak", 0) or 0) + 1
     ctx.meta["_reasoning_only_streak"] = streak
-    if streak > _REASONING_ONLY_MAX_STREAK:
+    # 功能：双阈——次数或累计耗时任一超限就停。
+    # 单看次数不够：每次重试都要把整条候选链走一遍，
+    # 长会话（实测 5 万 prompt tokens）下 3 次就能耗掉数分钟。
+    streak_started = float(ctx.meta.get("_reasoning_only_since", 0) or 0)
+    if streak_started <= 0:
+        streak_started = time.monotonic()
+        ctx.meta["_reasoning_only_since"] = streak_started
+    spent = time.monotonic() - streak_started
+    if streak > _REASONING_ONLY_MAX_STREAK or spent >= _REASONING_ONLY_MAX_SECONDS:
+        ctx.meta.pop("_reasoning_only_since", None)
         await _emit_reasoning_only_retry(
             ctx,
             "exhausted",
-            f"reasoning-only {streak} times in a row, giving up this turn",
+            f"reasoning-only {streak} times / {spent:.0f}s in a row, giving up this turn",
         )
         return response
 
@@ -1869,6 +1887,8 @@ async def _retry_reasoning_only(
 
 # 功能：连续 reasoning-only 的容忍次数——超过就不再重试，避免空转到会话时限。
 _REASONING_ONLY_MAX_STREAK = 3
+# 功能：连续 reasoning-only 的累计耗时上限（秒）——长上下文下单次重试很慢。
+_REASONING_ONLY_MAX_SECONDS = 45.0
 
 
 class _ReasoningOnlyError(Exception):

@@ -344,6 +344,8 @@ class ToolExecutor:  # 功能：工具执行引擎（并发/串行分区执行 +
         self._max_output_chars = max_output_tokens * self._chars_per_token
         self._per_tool_max_output_tokens = per_tool_max_output_tokens or {}
         self._failure_count: dict[str, int] = {}
+        # 重试链内部出现的失败（待定，链结束仍失败才转为 _failure_count）
+        self._failure_pending: dict[str, bool] = {}
         # 同签名参数校验失败计数（失败阶梯：1 引导/2 升级/3 终止）
         self._param_fail_counts: dict[str, int] = {}
         # 高危写操作快照根目录（None=write_snapshot 模块默认 ~/.bandi/snapshots）
@@ -2289,14 +2291,34 @@ class ToolExecutor:  # 功能：工具执行引擎（并发/串行分区执行 +
     def _record_failure(self, tool_name: str) -> None:  # 功能：递增工具失败计数
         from bandi.tools.retry_state import RETRY_IN_FLIGHT
 
+        # 功能：重试期间也要记账，只累计一次「逻辑失败」。
+        # 旧实现在 RETRY_IN_FLIGHT 时直接 return，于是只读工具（如
+        # conversation_history，is_read_only=True 恒可重试）每次失败都被
+        # RetryMiddleware 吞掉计数：日志永远停在 `failure count: 1`，
+        # 够不到 consecutive_failure_threshold，熔断永不触发，Agent 反复
+        # 重试同一工具直到回合预算耗尽（真机界面长期停在「正在执行…」）。
+        # 语义：重试链内部只标记「有失败待定」，由 after_execute 的最终
+        # 结果决定是否真正计数——避免一次逻辑失败被重试次数放大。
         if RETRY_IN_FLIGHT.get():
+            self._failure_pending[tool_name] = True
             return
-        self._failure_count[tool_name] = self._failure_count.get(tool_name, 0) + 1
-        logger.warning("tool %s failure count: %d", tool_name, self._failure_count[tool_name])
+        count = self._failure_count.get(tool_name, 0) + 1
+        if self._failure_pending.pop(tool_name, False):
+            count = max(count, 1)
+        self._failure_count[tool_name] = count
+        logger.warning("tool %s failure count: %d", tool_name, count)
+
+    def _record_pending_failures(self) -> None:
+        """功能：把重试链遗留的失败标记转成真实计数（链结束仍失败时调用）。"""
+        for name in list(self._failure_pending):
+            if self._failure_pending.pop(name, False):
+                self._failure_count[name] = self._failure_count.get(name, 0) + 1
+                logger.warning("tool %s failure count: %d", name, self._failure_count[name])
 
     def _reset_failure(self, tool_name: str) -> None:  # 功能：工具执行成功后重置失败计数
         self._failure_count.pop(tool_name, None)
         self._block_count.pop(tool_name, None)
+        self._failure_pending.pop(tool_name, None)
 
     async def _emit_event(
         self, event_type: EventType, data: dict

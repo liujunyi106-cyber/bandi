@@ -254,12 +254,34 @@ if (!app.requestSingleInstanceLock()) {
   // 功能：主进程未捕获异常只记日志，不弹「A JavaScript error occurred」模态框。
   // 打包态没有终端可看，模态框会卡住整个窗口且只能反复点确定；壳的降级路径
   // （sidecar 失败 → 静态壳）本身可继续使用，故记录后保持运行。
-  process.on("uncaughtException", (error) => {
-    console.error("[main] uncaughtException:", error);
-  });
-  process.on("unhandledRejection", (reason) => {
-    console.error("[main] unhandledRejection:", reason);
-  });
+  //
+  // 必须限流：`console.error` 写 stdout 时本身可能抛 libuv 异常（UVException），
+  // 那个异常又被本处理器接住再写一次日志——处理器自己就是异常源，没有上限就会
+  // 自激成死循环。真机表现：主进程单线程 102%、CDP 往返 28-39 秒、界面完全无响应。
+  const reportedErrors = new Map<string, number>();
+  const MAX_LOG_PER_SIGNATURE = 5;
+  const logThrottled = (channel: string, payload: unknown): void => {
+    try {
+      const holder = payload as { message?: unknown; stack?: unknown };
+      const signature = `${channel}:${String(holder?.message ?? payload)}`;
+      const seen = reportedErrors.get(signature) ?? 0;
+      reportedErrors.set(signature, seen + 1);
+      if (seen >= MAX_LOG_PER_SIGNATURE) {
+        if (seen === MAX_LOG_PER_SIGNATURE) {
+          // 只提示一次「同类已被折叠」，之后彻底静音，避免再写日志
+          process.stdout.write(
+            `[main] ${channel} repeated >${MAX_LOG_PER_SIGNATURE}x, further logs suppressed\n`,
+          );
+        }
+        return;
+      }
+      console.error(`[main] ${channel}:`, payload);
+    } catch {
+      // 连写日志都失败时静默：此时再抛只会再次进入本处理器
+    }
+  };
+  process.on("uncaughtException", (error) => logThrottled("uncaughtException", error));
+  process.on("unhandledRejection", (reason) => logThrottled("unhandledRejection", reason));
   // 功能：移除 Electron 默认应用菜单（应用/编辑），桌面端只用自绘标题栏与托盘菜单。
   Menu.setApplicationMenu(null);
 
@@ -268,6 +290,11 @@ if (!app.requestSingleInstanceLock()) {
   // 重建合成层，表现为白屏与首下点击无响应。
   app.commandLine.appendSwitch("disable-renderer-backgrounding");
   app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
+
+  // 功能：关掉 GPU 硬件合成。本机默认开启时主进程持续占满一个核（实测 100%），
+  // 且与窗口是否可见无关；带 --disable-gpu 启动时为 0%。合成层空转会让滚动、
+  // 点击、流式渲染全部跟不上，表现就是「界面没反应」。纯 2D 界面用软件合成足够。
+  app.disableHardwareAcceleration();
 
   app.on("second-instance", showMainWindow);
 

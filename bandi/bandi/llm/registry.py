@@ -188,8 +188,25 @@ class ProviderRegistry:  # 功能：Provider 注册与工厂，模型/供应商�
             instance = provider_cls(llm_config, base_url)
         else:
             instance = provider_cls(llm_config)
+        # 功能：注册表构造的实例必须挂重试策略与熔断器。
+        # 唯一其它装配点 `agent/factory.py` 只覆盖「直连 provider」分支；
+        # 而生产主路径是 `CapabilityFallback` → `registry.get_provider`，
+        # 这条链此前从不调用 with_circuit_breaker()，于是 _retry_policy 恒为 None，
+        # `_call_with_retry` 退化成裸调、stream/complete 一次都不重试。
+        self._attach_resilience(instance)
         self._instances[cache_key] = instance
         return instance
+
+    def _attach_resilience(self, instance: BaseProvider) -> None:
+        """功能：给 provider 实例挂重试策略 + 熔断器（幂等）。"""
+        from bandi.llm.circuit_breaker import CircuitBreaker, RetryPolicy
+
+        if getattr(instance, "_retry_policy", None) is not None:
+            return
+        with_cb = getattr(instance, "with_circuit_breaker", None)
+        if with_cb is None:
+            return
+        with_cb(CircuitBreaker(), RetryPolicy(max_retries=4, base_delay=2.0))
 
     def available_models(self) -> list[str]:
         return list(self._model_to_provider.keys())

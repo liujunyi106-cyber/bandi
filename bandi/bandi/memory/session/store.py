@@ -1065,6 +1065,77 @@ class SessionStore:
             # session 不存在时外键约束拒绝写入——静默忽略，不影响主流程
             pass
 
+    def archive_entries_before(
+        self, session_id: str, keep_latest: int = 2, *, operation_id: str = "auto-compact"
+    ) -> int:
+        """功能：把会话里「最近一次 summary 之前」的条目归档出主表，返回归档条数。
+
+        压缩此前只做「追加 summary + 重挂 preserved + 加卡」三写，
+        `get_branch` 靠**读时切片**掩盖旧消息——行数只增不减，
+        真机连续评测后单会话累积 3353 条。
+        本方法把已被 summary 覆盖的历史移入 `session_entries_archive`
+        （payload 保留整行 JSON，可审计可回溯），主表只留压缩边界之后的行。
+
+        保留范围：最近 keep_latest 个 summary 及其后的全部条目。
+        """
+        with self._lock:
+            rows = self._sqlite.execute(
+                """SELECT id, parent_id, entry_type, turn_index, role, content,
+                          tool_call_id, metadata, created_at
+                   FROM session_entries WHERE session_id = ?
+                   ORDER BY created_at ASC, rowid ASC""",
+                (session_id,),
+            ).fetchall()
+            if not rows:
+                return 0
+            summary_idx = [
+                i for i, r in enumerate(rows) if str(r[2] or "") in ("summary", "compact_boundary")
+            ]
+            if not summary_idx:
+                return 0
+            # 只归档「保留边界之前」的行，其余原样留下
+            cutoff = (
+                summary_idx[-keep_latest] if len(summary_idx) >= keep_latest else summary_idx[0]
+            )
+            doomed = rows[:cutoff]
+            if not doomed:
+                return 0
+            now = datetime.now(UTC).isoformat()
+            for r in doomed:
+                payload = json.dumps(
+                    {
+                        "id": r[0],
+                        "parent_id": r[1],
+                        "entry_type": r[2],
+                        "turn_index": r[3],
+                        "role": r[4],
+                        "content": r[5],
+                        "tool_call_id": r[6],
+                        "metadata": r[7],
+                        "created_at": r[8],
+                    },
+                    ensure_ascii=False,
+                )
+                self._sqlite.execute(
+                    "INSERT INTO session_entries_archive"
+                    " (archive_id, operation_id, session_id, payload, created_at)"
+                    " VALUES (?, ?, ?, ?, ?)",
+                    (str(uuid.uuid4()), operation_id, session_id, payload, now),
+                )
+            ids = [str(r[0]) for r in doomed]
+            for entry_id in ids:
+                self._sqlite.execute("DELETE FROM session_entries WHERE id = ?", (entry_id,))
+            self._sqlite.commit()
+            return len(ids)
+
+    def count_entries(self, session_id: str) -> int:
+        """功能：统计会话主表条目数（归档前阈值判定与契约探针用）。"""
+        with self._lock:
+            row = self._sqlite.execute(
+                "SELECT COUNT(*) FROM session_entries WHERE session_id = ?", (session_id,)
+            ).fetchone()
+        return int(row[0]) if row else 0
+
     def append_summary_entry(
         self,
         session_id: str,

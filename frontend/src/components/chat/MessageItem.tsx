@@ -333,7 +333,6 @@ function MessageItemComponent({
               // 消息级总时长：后端 done 帧的真实执行耗时
               // （「已完成 · 时间」按真实跨度显示，不用墙钟差）
               totalMsOverride={turnDurationMs}
-              stepsOverride={message.turnSteps}
               actions={
                 interactive
                   ? {

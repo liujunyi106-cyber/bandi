@@ -57,6 +57,55 @@ REPEATED_FAILURE_TEXT = (
 )
 
 
+def _user_facing_failure(exc: BaseException) -> str:
+    """功能：把本轮失败转成用户可读的一句话。
+
+    不能把 `str(exc)` 直接当回复：`LLMUnavailableError` 的文本是
+    「LLM call failed (candidates disabled): last_llm_error=ProviderChainExhaustedError...」
+    这种内部串，用户看不懂也无法行动，而且它却非空、不超时，
+    容易被评测当成一次成功回复。
+    """
+    from bandi.core.exceptions import LLMUnavailableError
+
+    if isinstance(exc, LLMUnavailableError):
+        return "模型服务暂时不可用，本轮没有产出回复。请稍后重试。"
+    return f"本轮执行失败：{error_text(exc)}"
+
+
+async def _notify_model_failure(ctx: object, exc: BaseException) -> None:
+    """功能：模型不可用时发 LLM_ERROR 事件，让前端能独立提示，而不只留一段正文。
+
+    真机：模型瞬断时用户只看到气泡里一句「模型服务暂时不可用」，
+    没有任何「连接失败/本轮已停止」的独立信号，不知道要不要继续等。
+
+    走事件而不是交互卡：`ExecutionContext` 上没有 `user_interaction`
+    （它只接在 PermissionsPipeline 与工具实例上），而 `ctx.bus` 每轮都有；
+    事件走非阻塞通道，不会占住决策槽遮蔽后续真实审批卡。
+    """
+    from bandi.core.events import Event, EventType
+    from bandi.core.exceptions import LLMUnavailableError
+
+    if not isinstance(exc, LLMUnavailableError):
+        return
+    bus = getattr(ctx, "bus", None)
+    emit = getattr(bus, "emit", None)
+    if emit is None:
+        return
+    try:
+        await emit(
+            Event(
+                type=EventType.LLM_ERROR,
+                data={
+                    "session_id": getattr(ctx, "session_id", "") or "",
+                    "reason": "model_unavailable",
+                    "message": "模型服务连接失败，本轮已停止。可稍后重试或切换模型。",
+                },
+            )
+        )
+    except Exception:  # noqa: BLE001 — 通知失败不得覆盖原始终态
+        pass
+
+
 def _persist_plan_file(ctx: ExecutionContext) -> None:
     # 功能：plan 模式终态落盘计划文件——台账渲染写入
     # `~/.bandi/plans/plan-<session8>.md`（同会话覆盖；非 plan/无台账/写盘失败静默跳过）
@@ -957,13 +1006,15 @@ class AgentLoop:  # 功能：Agent 主循环（状态机驱动的思考→工具
                         ctx.terminal_reason = TerminalReason.ESCALATED
                     elif action == RecoveryAction.TERMINATE:
                         ctx.terminal_reason = TerminalReason.MODEL_ERROR
-                        ctx.final_message = error_text(e)
+                        ctx.final_message = _user_facing_failure(e)
+                        await _notify_model_failure(ctx, e)
                     elif action == RecoveryAction.RETRY:
                         if ctx.current_state == "executing":
                             # 执行批顶层异常已可能产生部分副作用；RETRY 会重入
                             # executing 并整批重放（含写工具）——改为显式失败。
                             ctx.terminal_reason = TerminalReason.MODEL_ERROR
-                            ctx.final_message = error_text(e)
+                            ctx.final_message = _user_facing_failure(e)
+                            await _notify_model_failure(ctx, e)
                             ctx.current_state = "terminated"
                             break
                         # L-2a：重试前先落盘当前状态 + 发 STATE_CHANGED
@@ -996,7 +1047,8 @@ class AgentLoop:  # 功能：Agent 主循环（状态机驱动的思考→工具
                         ctx.meta["degraded_layers"] = sorted(degraded)
                 else:
                     ctx.terminal_reason = TerminalReason.MODEL_ERROR
-                    ctx.final_message = error_text(e)
+                    ctx.final_message = _user_facing_failure(e)
+                    await _notify_model_failure(ctx, e)
 
             next_state = self.state_machine.next(ctx)
             await ctx.bus.emit(

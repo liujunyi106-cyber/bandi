@@ -312,6 +312,9 @@ function SubagentTree({ nodes }: { nodes: ProcessNode[] }) {
         className="text-chat-muted hover:text-chat-ink flex items-center gap-1 py-0.5 text-[11px]"
         onClick={() => setOpen((value) => !value)}
       >
+        {/* 功能：状态与剩余区域之间的分隔点——与明细行同尺寸（2px，左右各 8px）。 */}
+        <span aria-hidden="true" className="bg-chat-muted/50 mx-2 size-0.5 shrink-0 rounded-full" />
+        <span className="min-w-0 flex-1" />
         <ChevronRight className={cn("size-3 shrink-0 transition-transform", open && "rotate-90")} />
         <span>{t("chat.process.subagent")}</span>
         {running ? <Loader2 className="text-primary size-3 shrink-0 animate-spin" /> : null}
@@ -369,7 +372,6 @@ function TimelineItem({
   actions?: ProcessBlockActions;
 }) {
   const t = useT();
-  const [expanded, setExpanded] = useState(false);
   const { item, category } = row;
   const Icon = BUCKET_META[category].icon;
   if (category === "knowledge" || category === "memory") {
@@ -382,7 +384,12 @@ function TimelineItem({
   const body = item.detail ?? "";
   // 可展开条件：工具行一律可展开（能回看这次调用的参数与输出），
   // 思考行仅在有正文分段时可展开——不再用「输出是否多行」这种偶然属性决定能不能点。
+  const [expanded, setExpanded] = useState(false);
+
   const expandable = Boolean(item.toolName) || Boolean(item.collapsible && item.detail);
+  // 功能：思考行的中间结论默认展开。
+  // 「执行了 pnpm build，编译通过」这类结论是用户要看的主信息，
+  // 藏在点击后就等于没展示（DSH 对中间结论也是直接成段）。
   const cardKind = toolCardKindOf(item.toolName, item.presentCall);
   const CardIcon = cardKind === "generic" ? Icon : toolCardIcon(cardKind);
   // 工具行显示工具名；思考/技能等无工具名时显示所属类别的动作名
@@ -496,7 +503,9 @@ function TimelineItem({
       {expanded ? (
         <div
           data-testid="process-item-body"
-          className="ml-[22px] border-l border-black/5 py-1 pl-2"
+          // 功能：正文独立成卡（与 DSH 同视觉语言）——左竖线会把中间结论
+          // 渲染成「附属于上一行的尾注」，而它实际上是独立的结论段。
+          className="mt-1 mb-1 ml-1 rounded-md border border-black/5 bg-black/[0.02] px-3 py-2"
         >
           {item.toolName ? (
             <>
@@ -519,7 +528,7 @@ function TimelineItem({
             </>
           ) : (
             // 思考正文按 Markdown 渲染：中间的判断结论、列出的要点、代码块都保留排版
-            <div className="text-chat-muted/90 text-xs leading-relaxed">
+            <div className="text-chat-ink/80 text-xs leading-relaxed">
               <MarkdownRenderer text={body} />
             </div>
           )}
@@ -545,7 +554,6 @@ export function ProcessBlock({
   forceRunning = false,
   settled = false,
   totalMsOverride,
-  stepsOverride,
 }: {
   nodes: ProcessNode[];
   actions?: ProcessBlockActions;
@@ -557,8 +565,6 @@ export function ProcessBlock({
   /** 功能：总行时长的消息级覆盖——后端 done 帧的真实执行耗时
    *  （缺省回退过程节点累计时长）。 */
   totalMsOverride?: number;
-  /** 功能：总行步数覆盖——本轮内部跑了几轮模型（工具往返各算一步）。 */
-  stepsOverride?: number;
 }) {
   const t = useT();
   // 终态注记（用户中断 / 链路断开）必须**折叠后仍可见** ——
@@ -585,16 +591,21 @@ export function ProcessBlock({
   const [openCompaction, setOpenCompaction] = useState<Record<string, boolean>>({});
   const manualRef = useRef(false);
 
+  // 功能：收起只在「整轮真正结束」时发生。
+  // 单看 running 会在每轮工具往返之间反复收起/展开（界面上就是
+  // 「已完成 → 闪一下 → 又展开」的抽搐）。settled 才是一次请求的终点。
+  // 没有 settled（旧帧）时回退到 running，保底行为不变。
+  const roundFinished = settled || !running;
   useEffect(() => {
     if (running) {
       setOpen(true);
       manualRef.current = false;
       return;
     }
-    if (manualRef.current) return;
+    if (manualRef.current || !roundFinished) return;
     const timer = setTimeout(() => setOpen(false), AUTO_COLLAPSE_MS);
     return () => clearTimeout(timer);
-  }, [running]);
+  }, [running, roundFinished]);
 
   if (nodes.length === 0) return null;
 
@@ -612,7 +623,7 @@ export function ProcessBlock({
       <button
         type="button"
         data-testid="process-toggle"
-        className="text-chat-muted hover:text-chat-ink flex w-full items-center gap-2 rounded-md px-1 py-1 text-xs transition-colors"
+        className="text-chat-muted hover:text-chat-ink flex h-6 w-full items-center gap-1.5 rounded-md px-1 text-xs transition-colors"
         onClick={() => {
           manualRef.current = true;
           setOpen((value) => !value);
@@ -621,8 +632,7 @@ export function ProcessBlock({
         <ItemStatus status={running ? "running" : "success"} />
         {/* 总行不显示「过程消息」字段名，完成态留「已完成 · 时间」；时长口径：
             优先后端 done 帧的真实执行耗时（totalMsOverride），
-            回退过程节点累计；为 0/缺失时不显示「· 时间」。
-            步数（stepsOverride）是一次用户请求内部跑了几轮模型，工具往返各算一步。 */}
+            回退过程节点累计；为 0/缺失时不显示「· 时间」。 */}
         <span className="text-chat-muted">
           {running
             ? t("chat.process.executing")
@@ -638,11 +648,6 @@ export function ProcessBlock({
                   ? ""
                   : formatDurationMs(totalMs)}
           </span>
-          {!running && stepsOverride !== undefined && stepsOverride > 1 ? (
-            <span data-testid="process-total-steps" className="tabular-nums">
-              {` · ${stepsOverride} ${t("chat.process.steps")}`}
-            </span>
-          ) : null}
         </span>
         <ChevronRight className={cn("size-3 shrink-0 transition-transform", open && "rotate-90")} />
       </button>

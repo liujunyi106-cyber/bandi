@@ -94,6 +94,13 @@ class RetryMiddleware(ToolMiddleware):
         finally:
             RETRY_IN_FLIGHT.reset(retry_token)
             ctx._retrying = False
+            # 功能：重试链结束仍未成功 ⇒ 把链内「待定失败」结算成真实计数。
+            # 成功则 _reset_failure 已清空 pending，不会误记。
+            if not result.success:
+                owner = getattr(ctx, "_run_tool", None)
+                settle = getattr(owner, "_record_pending_failures", None)
+                if callable(settle):
+                    settle()
         return result
 
     def _resolve_retry_policy(
