@@ -473,7 +473,7 @@ def _build_provider_messages(ctx: ExecutionContext) -> list[dict]:
     """功能：LLM 请求 provider dict 组装统一入口（3.4）——孤儿/stub 防御
     （guard_messages）+ 折叠视图（fold-view）+ dict 组装三段对全部请求重建路径
     一致生效（主路径/截断恢复/响应式压缩），不再是 on_thinking 单点防线。"""
-    from bandi.agent.tool_message_guard import guard_messages
+    from bandi.agent.tool_message_guard import guard_messages, guard_provider_dicts
 
     ctx.messages = guard_messages(
         ctx.messages,
@@ -498,6 +498,11 @@ def _build_provider_messages(ctx: ExecutionContext) -> list[dict]:
 
         view_messages = inject_state_block(view_messages, state_block)
     provider_messages = [message_to_dict(m, protocol=ctx.provider.protocol) for m in view_messages]
+    # 功能：dict 层最后一道孤儿校验——发请求时 assistant(tool_calls) 必须已存在。
+    # Message 层保留「本轮在途」豁免（assistant 行后补的正确写序），但轮次结束后
+    # 那批 tool 行若仍无配对就会让网关 400（role tool must follow tool_calls），
+    # 上层重试整轮又撞同一伪孤儿——真机表现是界面长期「正在执行…」。
+    provider_messages = guard_provider_dicts(provider_messages)
     # 降级状态（工具面过滤不做：layer 是状态层非工具名，工具级降级由 executor
     # 连续失败熔断承担）
     degraded = ctx.meta.get("degraded_layers")
