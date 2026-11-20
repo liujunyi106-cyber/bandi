@@ -23,8 +23,14 @@ from typing import Any
 
 logger = logging.getLogger("bandi.observability.write_failures")
 
-# 默认重试次数——下一轮补一次，再失败即丢弃（避免持续故障拖慢主链）
-DEFAULT_MAX_ATTEMPTS = 1
+# 默认重试次数。SQLite 写入失败的主因是并发抢锁（database is locked），
+# 属**秒级可自愈**的暂时冲突而非永久故障：只给 1 次机会会让一次抢锁失败
+# 直接丢记忆（真机单轮 152 次 retry exhausted、627 次 database is locked）。
+DEFAULT_MAX_ATTEMPTS = 4
+# 重试间的退避基数（秒）：锁冲突的窗口通常是毫秒~秒级，退避让出锁后重试
+RETRY_BACKOFF_BASE_SECONDS = 0.05
+# 退避上限（秒）——避免持续故障时把重试线程拖住
+RETRY_BACKOFF_CAP_SECONDS = 1.0
 # 最近失败快照保留条数
 DEFAULT_RECENT_LIMIT = 50
 # 待重试队列硬上限——持续故障下丢弃最老项并计数（防无界占内存）
@@ -39,6 +45,12 @@ class RetryDependencyMissingError(RuntimeError):
     重试回调在当前轮没有目标通道（如本轮 memory manager 无 hierarchy）时抛出：
     数据留待后续有能力的轮次补写，不得把「没写」谎报成「已写成功」。
     """
+
+
+def _backoff(attempts: int) -> None:
+    """功能：按已尝试次数线性退避（有上限），让出 SQLite 写锁。"""
+    delay = min(RETRY_BACKOFF_BASE_SECONDS * max(1, attempts), RETRY_BACKOFF_CAP_SECONDS)
+    time.sleep(delay)
 
 
 @dataclass
@@ -223,6 +235,9 @@ class WriteFailureRegistry:
                         e,
                     )
                 else:
+                    # 功能：按尝试次数退避后再入队，让出锁给持锁方。
+                    # 不退避会让所有待重试项在同一毫秒内连续撞锁，重试预算白烧。
+                    _backoff(item.attempts)
                     with self._lock:
                         self._enqueue_pending(item)
                     failed += 1

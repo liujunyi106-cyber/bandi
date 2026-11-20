@@ -123,10 +123,29 @@ class _ConfirmPipelineStub:
     def __init__(self, granted: bool) -> None:
         self._granted = granted
         self.asked = False
+        self.last_reason = ""
 
     async def confirm_tool(self, **kw: Any) -> bool:
         self.asked = True
+        self.last_reason = str(kw.get("reason") or "")
         return self._granted
+
+
+# 功能：审批用的成形计划——一级标题 + 分节正文，与生产提交形态一致
+_PLAN = """# 检索层重构
+
+## 步骤一：定位检索入口
+- 读 memory/search.py 的 query 路径
+
+## 步骤二：拆出候选打分
+- 保持对外签名不变
+
+## 风险
+- 打分口径变化可能影响既有排序
+
+## 验证
+- 跑记忆检索契约 + 真机问一次
+"""
 
 
 @pytest.mark.asyncio
@@ -140,12 +159,64 @@ async def test_approved_switch_to_execute() -> None:
     tool = ExitPlanModeTool()
 
     result = await tool.execute(
-        {}, context=ToolPermissionContext(extra={"mode_manager": mm}, permissions_pipeline=pp)
+        {"plan": _PLAN}, context=ToolPermissionContext(extra={"mode_manager": mm}, permissions_pipeline=pp)
     )
 
     assert result["switched"] is True
     assert mm.mode == "execute"
     assert pp.asked, "必须经过用户确认通道"
+
+
+@pytest.mark.asyncio
+async def test_plan_body_reaches_the_approval_channel() -> None:
+    """功能：审批通道拿到的正文必须含计划本身——否则用户无法评审。"""
+    from bandi.tools.base import ToolPermissionContext
+    from bandi.tools.exit_plan_mode import ExitPlanModeTool
+
+    pp = _ConfirmPipelineStub(granted=True)
+    tool = ExitPlanModeTool()
+
+    await tool.execute(
+        {"plan": _PLAN},
+        context=ToolPermissionContext(
+            extra={"mode_manager": _ModeManagerStub("plan")}, permissions_pipeline=pp
+        ),
+    )
+
+    assert "步骤一：定位检索入口" in pp.last_reason, (
+        "审批请求没带计划正文：用户只能看到工具名，无法评审要执行什么"
+    )
+
+
+@pytest.mark.asyncio
+async def test_missing_plan_is_rejected_with_next_step() -> None:
+    """功能：缺计划正文必须回可操作反馈（模型据此自纠而非原样重试）。"""
+    from bandi.tools.base import ToolPermissionContext
+    from bandi.tools.exit_plan_mode import ExitPlanModeTool
+
+    mm = _ModeManagerStub("plan")
+    result = await ExitPlanModeTool().execute(
+        {}, context=ToolPermissionContext(extra={"mode_manager": mm})
+    )
+
+    assert result.get("error")
+    assert str(result.get("next_step") or "").strip(), "缺参无 next_step：模型会原样重试到预算耗尽"
+    assert mm.mode == "plan", "缺参不得切模式"
+
+
+@pytest.mark.asyncio
+async def test_plan_without_heading_is_rejected() -> None:
+    """功能：计划必须以 markdown 标题开头（审批卡需可渲染、计划需成形）。"""
+    from bandi.tools.base import ToolPermissionContext
+    from bandi.tools.exit_plan_mode import ExitPlanModeTool
+
+    mm = _ModeManagerStub("plan")
+    result = await ExitPlanModeTool().execute(
+        {"plan": "我要开始改造了"}, context=ToolPermissionContext(extra={"mode_manager": mm})
+    )
+
+    assert result.get("error")
+    assert mm.mode == "plan"
 
 
 @pytest.mark.asyncio
@@ -158,26 +229,29 @@ async def test_denied_or_headless_stays_in_plan() -> None:
 
     mm_deny = _ModeManagerStub("plan")
     r_deny = await tool.execute(
-        {},
+        {"plan": _PLAN},
         context=ToolPermissionContext(
             extra={"mode_manager": mm_deny}, permissions_pipeline=_ConfirmPipelineStub(False)
         ),
     )
     assert r_deny["switched"] is False and mm_deny.mode == "plan"
+    assert str(r_deny.get("next_step") or "").strip(), (
+        "拒绝后必须告诉模型改怎么做，否则它拿同一份计划原样重试"
+    )
 
     mm_headless = _ModeManagerStub("plan")
     r_headless = await tool.execute(
-        {}, context=ToolPermissionContext(extra={"mode_manager": mm_headless})
+        {"plan": _PLAN}, context=ToolPermissionContext(extra={"mode_manager": mm_headless})
     )
     assert r_headless["switched"] is False and mm_headless.mode == "plan", (
         "headless 无确认通道必须 fail-closed 保持 plan"
     )
 
     mm_exec = _ModeManagerStub("execute")
-    r_exec = await tool.execute({}, context=ToolPermissionContext(extra={"mode_manager": mm_exec}))
+    r_exec = await tool.execute({"plan": _PLAN}, context=ToolPermissionContext(extra={"mode_manager": mm_exec}))
     assert r_exec["switched"] is False and mm_exec.mode == "execute", "非 plan 态不得切换"
 
-    r_unbound = await tool.execute({}, context=None)
+    r_unbound = await tool.execute({"plan": _PLAN}, context=None)
     assert "error" in r_unbound, "standalone 无绑定必须报错而非静默"
 
 

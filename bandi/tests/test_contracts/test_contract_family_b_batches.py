@@ -1846,7 +1846,7 @@ def test_zero_arg_retry_replays_under_live_manager() -> None:
 
 def test_zero_arg_retry_real_failure_counts_dropped() -> None:
     """边界：零参回调真实失败（非适配 TypeError）仍按 max_attempts 计丢弃。"""
-    reg = WriteFailureRegistry()
+    reg = WriteFailureRegistry(max_attempts=1)
 
     def _boom() -> None:
         raise sqlite3.OperationalError("still down")
@@ -1856,6 +1856,39 @@ def test_zero_arg_retry_real_failure_counts_dropped() -> None:
 
     assert report["dropped"] == 1
     assert reg.dropped == 1
+    assert reg.pending_count == 0
+
+
+def test_lock_conflict_is_retried_not_dropped_on_first_attempt() -> None:
+    """功能：抢锁失败属秒级可自愈冲突，不得一次就丢记忆。
+
+    真机单轮 `database is locked` 627 次、`retry exhausted attempts=1` 152 次——
+    默认只重试一次，一次抢锁失败即永久丢数据。
+    """
+    reg = WriteFailureRegistry()
+    assert reg._max_attempts > 1, "锁冲突必须有多次重试机会"
+
+    state = {"n": 0}
+
+    def _transient() -> None:
+        state["n"] += 1
+        if state["n"] < 3:
+            raise sqlite3.OperationalError("database is locked")
+
+    reg.record("episodic", sqlite3.OperationalError("database is locked"), retry=_transient)
+
+    first = reg.retry_pending(object())
+    assert first["dropped"] == 0, "第一次仍失败不得直接丢弃"
+    assert first["failed"] == 1
+    assert reg.pending_count == 1, "必须留在队列等待下一轮"
+
+    second = reg.retry_pending(object())
+    assert second["dropped"] == 0
+    assert reg.pending_count == 1
+
+    third = reg.retry_pending(object())
+    assert third["succeeded"] == 1, "锁释放后必须补写成功"
+    assert reg.dropped == 0
     assert reg.pending_count == 0
 
 
