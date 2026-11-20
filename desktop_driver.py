@@ -286,6 +286,12 @@ def wait_for_reply(
             blocksInLast,
             replies: replies.length,
             tail: lastReply ? (lastReply.innerText || '') : '',
+            // 正文区长度：过程块不计入回复（产品把思考/工具渲染在
+            // process-block，只有 markdown-body 是用户要的答案）
+            bodyLen: (() => {
+              const md = lastReply ? lastReply.querySelector('[data-testid="markdown-body"]') : null;
+              return md ? (md.innerText || '').length : 0;
+            })(),
             send: Boolean(document.querySelector('[data-testid="composer-send"]')),
             streaming: Boolean(document.querySelector('[data-testid="streaming-cursor"]'))
           });
@@ -310,8 +316,22 @@ def wait_for_reply(
         if streaming:
             last_text = text
             continue
-        # 停止流式后再确认一次，防止中间态被当成完成。
-        time.sleep(1.2)
+        # 功能：等文本真正稳定后才返回。
+        # 产品的「已完成 · Ns」与正文是分步渲染的：状态行先出现，
+        # 正文在之后才贴上。旧实现一看到「已完成」就返回，拿到的是只有
+        # 状态行的空正文（评测里 10 条“tokens≈7”全是这个原因）。
+        # 判定：连续两次轮询文本完全相同 ↔ 已稳定。
+        settle_deadline = time.time() + 6.0
+        settled = text
+        while time.time() < settle_deadline:
+            time.sleep(1.0)
+            probe = json.loads(evaluate(script) or "{}")
+            probe_text = str(probe.get("tail") or "")
+            if probe_text == settled:
+                break
+            settled = probe_text
+        if settled.strip():
+            last_text = settled
         raw2 = evaluate(script)
         state2 = json.loads(raw2) if isinstance(raw2, str) else {}
         # 功能：生成键消失即本轮已终止（包括被中止）。
@@ -323,6 +343,7 @@ def wait_for_reply(
                 "count": int(state2.get("count") or 0),
                 "text": str(state2.get("tail") or text),
                 "tool_calls": int(state2.get("blocksInLast") or 0),
+                "body_len": int(state2.get("bodyLen") or 0),
             }
         last_text = text
     # 功能：超时后强制停止生成。
