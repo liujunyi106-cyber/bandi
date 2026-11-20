@@ -18,14 +18,23 @@ from __future__ import annotations
 import pytest
 
 from bandi.agent.states import _is_reasoning_only, _safety_finish
+from bandi.core.message import LLMResponse
 
 
-class _Resp:
-    def __init__(self, content="", reasoning="", finish_reason="stop", refusal=False):
-        self.content = content
-        self.reasoning = reasoning
-        self.finish_reason = finish_reason
-        self.refusal = refusal
+def _Resp(content="", reasoning="", finish_reason="stop", refusal=False, tool_calls=None):
+    """功能：真实 LLMResponse——不用 stub 顶替。
+
+    stub 只定义了 content/reasoning/finish_reason/refusal，缺 `tool_calls`，
+    于是「工具调用轮不得被判 reasoning-only」这条修复在
+    旧契约里根本无法表达。真实对象字段变化会在本契约立刻暴露。
+    """
+    return LLMResponse(
+        content=content,
+        reasoning=reasoning,
+        finish_reason=finish_reason,
+        refusal=refusal,
+        tool_calls=tool_calls or [],
+    )
 
 
 class TestDetection:

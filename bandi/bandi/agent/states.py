@@ -1692,13 +1692,20 @@ def _safety_finish(response: LLMResponse) -> bool:
 
 
 def _is_reasoning_only(response: LLMResponse, *, safety_finish: bool) -> bool:
-    """功能：判定「模型只走 reasoning 通道、正文为空」。
+    """功能：判定「模型只走 reasoning 通道、正文为空**且没有发起工具调用**」。
 
     思考型模型偶发把答案整体写进 reasoning、content 留空。这是**可自愈**的输出
-    形态问题（换模型重问一次就能拿到答案），不是真的模型故障——真机 L1 74 条里
-    有 5 条栽在这里，等于白白作废一次交互，而系统只提示用户「可直接重试」。
+    形态问题（换模型重问一次就能拿到答案），不是真的模型故障。
+
+    必须排除 tool_calls：模型发起工具调用时 content 天然为空（正文由工具结果
+    之后的那一轮给出），reasoning 里正是「我要调用 X」的思考。漏掉这个条件
+    会把**完全正常的一轮工具调用**判成 reasoning-only，触发无谓重试——
+    真机日志里 `_ReasoningOnlyError` 出现 85 次，而其后的调用全部是
+    正常的 `finish=tool_calls`，等于每轮都白烧一次候选链。
     """
     if safety_finish:
+        return False
+    if response.tool_calls:
         return False
     return not (response.content or "").strip() and bool((response.reasoning or "").strip())
 
