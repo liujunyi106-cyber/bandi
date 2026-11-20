@@ -444,7 +444,8 @@
       "sessionBusy": "该会话已有回合在执行，本次请求未执行",
       "teamHandoff": "已转交团队员工，等待接单执行…",
       "teamDissolved": "已解散团队",
-      "employeeRetired": "该员工已退役"
+      "employeeRetired": "该员工已退役",
+      "employeeHandoff": "已转交对应员工，等待接单执行…"
     },
     "interrupt": {
       "model": "模型不可用：未能连上模型服务或模型名无法解析。可在控制条切换模型后重试。",

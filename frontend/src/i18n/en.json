@@ -444,7 +444,8 @@
       "sessionBusy": "This session is already running a turn; the request was not executed",
       "teamHandoff": "Handed off to the team; waiting for a member to pick it up…",
       "teamDissolved": "Team dissolved",
-      "employeeRetired": "This employee has been retired"
+      "employeeRetired": "This employee has been retired",
+      "employeeHandoff": "Handed off to the assigned employee; waiting for them to pick it up…"
     },
     "interrupt": {
       "model": "Model unavailable: could not reach the model service or the model name could not be resolved. Switch model from the control bar and retry.",

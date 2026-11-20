@@ -155,18 +155,22 @@ export function useSessionStream(): void {
         }
         case "done": {
           const terminal = String(data.terminal_reason ?? "");
-          // 团队接管回合（team_routed）：员工产出经线程回写到达，本槽空占位移除
-          if (terminal === "team_routed") {
-            // 移交成功（员工异步执行中）——记录成功终态，防「中断横幅」误报
+          // 路由转交回合：本槽只是「已交给员工/团队」，员工侧仍在异步执行，
+          // 回复卡要等线程回写才落位。走 finalizeStream 会把界面标成「已完成」，
+          // 而过程块随即被员工侧的新帧续起来——用户看到的就是
+          // 「已完成 → 闪一下 → 又在执行」（本轮真机反馈的抽搐）。
+          if (terminal === "team_routed" || terminal === "employee_dm_routed") {
             const handedOff = String(data.session_id ?? slotSession ?? "");
             if (handedOff) {
-              useChatStore.getState().markSessionTerminal(handedOff, "team_routed");
+              useChatStore.getState().markSessionTerminal(handedOff, terminal);
             }
             useChatStore.getState().abortLocalStream(handedOff);
             // 转交过渡态：占位消失到员工过程出现之间不能空白——
-            // 以系统注记给出「已转交员工、等待接单」的状态，衔接员工过程块
+            // 以系统注记给出「已转交、等待接单」的状态，衔接员工过程块
             if (handedOff) {
-              const note = translate(useUiStore.getState().locale, "chat.note.teamHandoff");
+              const noteKey =
+                terminal === "team_routed" ? "chat.note.teamHandoff" : "chat.note.employeeHandoff";
+              const note = translate(useUiStore.getState().locale, noteKey);
               useChatStore.getState().appendSystemNote(handedOff, note);
             }
             void sessionsApi

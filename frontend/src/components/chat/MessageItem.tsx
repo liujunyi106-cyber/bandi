@@ -330,6 +330,12 @@ function MessageItemComponent({
             <ProcessBlock
               nodes={message.process}
               settled={message.done === true || Boolean(message.error)}
+              // 功能：消息未定稿前恒显示「正在执行…」。
+              // 过程节点是**每次 LLM/工具调用**一段，单次调用一结束就全 success，
+              // 但整轮远未结束（回复卡还没落位）。只靠节点推断会让总行在
+              // 「已完成 → 正在执行 → 已完成」之间抽搐——真机实测一次问答抽搐 3 次，
+              // 时长还越累越大（1m12s → 1m33s）。settled 才是这一轮的唯一终点。
+              forceRunning={message.done !== true && !message.error}
               // 消息级总时长：后端 done 帧的真实执行耗时
               // （「已完成 · 时间」按真实跨度显示，不用墙钟差）
               totalMsOverride={turnDurationMs}

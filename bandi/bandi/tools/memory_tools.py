@@ -180,7 +180,17 @@ class MemoryReadTool(BaseTool):
     ) -> dict[str, Any]:
         entry_id = str(params.get("entry_id") or "").strip()
         if not entry_id:
-            return {"error": "entry_id is required"}
+            # 功能：错误必须能自纠——模型拿 query 误调本工具后会原样重试，
+            # 只回「entry_id is required」等于让它空转到回合预算耗尽。
+            return {
+                "error": "entry_id is required",
+                "next_step": (
+                    "本工具按 id 读单条记忆，不做关键词搜索。"
+                    "按关键词找记忆请改用 memory_search(query=...)；"
+                    "拿到它返回的 id 再回来调 memory_read(entry_id=...)。"
+                    "不要用同一参数重复调用本工具。"
+                ),
+            }
         if self._db_dir is None:
             return {"error": "memory store unavailable"}
         try:
