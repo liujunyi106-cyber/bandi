@@ -25,6 +25,11 @@ class ConversationHistoryTool(BaseTool):
     feature_group = "util"
     is_read_only = True
     is_concurrency_safe = True
+    # 功能：必须声明 needs_context——execute 从 context.extra["session_id"] 取
+    # 当前会话，而 executor 只在 needs_context 为真时才注入该字段。
+    # 缺这一行时工具恒返回 `session_id is required`，Agent 反复重试它，
+    # 界面长期停在「正在执行…」（真机实测 failure count 停在 1、熔断不触发）。
+    needs_context = True
     capability_tags: list[str] = []
     parameters = {
         "type": "object",
