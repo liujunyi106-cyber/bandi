@@ -22,11 +22,66 @@ _MAX_RESULTS_LIMIT = 10
 _TAVILY_URL = "https://api.tavily.com/search"
 _BRAVE_URL = "https://api.search.brave.com/res/v1/web/search"
 _EXA_URL = "https://api.exa.ai/search"
+# 功能：托管 MCP 搜索服务——无 API key 也可用（免费额度），是零配置跑的兜底通道
+_MCP_SEARCH_URL = "https://mcp.exa.ai/mcp"
+_MCP_SEARCH_TOOL = "web_search_exa"
 _DDG_URL = "https://html.duckduckgo.com/html/"
 # 免 key 兜底：抓取 bing 结果页（无 API 依赖，国内网络可达）
 _BING_URL = "https://www.bing.com/search"
 
-_TIMEOUTS = {"tavily": 8, "brave": 8, "exa": 10, "ddg": 15, "bing": 12}
+_TIMEOUTS = {"tavily": 8, "brave": 8, "exa": 10, "ddg": 15, "bing": 12, "mcp": 30}
+
+
+def _mcp_payload_text(raw_text: str) -> str:
+    """功能：从 MCP 响应里取搜索结果正文。
+
+    MCP 走 SSE 时正文在 `data:` 行；直连 JSON 时在 result.content[].text。
+    """
+    import json
+
+    messages: list[dict] = []
+    for line in raw_text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("data:"):
+            try:
+                messages.append(json.loads(stripped[5:].strip()))
+            except ValueError:
+                continue
+    if not messages:
+        try:
+            messages.append(json.loads(raw_text))
+        except ValueError:
+            return ""
+    for message in messages:
+        for item in (message.get("result") or {}).get("content") or []:
+            text = str(item.get("text") or "")
+            if text.strip():
+                return text
+    return ""
+
+
+def _parse_mcp_results(text: str, limit: int) -> list[dict[str, str]] | None:
+    """功能：把 MCP 正文块拆成 title/url/snippet 条目（与直连通道同构）。"""
+    results: list[dict[str, str]] = []
+    current: dict[str, str] | None = None
+    body: list[str] = []
+
+    def flush() -> None:
+        if current is not None and current.get("url"):
+            current["snippet"] = " ".join(body).strip()[:600]
+            results.append(current)
+
+    for line in text.splitlines():
+        if line.startswith("Title: "):
+            flush()
+            current = {"title": line[7:].strip(), "url": ""}
+            body = []
+        elif line.startswith("URL: ") and current is not None:
+            current["url"] = line[5:].strip()
+        elif current is not None and line.strip() and not line.startswith(("Published: ", "Author: ")):
+            body.append(line.strip())
+    flush()
+    return results[:limit] or None
 # bing 结果页对非浏览器 UA 返回精简版，需浏览器形态 UA
 _BROWSER_UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -107,13 +162,29 @@ class WebSearchTool(BaseTool):
         if time.monotonic() < self._circuit_until:
             return self._unavailable()
 
+        # 功能：按「能否可能成功」排序，而不是写死顺序。
+        # 无 key 的通道必然返回空、配额耗尽的 exa 会 402，排在前面只白耗超时。
+        # 托管 MCP 无需 key、实测可用，排第一；bing 抓结果页为次选。
         providers: list[tuple[str, Any]] = [
-            ("tavily", self._search_tavily),
+            ("mcp", self._search_mcp),
+            ("bing", self._search_bing),
             ("brave", self._search_brave),
+            ("tavily", self._search_tavily),
             ("exa", self._search_exa),
             ("ddg", self._search_ddg),
-            ("bing", self._search_bing),
         ]
+        if not configured_key("brave_api_key", "BRAVE_API_KEY"):
+            providers = [p for p in providers if p[0] != "brave"] + [
+                p for p in providers if p[0] == "brave"
+            ]
+        if not configured_key("tavily_api_key", "TAVILY_API_KEY"):
+            providers = [p for p in providers if p[0] != "tavily"] + [
+                p for p in providers if p[0] == "tavily"
+            ]
+        if not configured_key("exa_api_key", "EXA_API_KEY"):
+            providers = [p for p in providers if p[0] != "exa"] + [
+                p for p in providers if p[0] == "exa"
+            ]
 
         reasons: dict[str, str] = {}
         for name, func in providers:
@@ -202,11 +273,36 @@ class WebSearchTool(BaseTool):
                 for r in raw
             ]
 
+    async def _search_mcp(self, query: str, num_results: int) -> list[dict[str, str]] | None:
+        """功能：走托管 MCP 搜索服务（零配置可用，无需自备 API key）。
+
+        MCP 服务把搜索结果整理成带 Title/URL/Published 的正文块返回，
+        这里拆成结构化条目，与直连通道的 title/url/snippet 同构。
+        """
+        body = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {"name": _MCP_SEARCH_TOOL, "arguments": {"query": query}},
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
+        async with httpx.AsyncClient(timeout=self._timeouts.get("mcp", 30)) as client:
+            resp = await client.post(_MCP_SEARCH_URL, headers=headers, json=body)
+            resp.raise_for_status()
+            text = _mcp_payload_text(resp.text)
+        return _parse_mcp_results(text, num_results) if text else None
+
     async def _search_exa(self, query: str, num_results: int) -> list[dict[str, str]] | None:
-        exa_key = os.environ.get("EXA_API_KEY")
-        headers = {"Content-Type": "application/json"}
-        if exa_key:
-            headers["x-api-key"] = exa_key
+        # 功能：Exa 直连 REST——**必须先有 key**。
+        # 无 key 时仍发请求会得到 HTTP 402 Payment Required，被误报成「额度用完」；
+        # 零配置场景走 _search_mcp 的托管通道，不在这里空转。
+        exa_key = configured_key("exa_api_key", "EXA_API_KEY")
+        if not exa_key:
+            return None
+        headers = {"Content-Type": "application/json", "x-api-key": exa_key}
         async with httpx.AsyncClient(timeout=self._timeouts.get("exa", 10)) as client:
             resp = await client.post(
                 _EXA_URL,

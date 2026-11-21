@@ -21,7 +21,7 @@ from bandi.agent.states import _is_reasoning_only, _safety_finish
 from bandi.core.message import LLMResponse
 
 
-def _Resp(content="", reasoning="", finish_reason="stop", refusal=False, tool_calls=None):
+def _resp(content="", reasoning="", finish_reason="stop", refusal=False, tool_calls=None):
     """功能：真实 LLMResponse——不用 stub 顶替。
 
     stub 只定义了 content/reasoning/finish_reason/refusal，缺 `tool_calls`，
@@ -39,31 +39,31 @@ def _Resp(content="", reasoning="", finish_reason="stop", refusal=False, tool_ca
 
 class TestDetection:
     def test_reasoning_only_detected(self) -> None:
-        assert _is_reasoning_only(_Resp(content="", reasoning="思考了一堆"), safety_finish=False)
+        assert _is_reasoning_only(_resp(content="", reasoning="思考了一堆"), safety_finish=False)
 
     def test_normal_reply_not_flagged(self) -> None:
-        assert not _is_reasoning_only(_Resp(content="答案"), safety_finish=False)
+        assert not _is_reasoning_only(_resp(content="答案"), safety_finish=False)
 
     def test_both_present_not_flagged(self) -> None:
         """有正文就不算 reasoning-only——思维链与正文并存是正常的。"""
-        assert not _is_reasoning_only(_Resp(content="答案", reasoning="思考"), safety_finish=False)
+        assert not _is_reasoning_only(_resp(content="答案", reasoning="思考"), safety_finish=False)
 
     def test_truly_empty_not_flagged(self) -> None:
         """真空回复是另一类（连 reasoning 都没有），不走本重试路径。"""
-        assert not _is_reasoning_only(_Resp(content="", reasoning=""), safety_finish=False)
+        assert not _is_reasoning_only(_resp(content="", reasoning=""), safety_finish=False)
 
     def test_whitespace_only_content_not_flagged(self) -> None:
         """正文只有空白等同没有。"""
-        assert _is_reasoning_only(_Resp(content="   \n\t", reasoning="思考"), safety_finish=False)
+        assert _is_reasoning_only(_resp(content="   \n\t", reasoning="思考"), safety_finish=False)
 
     @pytest.mark.parametrize(
         "resp",
         [
-            _Resp(content="", reasoning="思考", finish_reason="content_filter"),
-            _Resp(content="", reasoning="思考", refusal=True),
+            _resp(content="", reasoning="思考", finish_reason="content_filter"),
+            _resp(content="", reasoning="思考", refusal=True),
         ],
     )
-    def test_safety_finish_never_retried(self, resp: _Resp) -> None:
+    def test_safety_finish_never_retried(self, resp: _resp) -> None:
         """内容过滤/拒答走 SAFETY_BLOCKED，不得被当成 reasoning-only 重试——
         重试只会绕过安全语义。"""
         assert _safety_finish(resp) is True
@@ -86,7 +86,7 @@ class TestRetryBudget:
 class TestNoReasoningPromotion:
     def test_reasoning_never_becomes_content(self) -> None:
         """破坏者视角：实现不得把 reasoning 当答案返回给用户。"""
-        r = _Resp(content="", reasoning="最终答案其实是这段话")
+        r = _resp(content="", reasoning="最终答案其实是这段话")
         # 检测函数只回答「是不是该重试」，不提供任何提升内容的路径
         assert _is_reasoning_only(r, safety_finish=False) is True
         assert r.content == ""
@@ -109,7 +109,7 @@ class TestRetryResolvesCandidate:
         calls = {"resolved": [], "completed": []}
 
         class _Provider:
-            def __init__(self, name: str, resp: _Resp) -> None:
+            def __init__(self, name: str, resp: _resp) -> None:
                 self.model_name = name
                 self._resp = resp
 
@@ -120,11 +120,11 @@ class TestRetryResolvesCandidate:
         class _Registry:
             def get_provider_for_model(self, model, config):
                 calls["resolved"].append(model)
-                return _Provider(model, _Resp(content="答案是 42"))
+                return _Provider(model, _resp(content="答案是 42"))
 
         class _Ctx:
             meta: dict = {}
-            provider = _Provider("primary-model", _Resp(content="", reasoning="思考"))
+            provider = _Provider("primary-model", _resp(content="", reasoning="思考"))
             provider_name = ""
             active_tools = None
             bus = None
@@ -156,7 +156,7 @@ class TestRetryResolvesCandidate:
         calls = {"completed": []}
 
         class _Provider:
-            def __init__(self, name: str, resp: _Resp) -> None:
+            def __init__(self, name: str, resp: _resp) -> None:
                 self.model_name = name
                 self._resp = resp
 
@@ -170,7 +170,7 @@ class TestRetryResolvesCandidate:
 
         class _Ctx:
             meta: dict = {}
-            provider = _Provider("primary-model", _Resp(content="", reasoning="思考"))
+            provider = _Provider("primary-model", _resp(content="", reasoning="思考"))
             provider_name = ""
             active_tools = None
             bus = None
@@ -208,7 +208,7 @@ class TestChainSkipsCurrentModel:
         calls = {"completed": []}
 
         class _Provider:
-            def __init__(self, name: str, resp: _Resp) -> None:
+            def __init__(self, name: str, resp: _resp) -> None:
                 self.model_name = name
                 self._resp = resp
 
@@ -218,11 +218,11 @@ class TestChainSkipsCurrentModel:
 
         class _Registry:
             def get_provider_for_model(self, model, config):
-                return _Provider(model, _Resp(content="答案是 42"))
+                return _Provider(model, _resp(content="答案是 42"))
 
         class _Ctx:
             meta: dict = {}
-            provider = _Provider("primary-model", _Resp(content="", reasoning="思考"))
+            provider = _Provider("primary-model", _resp(content="", reasoning="思考"))
             provider_name = ""
             active_tools = None
             bus = None
@@ -253,7 +253,7 @@ class TestChainSkipsCurrentModel:
         calls = {"completed": []}
 
         class _Provider:
-            def __init__(self, name: str, resp: _Resp) -> None:
+            def __init__(self, name: str, resp: _resp) -> None:
                 self.model_name = name
                 self._resp = resp
 
@@ -263,7 +263,7 @@ class TestChainSkipsCurrentModel:
 
         class _Ctx:
             meta: dict = {}
-            provider = _Provider("only-model", _Resp(content="", reasoning="思考"))
+            provider = _Provider("only-model", _resp(content="", reasoning="思考"))
             provider_name = ""
             active_tools = None
             bus = None

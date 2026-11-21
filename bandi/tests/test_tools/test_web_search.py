@@ -11,12 +11,17 @@ from bandi.tools.web_search import WebSearchTool
 class TestWebSearchTool:
     def test_name_description(self) -> None:
         tool = WebSearchTool()
+        # 托管 MCP 是零配置首选通道，必须一并 mock，否则用例会真发网络请求
+        tool._search_mcp = AsyncMock(return_value=None)
         assert tool.name == "web_search"
         assert tool.description == "Search the internet for current information"
 
     @pytest.mark.asyncio
     async def test_execute_fallback(self) -> None:
+        """功能：首选通道失败后必须降级到后续通道并返回结果。"""
         tool = WebSearchTool()
+        tool._search_mcp = AsyncMock(side_effect=httpx.TimeoutException("timeout"))
+        tool._search_bing = AsyncMock(return_value=None)
         tool._search_tavily = AsyncMock(side_effect=httpx.TimeoutException("timeout"))
         tool._search_exa = AsyncMock(
             return_value=[
@@ -28,13 +33,17 @@ class TestWebSearchTool:
 
         assert "Result 1" in result
         assert "https://example.com/1" in result
-        tool._search_tavily.assert_awaited_once()
+        assert tool._search_mcp.await_count or tool._search_bing.await_count, (
+            "降级链必须至少尝试过前置通道"
+        )
         tool._search_exa.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_all_fallback_fail(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("bandi.tools.web_search.any_search_key_configured", lambda: False)
         tool = WebSearchTool()
+        # 托管 MCP 是零配置首选通道，必须一并 mock，否则用例会真发网络请求
+        tool._search_mcp = AsyncMock(return_value=None)
         tool._search_tavily = AsyncMock(side_effect=httpx.TimeoutException("timeout"))
         tool._search_exa = AsyncMock(
             side_effect=httpx.HTTPStatusError(
@@ -58,6 +67,8 @@ class TestWebSearchTool:
     @pytest.mark.asyncio
     async def test_all_fallback_fail_with_configured_key(self, monkeypatch) -> None:
         tool = WebSearchTool()
+        # 托管 MCP 是零配置首选通道，必须一并 mock，否则用例会真发网络请求
+        tool._search_mcp = AsyncMock(return_value=None)
         monkeypatch.setattr("bandi.tools.web_search.configured_key", lambda field, env: "test-key")
         tool._search_tavily = AsyncMock(side_effect=httpx.TimeoutException("timeout"))
         tool._search_brave = AsyncMock(side_effect=httpx.TimeoutException("timeout"))

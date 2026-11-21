@@ -13,8 +13,8 @@
 
 from __future__ import annotations
 
-from bandi.core.exceptions import LLMUnavailableError
 from bandi.agent.loop import _user_facing_failure
+from bandi.core.exceptions import LLMUnavailableError
 
 
 def test_llm_unavailable_gives_readable_text() -> None:
@@ -43,13 +43,13 @@ def test_empty_exception_falls_back_to_type_name() -> None:
 
 def test_capability_prompt_has_no_unbacked_entries() -> None:
     """功能：能力分档不得列出工具面不存在的条目（否则模型只能先报高再纠正）。"""
-    from bandi.agent.prompt_harness import artifacts
-
     # 只查「能力分档条目」本身，不查全文：
     # 说明文字里引用这些词是为了记录为什么要删，不是能力承诺。
     import re as _re
 
-    text = open(artifacts.__file__, encoding="utf-8").read()  # noqa: SIM115
+    from bandi.agent.prompt_harness import artifacts
+
+    text = open(artifacts.__file__, encoding="utf-8").read()
     # 取「能力分档」那段：从「被问你能做什么」到空行结尾
     # 只取编号条目（1. … 5. ）本身，不含后面的说明文字
     entries = _re.findall(r"^\s*\d+\.\s*([^\n]+)$", text, _re.M)
@@ -64,5 +64,5 @@ def test_capability_prompt_still_keeps_team_ability() -> None:
     """功能：核心能力「组建 AI 员工团队」不能因为清理而丢失。"""
     from bandi.agent.prompt_harness import artifacts
 
-    text = open(artifacts.__file__, encoding="utf-8").read()  # noqa: SIM115
+    text = open(artifacts.__file__, encoding="utf-8").read()
     assert "组建 AI 员工团队" in text

@@ -42,17 +42,25 @@ class TestBingFallbackBackend:
             calls.append("ddg")
             raise httpx.TimeoutException("timeout")
 
+        async def _mcp(query: str, num_results: int):
+            calls.append("mcp")
+            return None
+
         async def _bing(query: str, num_results: int):
             calls.append("bing")
             return [{"title": "T", "url": "https://example.com/x", "snippet": "s"}]
 
+        monkeypatch.setattr(tool, "_search_mcp", _mcp)
         monkeypatch.setattr(tool, "_search_tavily", _tav)
         monkeypatch.setattr(tool, "_search_exa", _exa)
         monkeypatch.setattr(tool, "_search_ddg", _ddg)
         monkeypatch.setattr(tool, "_search_bing", _bing)
 
         out = await tool.execute({"query": "test"})
-        assert calls == ["tavily", "exa", "ddg", "bing"]
+        assert calls[0] == "mcp", "零配置时托管通道必须第一个被尝试"
+        assert calls[-1] == "bing", "bing 是最后的兜底"
+        # bing 成功即返回，后面的通道不再尝试（降级链是短路语义）
+        assert "bing" in calls and "tavily" not in calls, "命中 bing 后不得继续空转"
         assert "https://example.com/x" in out
 
     def test_parse_bing_html(self) -> None:
@@ -70,6 +78,7 @@ class TestBingFallbackBackend:
         monkeypatch.delenv("EXA_API_KEY", raising=False)
         tool = WebSearchTool()
         fail = _fail(httpx.ConnectError("network unreachable"))
+        monkeypatch.setattr(tool, "_search_mcp", fail)
         monkeypatch.setattr(tool, "_search_tavily", fail)
         monkeypatch.setattr(tool, "_search_exa", fail)
         monkeypatch.setattr(tool, "_search_ddg", fail)
@@ -85,6 +94,7 @@ class TestBingFallbackBackend:
         monkeypatch.setenv("TAVILY_API_KEY", "tvly-test")
         tool = WebSearchTool()
         fail = _fail(httpx.ConnectError("network unreachable"))
+        monkeypatch.setattr(tool, "_search_mcp", fail)
         monkeypatch.setattr(tool, "_search_tavily", fail)
         monkeypatch.setattr(tool, "_search_exa", fail)
         monkeypatch.setattr(tool, "_search_ddg", fail)

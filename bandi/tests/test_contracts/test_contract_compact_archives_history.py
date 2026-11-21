@@ -88,7 +88,7 @@ def test_archived_payload_is_recoverable(store: SessionStore) -> None:
     _seed(store, sid, turns=5)
     store.archive_entries_before(sid, keep_latest=1)
 
-    with store._lock:  # noqa: SLF001 — 契约需直接核对归档表内容
+    with store._lock:
         rows = store._sqlite.execute(
             "SELECT payload FROM session_entries_archive WHERE session_id = ?", (sid,)
         ).fetchall()
