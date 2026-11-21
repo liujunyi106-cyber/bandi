@@ -34,6 +34,27 @@ class SchedulerConfig:
     maintenance_callable: Callable[[], Any] | None = None
 
 
+# 功能：Agent 把失败包装成正常回复时，产出文本里的失败标志。
+# 定时任务无人值守，这类文本若只进 last_output，事后无从判断失败在链路哪一段。
+_FAILURE_MARKERS = (
+    "模型服务暂时不可用",
+    "本轮执行失败",
+    "LLM call failed",
+    "search_unavailable",
+)
+
+
+def _failure_reason(text: str) -> str | None:
+    """功能：产出文本是否表达失败——是则返回可落库的原因（否则 None）。"""
+    normalized = str(text or "").strip()
+    if not normalized:
+        return None
+    for marker in _FAILURE_MARKERS:
+        if marker in normalized:
+            return normalized[:500]
+    return None
+
+
 def is_silent_completion(result: Any) -> bool:
     """功能（10.3 静默完成协议）：空输出 / HEARTBEAT_OK 标记视为「无事可报」
     不写入用户可见产出（openclaw HEARTBEAT_OK 静默剥离语义）。"""
@@ -198,9 +219,20 @@ class TaskScheduler:
         self.store.set_status(task.task_id, TaskStatus.IDLE)
         self.store.set_last_run(task.task_id, now)
         # 10.3：静默完成协议——空/HEARTBEAT_OK 产出落空串（用户面不可见）
-        self.store.set_last_output(
-            task.task_id, "" if is_silent_completion(result) else str(result)[:2000]
-        )
+        text = "" if is_silent_completion(result) else str(result)[:2000]
+        self.store.set_last_output(task.task_id, text)
+        # 功能：runner 正常返回但产出是失败结论时，也要落错误原因。
+        # 旧实现只把「抛异常」记进 last_error：Agent 把失败转成一句话回复时
+        # （last_error 为空、last_output 只是一句「模型服务暂时不可用」），
+        # 事后完全无法判断到底哪一步坏了。
+        reason = _failure_reason(text)
+        if reason is not None:
+            logger.warning(
+                "scheduled task %s returned a failure message: %s", task.task_id, reason
+            )
+            self.store.set_status(task.task_id, TaskStatus.FAILED, error=reason)
+            self._window_retries.pop(task.task_id, None)
+            return
         self._window_retries.pop(task.task_id, None)
         self._advance(task, now)
 
