@@ -48,6 +48,20 @@ Thumbs.db
 # 交付文档只在本地留存，不进仓库（含索引 AGENTS.md）
 交付文档收集/
 
+# 本地评测数据与产物：含真实会话样本，只在本地留存
+评测/
+eval-*.json
+compaction-result.json
+
+# 运行/构建产物：可再生成，不进仓库
+bandi/out/
+data-gym-cache/
+bandi/data-gym-cache/
+bandi/tmp_daily_count.txt
+scb-*/
+scbw-*/
+.pytest-tmp/
+
 # 本机私人数据：模型密钥、会话库、运行态——绝不进仓库
 *.db
 *.db-wal
