@@ -93,6 +93,11 @@ def _render_read_output(lines: list[str], *, offset: int, limit: int | None) -> 
     return f"{body}\n\n{note}" if body else note
 
 
+def normalize_newlines(text: str) -> str:
+    """功能：把 CRLF 与裸 CR 统一成 LF——同一文件不得混用两种行尾。"""
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
 class FileReadTool(FsTool):  # 功能：读取文件（支持 offset/limit 分段读取 + 路径安全检查）
     # 渲染意图：折叠态卡片形态 + 完成态动作短语
     present_call: str = "read"
@@ -320,8 +325,12 @@ class FileWriteTool(FsTool):  # 功能：写入文件（覆盖/追加 + 自动�
             atomic_write(path, bom + content.encode(encoding))
 
         def _append() -> None:
+            # 功能：追加前统一行尾为平台无关的 LF。
+            # 模型常把换行写成 CRLF，而 newline="" 会原样落盘——同一文件出现
+            # CRLF 与 LF 混用后，逐行比对/去重/日志采集都会把一行当两行。
+            payload = normalize_newlines(content)
             with path.open("a", encoding=encoding, newline="") as f:
-                f.write(content)
+                f.write(payload)
                 f.flush()
                 os.fsync(f.fileno())
 
