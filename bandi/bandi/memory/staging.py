@@ -4,6 +4,7 @@
 # 一律暂存等待批准，无自动批准路径（安全失败：暂存写盘失败也不回落直写）。
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -100,7 +101,12 @@ def mask_summary(text: str) -> str:
 
 
 def _payload_item_key(payload: Any) -> tuple[str, str] | None:
-    """功能：待批准 payload 的去重键（技能名 / target + 目标条目稳定 id）；无法解析 None。"""
+    """功能：待批准 payload 的去重键（技能名 / target + 正文指纹）；无法解析 None。
+
+    正文指纹优先于条目 id：巩固晋升会把同一段内容写成多条情节，各自的
+    `item.id`（`consolidated:ep:<episode>`）互不相同，按 id 去重永远不命中，
+    同一句话会在审批队列里堆十几条。正文相同即视为同一条待批准写入。
+    """
     if not isinstance(payload, dict):
         return None
     skill_name = payload.get("skill_name")
@@ -109,10 +115,15 @@ def _payload_item_key(payload: Any) -> tuple[str, str] | None:
     item = payload.get("item")
     if not isinstance(item, dict):
         return None
+    target = str(payload.get("target", ""))
+    content = str(item.get("content") or payload.get("content") or "").strip()
+    if content:
+        digest = hashlib.sha1(content.encode("utf-8")).hexdigest()[:16]
+        return target, f"content:{digest}"
     item_id = str(item.get("id") or item.get("item_id") or item.get("episode_id") or "").strip()
     if not item_id:
         return None
-    return str(payload.get("target", "")), item_id
+    return target, item_id
 
 
 @dataclass

@@ -109,7 +109,10 @@ _TRIVIAL_PROBE_RE = re.compile(
 # 功能：验收/测试指令——要求模型逐字回复、真机验证等，不是可复用事实。
 _TEST_INSTRUCTION_RE = re.compile(
     r"(?:real[-\s]?machine\s+verification|reply\s+with\s+exactly|test\s+message"
-    r"|真机验证|验证消息|测试指令|请只回复\s*[\w_]+)",
+    r"|真机验证|验证消息|测试指令|请只回复\s*[\w_]+"
+    # 评测判题提示词：评测框架把「你是评测裁判 + 判据」整段当成用户输入发进来，
+    # 不拦住就会把判据模板写成用户偏好（真机 13 条「[偏好] 你是评测裁判…」）。
+    r"|你是评测裁判|判断下面这条助手回复|判据（结构要点|逐条判断是否满足)",
     re.IGNORECASE,
 )
 
