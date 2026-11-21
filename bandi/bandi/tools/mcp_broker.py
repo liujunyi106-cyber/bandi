@@ -11,9 +11,17 @@ from bandi.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
 
+# 功能：单次重连的超时上界（秒）——重连内部要拉子进程 + initialize 握手，
+# 任何一步挂住都会让健康检查循环永久停摆并连带阻塞 Agent 主循环。
+_RECONNECT_TIMEOUT_SEC = 60.0
+
 
 class MCPBroker:
-    def __init__(self, health_check_interval: float = 30.0):
+    def __init__(
+        self,
+        health_check_interval: float = 30.0,
+        reconnect_timeout_sec: float = _RECONNECT_TIMEOUT_SEC,
+    ):
         self._pools: dict[str, list[MCPClient]] = {}
         self._prefixes: dict[int, str | None] = {}
         self._allowed_tools: dict[int, set[str] | None] = {}
@@ -21,6 +29,8 @@ class MCPBroker:
         self._registry: ToolRegistry | None = None
         self._client_prefixes: dict[int, str] = {}
         self._health_check_interval = health_check_interval
+        # 功能：单次重连（含工具重注册）的超时上界，防健康检查拖死主循环
+        self._reconnect_timeout_sec = reconnect_timeout_sec
         self._health_task: asyncio.Task | None = None
         self._running = False
 
@@ -195,51 +205,78 @@ class MCPBroker:
         logger.info("MCP health check stopped")
 
     async def _health_check_loop(self) -> None:
+        """功能：定期替不可用的 MCP client 重连。
+
+        每一次重连都必须有超时上界：本循环与会话主任务共享事件循环，
+        一旦某个 server 在拉起/握手阶段挂住，Agent 的下一轮 LLM 调用
+        就永远排不到——真机实测两次调用相隔 959s，期间零外网连接。
+        超时即判该 server 本轮不可用，下个周期再试，绝不拖住主循环。
+        """
         while self._running:
             await asyncio.sleep(self._health_check_interval)
             for name, clients in list(self._pools.items()):
                 for client in clients:
-                    if not client.available:
+                    if client.available:
+                        continue
+                    logger.warning(
+                        "Health check: MCP client %s in pool %s unavailable, reconnecting",
+                        client.name,
+                        name,
+                    )
+                    try:
+                        ok = await asyncio.wait_for(
+                            client.reconnect(), timeout=self._reconnect_timeout_sec
+                        )
+                    except TimeoutError:
                         logger.warning(
-                            "Health check: MCP client %s in pool %s unavailable, reconnecting",
+                            "Health check: MCP client %s in pool %s reconnect timed out "
+                            "after %.0fs (skipped this round)",
+                            client.name,
+                            name,
+                            self._reconnect_timeout_sec,
+                        )
+                        continue
+                    except Exception as exc:  # noqa: BLE001 — 单个 client 失败不得杀死健康循环
+                        logger.warning(
+                            "Health check: MCP client %s reconnect raised: %s",
+                            client.name,
+                            exc,
+                        )
+                        ok = False
+                    if not ok:
+                        logger.error(
+                            "Health check: MCP client %s in pool %s reconnect failed",
                             client.name,
                             name,
                         )
-                        try:
-                            ok = await client.reconnect()
-                        except Exception as exc:  # noqa: BLE001 — 单个 client 失败不得杀死健康循环
-                            logger.warning(
-                                "Health check: MCP client %s reconnect raised: %s",
-                                client.name,
-                                exc,
-                            )
-                            ok = False
-                        if ok:
-                            logger.info(
-                                "Health check: MCP client %s in pool %s reconnected",
-                                client.name,
-                                name,
-                            )
-                            if self._registry is not None:
-                                try:
-                                    await register_mcp_tools(
-                                        self._registry,
-                                        client,
-                                        prefix=self._client_prefixes.get(id(client), name),
-                                        allowed_tools=self._allowed_tools.get(id(client)),
-                                    )
-                                except Exception as exc:  # noqa: BLE001 — 重注册失败下次循环再试
-                                    logger.warning(
-                                        "Health check: re-register tools failed for %s: %s",
-                                        client.name,
-                                        exc,
-                                    )
-                        else:
-                            logger.error(
-                                "Health check: MCP client %s in pool %s reconnect failed",
-                                client.name,
-                                name,
-                            )
+                        continue
+                    logger.info(
+                        "Health check: MCP client %s in pool %s reconnected",
+                        client.name,
+                        name,
+                    )
+                    if self._registry is None:
+                        continue
+                    try:
+                        await asyncio.wait_for(
+                            register_mcp_tools(
+                                self._registry,
+                                client,
+                                prefix=self._client_prefixes.get(id(client), name),
+                                allowed_tools=self._allowed_tools.get(id(client)),
+                            ),
+                            timeout=self._reconnect_timeout_sec,
+                        )
+                    except TimeoutError:
+                        logger.warning(
+                            "Health check: re-register tools timed out for %s", client.name
+                        )
+                    except Exception as exc:  # noqa: BLE001 — 重注册失败下次循环再试
+                        logger.warning(
+                            "Health check: re-register tools failed for %s: %s",
+                            client.name,
+                            exc,
+                        )
 
     @property
     def pool_names(self) -> list[str]:

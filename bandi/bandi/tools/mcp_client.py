@@ -25,6 +25,10 @@ logger = logging.getLogger(__name__)
 
 MCP_PROTOCOL_VERSION = "2024-11-05"
 
+# 功能：子进程拉起超时（秒）——npm 型 server 在冷启动/杀软扫盘时能拖到分钟级，
+# 但没有上界会让健康检查永久悬挂并连带阻塞 Agent 主循环。
+_SPAWN_TIMEOUT_SEC = 30.0
+
 _MCP_RISK_LEVELS = ("low", "medium", "high", "critical")
 
 # 功能：MCP 子进程环境清洗——对齐 deepseek-harness scrubbedParentEnv / Hermes
@@ -125,6 +129,7 @@ class StdioTransport(MCPTransport):
         *,
         env: dict[str, str] | None = None,
         inherit_all: bool = False,
+        spawn_timeout_sec: float = _SPAWN_TIMEOUT_SEC,
     ):
         self._command = command
         self._args = args or []
@@ -140,17 +145,34 @@ class StdioTransport(MCPTransport):
         # 连接摘除标志：读循环退出（server 崩溃/stdout 关闭）即置位
         # available 随之 False——broker 停止向死连接路由新请求
         self._closed = False
+        # 功能：子进程拉起超时——Card 型 server（playwright 等）冷启动慢，
+        # 但不能慢到拖死健康检查循环；超时即判该 server 不可用并由上层跳过。
+        self._spawn_timeout_sec = spawn_timeout_sec
 
     async def connect(self) -> None:
+        # 功能：拉起子进程必须有超时上界——子进程卡在启动阶段（缺依赖、
+        # 被安全软件扫盘、等待 stdin）时，裸 await 会无限悬挂。
+        # 健康检查每 30s 重连一次，一旦挂住就把整条主循环拖死：
+        # 真机实测两次 LLM 调用相隔 959s，全程无任何外网连接（不在等模型）。
         self._closed = False
-        self._process = await spawn_managed_subprocess(
-            self._command,
-            *self._args,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            env=scrub_child_env(self._extra_env, inherit_all=not self.env_scrubbed),
-        )
+        try:
+            self._process = await asyncio.wait_for(
+                spawn_managed_subprocess(
+                    self._command,
+                    *self._args,
+                    stdin=asyncio.subprocess.PIPE,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    env=scrub_child_env(self._extra_env, inherit_all=not self.env_scrubbed),
+                ),
+                timeout=self._spawn_timeout_sec,
+            )
+        except TimeoutError as exc:
+            self._closed = True
+            raise MCPError(
+                f"MCP server {self._command!r} did not start within "
+                f"{self._spawn_timeout_sec}s"
+            ) from exc
         self._reader = self._process.stdout
         self._writer = self._process.stdin
         self._read_task = asyncio.create_task(self._read_loop())
