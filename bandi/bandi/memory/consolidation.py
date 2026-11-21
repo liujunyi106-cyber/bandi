@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -88,6 +89,13 @@ def _is_low_value_episode(summary: str) -> bool:
 PROMOTION_REJECTED_TAG = "promotion_rejected"
 
 _DEDUP_SCAN_PAGE = 500
+
+# 功能：单条提炼的墙钟上限（秒）——每条都要过一次 LLM，
+# 串行超时会把整轮巩固拖到分钟级（真机 197s，期间主链下一轮 LLM 调用排不上）。
+DISTILL_TIMEOUT_SEC = 20.0
+# 功能：一轮巩固里提炼的总预算（秒）——超出即放弃剩余提名、本轮只做规则降级，
+# 保证巩固始终是「有限耗时」，不会因为待晋升条目多而无限拉长。
+DISTILL_ROUND_BUDGET_SEC = 45.0
 
 
 def _turn_recorded_inputs(long_term: LongTermMemory) -> set[str]:
@@ -221,6 +229,11 @@ def consolidate_episodes(
         pending_ids = _pending_promotion_ids()
         dedup_inputs: set[str] | None = None
         episodes = episodic.list_recent(limit=limit, project_id=project_id, employee_id=employee_id)
+        # 功能：先并发提炼候选，再走落库循环——提炼是唯一的网络往返，
+        # 串行执行会让一轮巩固的耗时 = 候选数 × 单条超时（真机 197s）。
+        distilled_by_id = _distill_candidates(
+            episodes, long_term=long_term, pending_ids=pending_ids, distiller=distiller
+        )
         for episode in episodes:
             report.scanned += 1
             if PROMOTION_REJECTED_TAG in episode.tags:
@@ -256,7 +269,9 @@ def consolidate_episodes(
                 if turn_input and turn_input in dedup_inputs:
                     # 该轮已由前台直写覆盖——草稿晋升会造成长期层重复，跳过
                     continue
-                distilled = distill_for_episode(episode, distiller)
+                distilled = distilled_by_id.get(episode.episode_id)
+                if distilled is None:
+                    distilled = distill_for_episode(episode, distiller)
                 if is_discard(distilled):
                     # 提炼器判定「不值得记」——不提名也不落库
                     continue
@@ -315,6 +330,90 @@ def consolidate_episodes(
     finally:
         reset_write_origin(token)
     return report
+
+
+def _distill_candidates(
+    episodes: list[Episode],
+    *,
+    long_term: LongTermMemory,
+    pending_ids: set[str],
+    distiller: Callable[[Episode], DistilledMemory] | None,
+) -> dict[str, DistilledMemory]:
+    """功能：并发提炼本轮待晋升候选，返回 episode_id → 提炼结果。
+
+    提炼是唯一的网络往返，逐条串行会把整轮巩固拖成「候选数 × 30s 超时」
+    （真机 197s，期间主链下一轮 LLM 调用排不上）。这里：
+    - 只对过了晋升门槛的候选发起提炼（与原逐条路径同判据，不多调一次）；
+    - 并发执行，整体受 `DISTILL_ROUND_BUDGET_SEC` 约束；
+    - 超预算或单条超时的候选不进返回值，调用方回退到规则提炼。
+    """
+    targets = [
+        episode
+        for episode in episodes
+        if _needs_distill(episode, long_term=long_term, pending_ids=pending_ids)
+    ]
+    if not targets:
+        return {}
+    results: dict[str, DistilledMemory] = {}
+    try:
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _one(episode: Episode) -> tuple[str, DistilledMemory | None]:
+            try:
+                return episode.episode_id, distill_for_episode(episode, distiller)
+            except Exception:  # noqa: BLE001 — 单条失败不影响其他候选
+                logger.warning("candidate distill failed for %s", episode.episode_id)
+                return episode.episode_id, None
+
+        workers = min(4, len(targets))
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = [pool.submit(_one, episode) for episode in targets]
+            deadline = time.monotonic() + DISTILL_ROUND_BUDGET_SEC
+            for future in futures:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    logger.warning(
+                        "distill round budget %.0fs exhausted; %d candidate(s) fall back to rules",
+                        DISTILL_ROUND_BUDGET_SEC,
+                        sum(1 for f in futures if not f.done()),
+                    )
+                    break
+                try:
+                    episode_id, distilled = future.result(timeout=remaining)
+                except TimeoutError:
+                    logger.warning("candidate distill timed out at round budget")
+                    continue
+                if distilled is not None:
+                    results[episode_id] = distilled
+    except Exception:
+        logger.warning("parallel distill unavailable; falling back to per-item", exc_info=True)
+        return {}
+    return results
+
+
+def _needs_distill(
+    episode: Episode, *, long_term: LongTermMemory, pending_ids: set[str]
+) -> bool:
+    """功能：该候选是否值得花一次 LLM 提炼（判据与落库循环一致）。"""
+    if PROMOTION_REJECTED_TAG in episode.tags or ONTOLOGY_TURN_TAG in episode.tags:
+        return False
+    if _is_low_value_episode(episode.summary):
+        return False
+    high_value = (
+        episode.importance >= CONSOLIDATION_MIN_IMPORTANCE
+        and episode.recall_count >= CONSOLIDATION_MIN_RECALLS
+    )
+    multi_query = (
+        episode.importance >= CONSOLIDATION_MIN_MULTI_IMPORTANCE
+        and episode.recall_count >= CONSOLIDATION_MIN_MULTI_RECALLS
+        and len(episode.recall_queries) >= CONSOLIDATION_MIN_UNIQUE_QUERIES
+    )
+    if not (high_value or multi_query):
+        return False
+    stable_id = f"consolidated:{episode.episode_id}"
+    if long_term.get(stable_id) is not None:
+        return False
+    return stable_id not in pending_ids
 
 
 def consolidate_default(*, limit: int = _DEFAULT_SCAN_LIMIT) -> ConsolidationReport:
