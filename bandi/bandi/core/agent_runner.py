@@ -1640,6 +1640,7 @@ async def _persist_memory(
             f"{_memory_subject(ctx, raw_input)} → 回答: {_clip_sentence(final_message, 400)}"
         )
         fields = extract_memory_fields(episode_summary, user_input=raw_input, source=scope_source)
+        # 规则粗筛决定是否入库；语义蕴含校验在检索命中后由 memory_provider 做
         verdict = review_episodic_ingest(episode_summary)
         episodic = getattr(manager, "episodic", None)
         if episodic is not None and verdict.decision != "reject":
