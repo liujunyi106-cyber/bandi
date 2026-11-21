@@ -159,8 +159,12 @@ def _stage_consolidation(item: MemoryItem, episode: Episode) -> None:
 
     摘要 = 提炼后结构化内容（中文 kind 标签前缀 + 断言句）——不是情节原文包装。
     draft 元数据供消息中心「系统提名/长期记忆」多标签展示。
+
+    进 draft 而非直接 review：无人值守路径没有用户在场打分，直接进审批队列
+    会让「后台跑一次就多一条待批准」无限堆积（真机 151 条 value_score 全为 0）。
+    先进草稿池，由 `promote_drafts` 按价值分筛选后晋级，容量与时间兜底都在那里。
     """
-    from bandi.memory.staging import get_pending_store, mask_summary
+    from bandi.memory.staging import GATE_DRAFT, get_pending_store, mask_summary
 
     try:
         get_pending_store().stage(
@@ -170,6 +174,8 @@ def _stage_consolidation(item: MemoryItem, episode: Episode) -> None:
                     structured_preview(item.content, (item.metadata or {}).get("structured"))
                 ),
                 "origin": "background",
+                "gate": GATE_DRAFT,
+                "value_score": float(episode.importance or 0.0),
                 "payload": {
                     "target": "long_term",
                     "item": item.to_dict(),

@@ -137,7 +137,7 @@ def _stage_promotion(store: Any, item: MemoryItem, episode: Episode) -> bool:
 
     返回是否真实落盘——写盘失败既不算已暂存也不能回落直写（安全失败）。
     """
-    from bandi.memory.staging import mask_summary
+    from bandi.memory.staging import GATE_DRAFT, mask_summary
     from bandi.memory.structured import structured_preview
 
     try:
@@ -148,6 +148,9 @@ def _stage_promotion(store: Any, item: MemoryItem, episode: Episode) -> bool:
                     structured_preview(item.content, (item.metadata or {}).get("structured"))
                 ),
                 "origin": "background",
+                # 无人值守路径无人在场打分：先进草稿池，由 promote_drafts 按价值分晋级
+                "gate": GATE_DRAFT,
+                "value_score": float(episode.importance or 0.0),
                 "payload": {
                     "target": "long_term",
                     "item": item.to_dict(),

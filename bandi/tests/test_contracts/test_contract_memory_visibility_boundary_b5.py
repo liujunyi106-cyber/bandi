@@ -85,7 +85,11 @@ def _all_memory_api_bodies(env: Any) -> dict[str, str]:
 
 
 def test_nominated_draft_visible_as_structured_preview(env: Any) -> None:
-    """预期：提名草稿在消息中心可见，且摘要 = `[kind] 断言句` 结构化形态，不裸原文包装。"""
+    """预期：提名先进草稿池（不进审批队列），摘要 = `[kind] 断言句` 结构化形态，不裸原文包装。
+
+    无人值守提名没有用户在场打分，直插审批队列会让后台每跑一次就多一条待批准；
+    `/api/memory/pending` 按设计只回 review 级，草稿只回条数（drafts）。
+    """
     from bandi.memory.distill import rule_distill
 
     _seed_high_value_episode(env.episodic)
@@ -97,11 +101,17 @@ def test_nominated_draft_visible_as_structured_preview(env: Any) -> None:
     assert report.staged == ["ep-b5-1"], f"高价值情节应进入暂存提名：{report.to_dict()}"
 
     resp = env.client.get("/api/memory/pending")
-    rows = resp.json().get("pending") or []
-    assert len(rows) == 1, f"消息中心应见 1 条草稿：{rows}"
-    row = rows[0]
-    assert row["action"] == "consolidate_episode"
-    summary = str(row["summary"])
+    body = resp.json()
+    assert (body.get("pending") or []) == [], "草稿不得直接占用审批队列"
+    assert body.get("drafts") == 1, f"消息中心应以草稿计数体现：{body}"
+
+    from bandi.memory.staging import GATE_DRAFT, get_pending_store
+
+    drafts = get_pending_store().list_pending(GATE_DRAFT)
+    assert len(drafts) == 1, f"草稿池应有 1 条：{drafts}"
+    row = drafts[0]
+    assert row.action == "consolidate_episode"
+    summary = str(row.summary)
     assert summary.startswith("["), f"摘要应为结构化预览（[kind] 前缀）：{summary}"
     for label in WRAP_LABELS:
         assert label not in summary, f"摘要不得含情节原文包装「{label}」：{summary}"
@@ -152,7 +162,7 @@ def test_no_episodic_frontend_route(env: Any) -> None:
 
 
 def test_approve_lands_long_term_and_episodic_untouched(env: Any) -> None:
-    """预期（批准闭环）：消息中心批准 → 重放落 long_term；episodic 存储零改动。"""
+    """预期（批准闭环）：草稿晋级到审批队列 → 批准 → 重放落 long_term；episodic 零改动。"""
     from bandi.memory.distill import rule_distill
 
     _seed_high_value_episode(env.episodic)
@@ -161,7 +171,15 @@ def test_approve_lands_long_term_and_episodic_untouched(env: Any) -> None:
         env.long_term,
         distiller=lambda ep: rule_distill(ep.summary, importance=ep.importance),
     )
-    pending_id = env.client.get("/api/memory/pending").json()["pending"][0]["id"]
+    # 提名先落草稿池；晋级由容量/时间兜底触发，这里用极小兜底窗口立即晋级一轮
+    from bandi.memory.staging import get_pending_store
+
+    store = get_pending_store()
+    assert store.list_pending("draft"), "提名应先落草稿池"
+    assert store.promote_drafts(force_after_hours=1e-9) == 1, "草稿应能晋级到审批队列"
+    pending = env.client.get("/api/memory/pending").json()["pending"]
+    assert len(pending) == 1, f"晋级后应见 1 条待批准：{pending}"
+    pending_id = pending[0]["id"]
 
     resp = env.client.post(f"/api/memory/pending/{pending_id}/approve")
     assert resp.status_code == 200 and resp.json().get("approved") is True, resp.text
