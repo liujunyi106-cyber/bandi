@@ -71,6 +71,14 @@ def _promote_to_long_term(
     staged: list[str] = []
     token = set_write_origin("background")
     try:
+        # 功能：先并发提炼全部候选再逐条落库——提炼是唯一的网络往返，
+        # 串行执行会让晋升耗时 = 条数 × 单条超时（真机晋升 14 条期间主链零进展）。
+        from bandi.memory.consolidation import distill_episodes_parallel
+
+        candidates = [
+            episode for episode in episodes if not is_noise_memory(episode.summary)
+        ]
+        distilled_by_id = distill_episodes_parallel(candidates, distiller=distiller)
         for episode in episodes:
             summary_noise = is_noise_memory(episode.summary)
             if summary_noise:
@@ -78,7 +86,9 @@ def _promote_to_long_term(
                     "promotion skipped as noise: %s (%s)", episode.episode_id, summary_noise
                 )
                 continue
-            distilled = distill_for_episode(episode, distiller)
+            distilled = distilled_by_id.get(episode.episode_id)
+            if distilled is None:
+                distilled = distill_for_episode(episode, distiller)
             if is_discard(distilled):
                 # 提炼器判定「不值得记」——不进暂存区、不改写情节
                 logger.debug("promotion discarded by distiller: %s", episode.episode_id)

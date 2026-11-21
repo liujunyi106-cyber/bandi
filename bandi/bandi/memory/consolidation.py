@@ -332,27 +332,20 @@ def consolidate_episodes(
     return report
 
 
-def _distill_candidates(
+def distill_episodes_parallel(
     episodes: list[Episode],
     *,
-    long_term: LongTermMemory,
-    pending_ids: set[str],
     distiller: Callable[[Episode], DistilledMemory] | None,
+    budget_sec: float = DISTILL_ROUND_BUDGET_SEC,
 ) -> dict[str, DistilledMemory]:
-    """功能：并发提炼本轮待晋升候选，返回 episode_id → 提炼结果。
+    """功能：并发提炼多条情节，返回 episode_id → 提炼结果。
 
-    提炼是唯一的网络往返，逐条串行会把整轮巩固拖成「候选数 × 30s 超时」
-    （真机 197s，期间主链下一轮 LLM 调用排不上）。这里：
-    - 只对过了晋升门槛的候选发起提炼（与原逐条路径同判据，不多调一次）；
-    - 并发执行，整体受 `DISTILL_ROUND_BUDGET_SEC` 约束；
-    - 超预算或单条超时的候选不进返回值，调用方回退到规则提炼。
+    提炼是记忆后台路径里唯一的网络往返。逐条串行会让整轮耗时 = 条数 × 30s
+    超时（真机 maintenance 晋升 14 条、consolidation 197s，期间主链下一轮
+    LLM 调用排不上）。这里并发执行并受总预算约束；
+    超预算或单条失败的候选不进返回值，调用方自行回退规则提炼。
     """
-    targets = [
-        episode
-        for episode in episodes
-        if _needs_distill(episode, long_term=long_term, pending_ids=pending_ids)
-    ]
-    if not targets:
+    if not episodes:
         return {}
     results: dict[str, DistilledMemory] = {}
     try:
@@ -365,16 +358,16 @@ def _distill_candidates(
                 logger.warning("candidate distill failed for %s", episode.episode_id)
                 return episode.episode_id, None
 
-        workers = min(4, len(targets))
+        workers = min(4, len(episodes))
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            futures = [pool.submit(_one, episode) for episode in targets]
-            deadline = time.monotonic() + DISTILL_ROUND_BUDGET_SEC
+            futures = [pool.submit(_one, episode) for episode in episodes]
+            deadline = time.monotonic() + budget_sec
             for future in futures:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     logger.warning(
                         "distill round budget %.0fs exhausted; %d candidate(s) fall back to rules",
-                        DISTILL_ROUND_BUDGET_SEC,
+                        budget_sec,
                         sum(1 for f in futures if not f.done()),
                     )
                     break
@@ -389,6 +382,26 @@ def _distill_candidates(
         logger.warning("parallel distill unavailable; falling back to per-item", exc_info=True)
         return {}
     return results
+
+
+def _distill_candidates(
+    episodes: list[Episode],
+    *,
+    long_term: LongTermMemory,
+    pending_ids: set[str],
+    distiller: Callable[[Episode], DistilledMemory] | None,
+) -> dict[str, DistilledMemory]:
+    """功能：并发提炼本轮待晋升候选，返回 episode_id → 提炼结果。
+
+    只对过了晋升门槛的候选发起提炼（与原逐条路径同判据，不多调一次），
+    实际并发与预算控制见 `distill_episodes_parallel`。
+    """
+    targets = [
+        episode
+        for episode in episodes
+        if _needs_distill(episode, long_term=long_term, pending_ids=pending_ids)
+    ]
+    return distill_episodes_parallel(targets, distiller=distiller)
 
 
 def _needs_distill(
@@ -450,6 +463,7 @@ def consolidate_default(*, limit: int = _DEFAULT_SCAN_LIMIT) -> ConsolidationRep
 
 
 __all__ = [
+    "distill_episodes_parallel",
     "CONSOLIDATION_MIN_IMPORTANCE",
     "CONSOLIDATION_MIN_RECALLS",
     "ConsolidationReport",
