@@ -85,6 +85,12 @@ Bandi 是一个**组织向的个人 AI 员工框架**。它不把 AI 当成一�
 <sub><b>知识组织层</b> —— 实体、关系、断言沉淀成可查询的本体，而不是散落的聊天记录。</sub>
 </td>
 </tr>
+<tr>
+<td colspan="2" valign="top">
+<img src="https://cdn.jsdelivr.net/gh/liujunyi106-cyber/bandi@main/assets/screenshots/clarification.png" alt="澄清确认：指令有歧义时先反问" /><br/>
+<sub><b>澄清确认</b> —— 指令有歧义就停下来问，把候选摆出来让用户点选，而不是猜一个意思硬做下去。</sub>
+</td>
+</tr>
 </table>
 
 ---

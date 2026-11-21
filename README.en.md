@@ -85,6 +85,12 @@ Everything lives in `~/.bandi/` on your machine. Both ports bind to `127.0.0.1` 
 <sub><b>Knowledge layer</b> — entities, relations and assertions become a queryable ontology, not loose transcripts.</sub>
 </td>
 </tr>
+<tr>
+<td colspan="2" valign="top">
+<img src="https://cdn.jsdelivr.net/gh/liujunyi106-cyber/bandi@main/assets/screenshots/clarification.png" alt="Clarification: ask first when the request is ambiguous" /><br/>
+<sub><b>Clarification</b> — an ambiguous request stops the turn and asks, offering candidates to pick from instead of guessing one meaning and running with it.</sub>
+</td>
+</tr>
 </table>
 
 ---
