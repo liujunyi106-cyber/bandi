@@ -63,6 +63,9 @@ scbw-*/
 .pytest-tmp/
 .pytest_cache/
 .ruff_cache/
+frontend/build/
+frontend/dist/
+*.tsbuildinfo
 
 # 测试与调试残留：pytest 临时目录、e2e 工作区、抓图产物、一次性日志
 .pytest*/
