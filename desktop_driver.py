@@ -407,21 +407,28 @@ def new_session() -> bool:
             return False
     except Exception:
         return False
-    # 等新会话清空气泡并恢复可发送态
+    # 功能：等新会话清空且**稳定**后才返回。
+    # 只看一次 n==0 不够：切换瞬间旧会话气泡会被重新读回，
+    # 那时 send_message 拿到的 before 就是旧会话的最后一条——
+    # wait_for_reply 比对新会话的气泡永远对不上（真机 10 条 bodyLen=0）。
+    probe = (
+        "(() => JSON.stringify({"
+        " n: document.querySelectorAll('[data-testid=\"chat-message\"]').length,"
+        " send: Boolean(document.querySelector('[data-testid=\"composer-send\"]')),"
+        " stop: Boolean(document.querySelector('[data-testid=\"composer-stop\"]'))"
+        "}))()"
+    )
     deadline = time.time() + 40
+    empty_streak = 0
     while time.time() < deadline:
         time.sleep(1.0)
         try:
-            raw = evaluate(
-                "(() => JSON.stringify({"
-                " n: document.querySelectorAll('[data-testid=\"chat-message\"]').length,"
-                " send: Boolean(document.querySelector('[data-testid=\"composer-send\"]'))"
-                "}))()",
-                timeout=25,
-            )
+            state = json.loads(evaluate(probe, timeout=25) or "{}")
         except Exception:
+            empty_streak = 0
             continue
-        state = json.loads(raw) if isinstance(raw, str) else {}
-        if int(state.get("n") or 0) == 0 and state.get("send"):
+        clean = int(state.get("n") or 0) == 0 and state.get("send") and not state.get("stop")
+        empty_streak = empty_streak + 1 if clean else 0
+        if empty_streak >= 2:
             return True
     return False

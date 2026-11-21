@@ -356,9 +356,14 @@ class TestP7E2EEmptyResponseExplicit:
         )
         reason = getattr(r.terminal_reason, "name", r.terminal_reason)
         assert reason == "MODEL_ERROR", f"端到端假成功：reason={reason} reply={r.reply[:80]!r}"
-        # 无候选链：失败经显式错误语义透出（非空假成功）
-        assert "LLM call failed" in (r.reply or ""), (
-            f"reply 缺显式错误语义（提取点丢弃 final_message？）：{r.reply[:120]!r}"
+        # 无候选链：失败经显式错误语义透出（非空假成功）。
+        # 断言看「用户能不能看出这是失败」，不锉死具体字串：
+        # 内部异常名已不再直接当回复（见 test_contract_user_facing_failures）。
+        reply = r.reply or ""
+        assert reply.strip(), "失败时不得返回空回复（用户无法判断发生了什么）"
+        explicit = ("不可用", "失败", "旊后", "LLM call failed", "MODEL_ERROR")
+        assert any(k in reply for k in explicit), (
+            f"reply 缺显式失败语义（提取点丢弃 final_message？）：{reply[:120]!r}"
         )
 
 
