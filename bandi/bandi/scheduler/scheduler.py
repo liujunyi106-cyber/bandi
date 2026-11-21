@@ -10,7 +10,7 @@ from typing import Any
 
 from bandi.company.heartbeat import run_tick_loop
 from bandi.scheduler.cron import CronExpr
-from bandi.scheduler.store import ScheduledTask, TaskStatus, TaskStore
+from bandi.scheduler.store import DeliveryStore, ScheduledTask, TaskStatus, TaskStore
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +79,9 @@ class TaskScheduler:
     同一窗口（max_window_retries）后推进 next_run_at（catch-up 不丢窗口
     防重试风暴）；runner 产出经静默协议落 last_output（空/HEARTBEAT_OK 不可见）。
     启停幂等。
+
+    装配 `deliveries` 后改为**投递式**：到期只把一条消息写进投递箱并推进窗口，
+    真正的 Agent 回合由会话侧消费者执行（与用户发消息同一条链路）。
     """
 
     def __init__(
@@ -86,9 +89,14 @@ class TaskScheduler:
         store: TaskStore,
         runner: Callable[[ScheduledTask], Awaitable[None]],
         config: SchedulerConfig | None = None,
+        deliveries: DeliveryStore | None = None,
     ) -> None:
         self.store = store
         self.runner = runner
+        # 功能：投递箱——装配后到期任务只入箱；None 时保持内联执行（trigger/测试）
+        self.deliveries = deliveries
+        # 功能：入箱后唤醒消费者（省一次轮询延迟）；未装配消费者时为空操作
+        self.on_delivered: Callable[[], None] | None = None
         self._config = config or SchedulerConfig()
         self._config.tick_interval_sec = float(
             max(MIN_TICK_INTERVAL_SEC, self._config.tick_interval_sec)
@@ -195,6 +203,33 @@ class TaskScheduler:
     async def _fire(self, task: ScheduledTask, now: datetime) -> None:
         if not self.store.try_begin_run(task.task_id):
             # next_run（下个 tick 到期重试），防同任务双跑
+            return
+        # 功能：投递式——到期只入箱并推进窗口，执行交给会话侧消费者。
+        # 投递是幂等写（同一 task+窗口只入箱一次）；写库失败也算失败，
+        # 走有界重试让下一 tick 重投，绝不静默丢窗口。
+        if self.deliveries is not None:
+            try:
+                self.deliveries.enqueue(
+                    task_id=task.task_id,
+                    session_id=str((task.payload or {}).get("session_id") or ""),
+                    prompt=str(task.prompt or ""),
+                    scheduled_at=task.next_run_at,
+                    now=now,
+                )
+            except Exception as e:  # noqa: BLE001 — 入箱失败按失败处理，下一 tick 重投
+                logger.warning("scheduled task %s enqueue failed: %s", task.task_id, e)
+                self._handle_failure(task, f"enqueue failed: {e}", now)
+                self.store.set_status(task.task_id, TaskStatus.FAILED, error=str(e))
+                return
+            self.store.set_status(task.task_id, TaskStatus.IDLE)
+            self.store.set_last_run(task.task_id, now)
+            self._window_retries.pop(task.task_id, None)
+            self._advance(task, now)
+            if self.on_delivered is not None:
+                try:
+                    self.on_delivered()
+                except Exception:
+                    logger.debug("delivery wakeup failed", exc_info=True)
             return
         try:
             result = await asyncio.wait_for(

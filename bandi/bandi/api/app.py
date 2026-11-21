@@ -3708,6 +3708,8 @@ _task_store: Any | None = None
 _task_runner: Any | None = None
 _task_scheduler: Any | None = None
 _task_scheduler_lock = threading.Lock()
+_delivery_store: Any | None = None
+_delivery_consumer: Any | None = None
 
 
 def _get_task_store() -> Any:
@@ -3720,11 +3722,52 @@ def _get_task_store() -> Any:
     return _task_store
 
 
+def _get_delivery_store() -> Any:
+    """功能：投递箱单例——与 scheduler.db 同库不同表。"""
+    global _delivery_store
+    if _delivery_store is None:
+        from bandi.scheduler.store import DeliveryStore
+
+        _delivery_store = DeliveryStore(str(Path.home() / ".bandi" / "data" / "scheduler.db"))
+    return _delivery_store
+
+
+async def _execute_delivery(delivery: Any) -> str:
+    """功能：执行一条投递——把任务提示词交给会话主链路跑一轮 Agent。
+
+    与 `_headless_runner` 的区别只在调用意图：投递来自调度器入箱，
+    执行仍走 `run_agent_turn`（用户发消息同一条链路）。失败必须抛出，
+    由消费者落 failed 终态——不得把失败包装成普通回复吞掉。
+    """
+    from bandi.memory.session.store import SessionStore
+
+    runner = _get_task_runner()
+    session_store = SessionStore(str(Path.home() / ".bandi" / "data" / "bandi.db"))
+    session_id = str(delivery.session_id or "").strip()
+    if not session_id or session_store.get_session(session_id) is None:
+        session_id = session_store.create_session(
+            session_id=session_id or None,
+            title=f"定时任务 {delivery.task_id}"[:120],
+            origin="automation",
+        )
+        delivery.session_id = session_id
+    task = _get_task_store().get(delivery.task_id)
+    if task is None:
+        raise RuntimeError(f"scheduled task {delivery.task_id} no longer exists")
+    # 复用同一份 payload：会话化任务把会话绑定回写，后续投递沿用
+    payload = dict(getattr(task, "payload", None) or {})
+    payload["session_id"] = session_id
+    task.payload = payload
+    _get_task_store().save(task)
+    return await runner(task)
+
+
 def _get_task_scheduler() -> Any:
     """后台调度器单例（runner 绑定 headless agent turn）。start 端点驱动生命周期。"""
     global _task_scheduler
     with _task_scheduler_lock:
         if _task_scheduler is None:
+            from bandi.scheduler.consumer import DeliveryConsumer
             from bandi.scheduler.scheduler import SchedulerConfig, TaskScheduler
 
             scheduler_config = SchedulerConfig()
@@ -3800,17 +3843,29 @@ def _get_task_scheduler() -> Any:
                     )
             except Exception as e:  # noqa: BLE001 — 配置缺失不阻断调度器装配
                 logger.warning("memory maintenance wiring skipped: %s", e)
+            # 功能：投递式装配——调度器到期只入箱，消费者把投递交给会话主链路。
+            # 这样定时任务的执行路径与用户手动发消息完全一致，不再有
+            # headless 专属失败面（模拟交互、异常吞成普通回复等）。
+            _deliveries = _get_delivery_store()
+            _consumer = DeliveryConsumer(
+                deliveries=_deliveries,
+                execute=_execute_delivery,
+            )
+            globals()["_delivery_consumer"] = _consumer
             _task_scheduler = TaskScheduler(
                 store=_get_task_store(),
                 runner=_get_task_runner(),
                 config=scheduler_config,
+                deliveries=_deliveries,
             )
+            # 功能：入箱后立刻唤醒消费者，省一次轮询间隔
+            _task_scheduler.on_delivered = _consumer.wakeup
     return _task_scheduler
 
 
 @app.on_event("startup")
 async def _startup_scheduler_autorun() -> None:
-    """功能：serve 启动时拉起后台定时任务调度器；测试/嵌入导入默认不启动。"""
+    """功能：serve 启动时拉起后台调度器与投递消费者；测试/嵌入导入默认不启动。"""
     if os.environ.get("BANDI_SCHEDULER_AUTOSTART", "0") != "1":
         return
     try:
@@ -3818,11 +3873,23 @@ async def _startup_scheduler_autorun() -> None:
         logger.info("scheduler autostart enabled")
     except Exception as e:  # noqa: BLE001 — 调度器启动失败不阻断 API
         logger.warning("scheduler autostart skipped: %s", e)
+    consumer = _delivery_consumer
+    if consumer is not None:
+        try:
+            await consumer.start()
+        except Exception as e:  # noqa: BLE001 — 消费者启动失败不阻断 API
+            logger.warning("delivery consumer autostart skipped: %s", e)
 
 
 @app.on_event("shutdown")
 async def _shutdown_scheduler() -> None:
-    """功能：API 关闭时停止后台调度循环，避免进程残留。"""
+    """功能：API 关闭时停止投递消费者与后台调度循环，避免进程残留。"""
+    consumer = _delivery_consumer
+    if consumer is not None and consumer.running:
+        try:
+            await consumer.stop()
+        except Exception as e:  # noqa: BLE001 — 关闭失败不阻断进程退出
+            logger.warning("delivery consumer shutdown failed: %s", e)
     scheduler = _task_scheduler
     if scheduler is None or not scheduler.running:
         return

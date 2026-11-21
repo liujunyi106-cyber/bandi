@@ -292,9 +292,10 @@ class TestSchedulerApiLifecycle:
         assert resp.status_code == 200
 
     def test_background_due_task_auto_fires(self) -> None:
-        """后台循环（真实 tick_loop + runner spy）：到期任务自动触发一次。"""
+        """后台循环：到期任务自动入箱投递，消费者取到后才由主链路执行一次。"""
         import asyncio
         import sys
+        import time
 
         app_mod = sys.modules["bandi.api.app"]
 
@@ -320,14 +321,20 @@ class TestSchedulerApiLifecycle:
             sched.store.set_next_run(tid, past)
             client.post("/api/scheduler/start")
             try:
-                # 等真实后台 tick（interval 钳制 ≥1s → 最多等 2 次 tick）
+                # 到期后必须先落一条待消费投递——而不是当场执行 Agent
+                deliveries = app_mod._get_delivery_store()
                 for _ in range(10):
-                    if fired:
+                    if deliveries.pending_count():
                         break
-                    asyncio.run(asyncio.sleep(0.4))
+                    time.sleep(0.4)
+                assert deliveries.pending_count() >= 1, "后台 tick 必须产生投递"
+                assert fired == [], "投递未被消费前不得执行 Agent"
+                consumer = app_mod._delivery_consumer
+                assert consumer is not None, "消费者必须随调度器装配"
+                asyncio.run(consumer.drain())
             finally:
                 client.post("/api/scheduler/stop")
-        assert fired == [tid], "后台 tick 必须自动触发到期任务"
+        assert fired == [tid], "投递被消费后才由主链路执行"
         detail = client.get(f"/api/scheduler/tasks/{tid}").json()
         assert detail["last_run_at"] is not None
         assert detail["status"] == "idle"

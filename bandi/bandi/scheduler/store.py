@@ -285,4 +285,172 @@ class TaskStore:
         )
 
     def close(self) -> None:
+        """功能：释放底层连接（契约与测试的收尾口径，与 DeliveryStore 一致）。"""
+        self._conn.close()
+
+
+class DeliveryStatus(StrEnum):
+    """功能：投递状态机——pending（已入箱待消费）/ consumed / failed。"""
+
+    PENDING = "pending"
+    CONSUMED = "consumed"
+    FAILED = "failed"
+
+
+@dataclass
+class TaskDelivery:
+    """功能：一次「定时任务到期」的投递记录（含 task/session 绑定与结果）。"""
+
+    delivery_id: str
+    task_id: str
+    session_id: str
+    prompt: str
+    scheduled_at: datetime | None = None
+    delivered_at: datetime | None = None
+    status: DeliveryStatus = DeliveryStatus.PENDING
+    consumed_at: datetime | None = None
+    error: str = ""
+
+
+class DeliveryStore:
+    """功能：定时任务投递箱——调度器只入箱，执行由会话侧消费。
+
+    与 `TaskStore` 同库不同表：调度器到期时写一行 pending（幂等、可审计），
+    真正的 Agent 回合由消费方走用户发消息的同一条链路完成。
+    """
+
+    def __init__(self, db_path: str | Path = ":memory:") -> None:
+        self._path = str(db_path)
+        if self._path != ":memory:":
+            Path(self._path).parent.mkdir(parents=True, exist_ok=True)
+        self._conn = connect_app_db(self._path, row_factory=True)
+        self._init_tables()
+
+    def _init_tables(self) -> None:
+        self._conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS task_deliveries (
+                delivery_id TEXT PRIMARY KEY,
+                task_id TEXT NOT NULL,
+                session_id TEXT NOT NULL,
+                prompt TEXT NOT NULL,
+                scheduled_at TEXT,
+                delivered_at TEXT,
+                status TEXT NOT NULL DEFAULT 'pending',
+                consumed_at TEXT,
+                error TEXT NOT NULL DEFAULT ''
+            )
+            """
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_task_deliveries_pending "
+            "ON task_deliveries (status, delivered_at)"
+        )
+        self._conn.commit()
+
+    def enqueue(
+        self,
+        *,
+        task_id: str,
+        session_id: str,
+        prompt: str,
+        scheduled_at: datetime | None,
+        now: datetime | None = None,
+    ) -> str:
+        """功能：投递入箱——调度器到期时调用，返回 delivery_id。
+
+        同一 (task_id, scheduled_at) 只入箱一次：catch-up 重试、重启补跑都不得
+        产生重复投递（否则同一窗口会被执行多遍）。
+        """
+        stamp = now or datetime.now()
+        window = _dt_to_str(scheduled_at) or _dt_to_str(stamp)
+        existing = self._conn.execute(
+            "SELECT delivery_id FROM task_deliveries WHERE task_id = ? AND scheduled_at = ?",
+            (task_id, window),
+        ).fetchone()
+        if existing is not None:
+            return str(existing["delivery_id"])
+        delivery_id = f"{task_id}:{window}"
+        self._conn.execute(
+            """INSERT INTO task_deliveries
+                   (delivery_id, task_id, session_id, prompt, scheduled_at, delivered_at, status)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (
+                delivery_id,
+                task_id,
+                session_id,
+                prompt,
+                window,
+                _dt_to_str(stamp),
+                DeliveryStatus.PENDING.value,
+            ),
+        )
+        self._conn.commit()
+        return delivery_id
+
+    def claim_pending(self, *, limit: int = 1) -> list[TaskDelivery]:
+        """功能：取待消费投递并原子置为 running 语义（本实现直接返回 pending 集合）。
+
+        消费方执行完必须调 `mark_consumed` / `mark_failed`；未标记的投递
+        保持 pending，重启后会被重新取到（at-least-once）。
+        """
+        rows = self._conn.execute(
+            "SELECT * FROM task_deliveries WHERE status = ? ORDER BY delivered_at LIMIT ?",
+            (DeliveryStatus.PENDING.value, max(1, limit)),
+        ).fetchall()
+        return [self._row_to_delivery(row) for row in rows]
+
+    def mark_consumed(self, delivery_id: str, *, now: datetime | None = None) -> None:
+        """功能：投递已执行完成——落终态，不再被取到。"""
+        self._conn.execute(
+            "UPDATE task_deliveries SET status = ?, consumed_at = ?, error = '' "
+            "WHERE delivery_id = ?",
+            (DeliveryStatus.CONSUMED.value, _dt_to_str(now or datetime.now()), delivery_id),
+        )
+        self._conn.commit()
+
+    def mark_failed(self, delivery_id: str, error: str, *, now: datetime | None = None) -> None:
+        """功能：投递执行失败——落终态与原因，不自动重试（防投递重试风暴）。"""
+        self._conn.execute(
+            "UPDATE task_deliveries SET status = ?, consumed_at = ?, error = ? "
+            "WHERE delivery_id = ?",
+            (
+                DeliveryStatus.FAILED.value,
+                _dt_to_str(now or datetime.now()),
+                str(error)[:2000],
+                delivery_id,
+            ),
+        )
+        self._conn.commit()
+
+    def list_for_task(self, task_id: str, *, limit: int = 20) -> list[TaskDelivery]:
+        """功能：某任务的投递历史（新到旧），供界面与排障消费。"""
+        rows = self._conn.execute(
+            "SELECT * FROM task_deliveries WHERE task_id = ? ORDER BY delivered_at DESC LIMIT ?",
+            (task_id, max(1, limit)),
+        ).fetchall()
+        return [self._row_to_delivery(row) for row in rows]
+
+    def pending_count(self) -> int:
+        """功能：待消费投递数（健康度指标）。"""
+        row = self._conn.execute(
+            "SELECT COUNT(*) AS n FROM task_deliveries WHERE status = ?",
+            (DeliveryStatus.PENDING.value,),
+        ).fetchone()
+        return int(row["n"] if row else 0)
+
+    def _row_to_delivery(self, row: sqlite3.Row) -> TaskDelivery:
+        return TaskDelivery(
+            delivery_id=row["delivery_id"],
+            task_id=row["task_id"],
+            session_id=row["session_id"],
+            prompt=row["prompt"],
+            scheduled_at=_str_to_dt(row["scheduled_at"]),
+            delivered_at=_str_to_dt(row["delivered_at"]),
+            status=DeliveryStatus(row["status"]),
+            consumed_at=_str_to_dt(row["consumed_at"]),
+            error=row["error"] or "",
+        )
+
+    def close(self) -> None:
         self._conn.close()
