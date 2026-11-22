@@ -28,7 +28,7 @@ bandi-isolation/
 # Node
 node_modules/
 dist/
-frontend/build/
+frontend/build/sidecar/
 *.tsbuildinfo
 
 # Logs / temp
@@ -63,7 +63,8 @@ scbw-*/
 .pytest-tmp/
 .pytest_cache/
 .ruff_cache/
-frontend/build/
+# 只忽略 sidecar 同步产物：build/icon.png 与 build/installer.nsh 是打包源文件，必须跟踪
+frontend/build/sidecar/
 frontend/dist/
 *.tsbuildinfo
 
